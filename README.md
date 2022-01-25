@@ -14,6 +14,15 @@ This is a collection of tools for working with photoelastic particle images, inc
 
 Maybe one day :)
 
+## Requirements
+
+- [lmfit](https://lmfit.github.io/lmfit-py/index.html)
+- [scikit-learn](https://scikit-learn.org/stable/)
+- [OpenCV](https://opencv.org/)
+- [Pillow](https://pillow.readthedocs.io/en/stable/)A
+
+Some of the test notebooks may also make use of the Matlab API to compare against Jonathan Kollmer's implementation, but this is not required to use any functions in the library itself.
+
 ## Usage
 
 Wiki is WIP
@@ -40,4 +49,4 @@ This library's implementation of force solution differs from PeGS in a few ways 
 
 [2] Abed Zadeh, A., Barés, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N., Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., & Zheng, H. (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular Matter, 21(4), 83. https://doi.org/10.1007/s10035-019-0942-2
 
-
+[3] Photoelastic methods wiki. https://git-xen.lmgc.univ-montp2.fr/PhotoElasticity/Main/-/wikis/home

@@ -175,15 +175,21 @@ def evaluateStress(yInd, xInd, forceArr, alphaArr, betaArr, fSigma, radius, pxPe
 
         # Error check
         # See if either the vector or the chord length is zero
-        if rVec*chordLength == 0:
-            #print("Bad length")
-            return 0
+        if rVec*chordLength == 0.:
+            print("Bad length")
+            return 0.
 
         # Normalize the components of the chord
         chordX /= chordLength
         chordY /= chordLength
 
         arccosArgument = (vecX*chordX + vecY*chordY) / rVec
+
+        # At the very center, this argument will be almost exactly 1,
+        # but we'll get a nan if it is exactly 1, so we need to subtract a little
+        # bit slightly above the order of machine error
+        # This is most likely the issue that Jonathan commented about in his code
+        arccosArgument -= np.float64(xInd+yInd + xInd*yInd == 0)*1e-10
 
         th = np.sign(vecY*chordX - vecX*chordY) * np.arccos(arccosArgument)
 
