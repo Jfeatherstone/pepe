@@ -176,7 +176,7 @@ def evaluateStress(yInd, xInd, forceArr, alphaArr, betaArr, fSigma, radius, pxPe
         # Error check
         # See if either the vector or the chord length is zero
         if rVec*chordLength == 0.:
-            print("Bad length")
+            #print("Bad length")
             return 0.
 
         # Normalize the components of the chord

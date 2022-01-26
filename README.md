@@ -19,25 +19,18 @@ Maybe one day :)
 - [lmfit](https://lmfit.github.io/lmfit-py/index.html)
 - [scikit-learn](https://scikit-learn.org/stable/)
 - [OpenCV](https://opencv.org/)
-- [Pillow](https://pillow.readthedocs.io/en/stable/)A
+- [Pillow](https://pillow.readthedocs.io/en/stable/)
 
-Some of the test notebooks may also make use of the Matlab API to compare against Jonathan Kollmer's implementation, but this is not required to use any functions in the library itself.
+These can all be installed (alongside their dependencies) via `pip`:
+```
+pip intsall python-opencv scikit-learn lmfit Pillow
+```
+
+Some of the test notebooks may also make use of the Matlab API to compare against Jonathan Kollmer's implementation, but this is not required to use any functions in the library itself. Installing the Matlab API requires a local installation of Matlab proper; see [here](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html) for more information.
 
 ## Usage
 
 Wiki is WIP
-
-## Notes
-
-(To be moved to the wiki eventually)
-
-### Force Solving
-
-This library's implementation of force solution differs from PeGS in a few ways that it is important to understand if you are switching between the two:
-
-- In most physical scenarios, it is most common to write coordinates, as [x,y], whereas in image processing it is more common to use [y,x]. This library uses the latter [y,x] convention pretty much everywhere.
-- Almost all positions/lengths/etc. are kept in units of pixels for most operations. Some methods may require physical units, for which you may need to pass a parameter along the lines of `pxPerMeter` -- but you should never convert to mm/cm/m manually unless explicitly stated.
-- This version does not center around a `particle` struct that contains all of the information about any given particle. The various quantities (active forces, positions, angles, etc.) are left to the user's organization scheme. My reasoning here is that this is much more extensible, since we are not tied to a particular system to run every analysis -- ie. if we want to quickly test some method, we do not need to spend any time organizing every possible parameter a particle could have.
 
 ## Further Reading and References
 

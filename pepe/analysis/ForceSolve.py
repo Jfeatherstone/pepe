@@ -6,6 +6,8 @@ from pepe.simulate import genSyntheticResponse
 
 import numba
 
+from lmfit import minimize, Parameters, fit_report
+
 import matplotlib.pyplot as plt
 
 def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2MaskPadding=1, contactThreshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False):
@@ -183,6 +185,233 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
         # TODO
 
     return forceGuessArr, alphaGuessArr, betaGuessArr
+
+
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTol=.5, betaTol=.5, alphaTol=.1, useTolerance=True, returnOptResult=False):
+    """
+    Optimize an initial guess for the forces acting on a particle using
+    a nonlinear minimization function.
+
+    Parameters
+    ----------
+
+    forceGuessArr : np.ndarray[Z]
+        The initial guess for magnitudes of each force that is acting on the particle.
+
+    betaGuessArr : np.ndarray[Z]
+        The initial guess for the positional angles where each force is acting (in radians).
+
+    alphaGuessArr : np.ndarray[Z]
+        The initial guess for the directional angles for each force acting on the particle (in radians).
+
+    radius : float
+        The radius of the particle, in pixels.
+
+    center : [int, int]
+        The coordinates of the center, [y,x], of the particle.
+
+    realImage : np.ndarray[H,W]
+        The photoelastic channel that the optimizer will compare against. Can be a composite image
+        include other particles, since a mask will be applied around the given particle.
+
+    parametersToFit : ['f'[[, 'b'], 'a']]
+        Which parameters should be allowed to be varied in the process of minimizing the function; 'f' for
+        force magnitude, 'b' for beta positional angle, 'a' for alpha directional angle. Must include at least one.
+
+        Can also specify to perform multiple optimizations on different variables by providing a 2D list of
+        parameters keys (any of 'f', 'a', 'b') e.g. [ ['f', 'b'], ['f', 'a'] ] will first optimize the force
+        and beta values, then optimize the force and alpha values. When performing multiple optimizations,
+        the result of the previous one is used as initial condition for the following one, though the residual
+        array includes information about all optimizations. 
+
+        Values for `maxEvals`, `forceTol`, `betaTol`, `alphaTol`, and `method` can be provided as lists of
+        acceptable values to specify different options for each optimization e.g. `method=['nelder', 'cobyla']`
+        will use the Nelder-Mead optimization scheme on the first pass, and then COBYLA on the second one. If
+        a single value is provided for any of these parameters, that will be used for all optimizations.
+
+    method : ['nelder', 'bfgsb', 'powell', 'cobyla']
+        The method to use for optimization. See wiki page on Force Solver for more information on selecting
+        an appropriate one. If in doubt, 'nelder' is usually a safe bet.
+
+        Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
+
+    maxEvals : int
+        The maximum number of function evaluations before the minimizer exits. Convergence can occur before
+        this number of evaluations, but process will be interrupted at this value regardless of whether
+        or not the result has converged.
+
+        Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
+
+    forceBounds : (float, float)
+        The upper and lower limits for the values of force magnitudes that the minimizer can explore, 
+        assuming that `useTolerance` is set to False.
+
+    betaBounds : (float, float)
+        The upper and lower limits for the values of beta that the minimizer can explore, 
+        assuming that `useTolerance` is set to False.
+
+    alphaBounds : (float, float)
+        The upper and lower limits for the values of alpha that the minimizer can explore, 
+        assuming that `useTolerance` is set to False.
+
+    forceTol : float
+        If `useTolerance` is set to True, this value will be used to calculate the bounds for each
+        force individually, as the initial value minus this tolerance, and the initial value plus
+        this tolerance.
+
+        Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
+
+    betaTol : float
+        If `useTolerance` is set to True, this value will be used to calculate the bounds for each
+        beta individually, as the initial value minus this tolerance, and the initial value plus
+        this tolerance.
+
+        Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
+
+    alphaTol : float
+        If `useTolerance` is set to True, this value will be used to calculate the bounds for each
+        alpha individually, as the initial value minus this tolerance, and the initial value plus
+        this tolerance.
+
+        Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
+
+    useTolerance : bool
+        Whether to calculate the bounds for each parameters as the initial value plus/minus a
+        certain tolerance (True) or to use the set intervals provided via the `forceBounds`, 
+        `betaBounds`, and `alphaBounds` parameters (False).
+
+    returnOptResult : bool
+        Whether to return the optimizer result object, which includes all parameters values and
+        potentially uncertainties (True) or just the optimized values of the forces, betas, alphas,
+        and residuals (False). Note that if multiple optimizations are being performed, only the
+        final result object will be returned.
+    
+    """
+
+    residuals = []
+
+    # If we are passed a 2d list of parametersToFit, that means we 
+    # are to perform multiple minimizations, likely with different
+    # parameters being optimized each time.
+
+    # It is easier to set up this method to run for an arbitrary number
+    # of optimizations, even though most of the time that number of
+    # optimizations will be one
+
+    # So if we aren't given a 2d list structure, we have to make one
+    if type(parametersToFit[0]) is not list:
+        parametersToFitList = [parametersToFit]
+    else:
+        parametersToFitList = parametersToFit
+
+    numFits = len(parametersToFitList)
+
+    # Different numbers of evaluations can be provided for each optimization
+    # or just the one value can be used for all of them
+    if type(maxEvals) is not list:
+        maxEvalsList = [maxEvals for i in range(numFits)]
+    else:
+        maxEvalsList = maxEvals
+
+    # The difference minimizations can use different methods
+    if type(method) is not list:
+        methodList = [method for i in range(numFits)]
+    else:
+        maxEvalsList = method
+    
+    # Same deal for all of the tolerances (we don't do bound intervals, since tolerances
+    # are the recommended way to handle parameters bounds)
+    if type(forceTol) is not list:
+        forceTolList = [forceTol for i in range(numFits)]
+    else:
+        forceTolList = forceTol
+
+    if type(betaTol) is not list:
+        betaTolList = [betaTol for i in range(numFits)]
+    else:
+        betaTolList = betaTol
+
+    if type(alphaTol) is not list:
+        alphaTolList = [alphaTol for i in range(numFits)]
+    else:
+        alphaTolList = alphaTol
+
+    # Make sure everything is the same length
+    assert len(parametersToFitList) == numFits, 'Invalid parametersToFit provided'
+    assert len(maxEvalsList) == numFits, 'Invalid maxEvals provided'
+    assert len(methodList) == numFits, 'Invalid method provided'
+    assert len(forceTolList) == numFits, 'Invalid forceTol provided'
+    assert len(betaTolList) == numFits, 'Invalid betaTol provided'
+    assert len(alphaTolList) == numFits, 'Invalid alphaTol provided'
+
+    # Setup our function based on what parameters we are fitting
+    # We want to avoid any if statements within the function itself, since
+    # that will be evaluated many many times.
+    # lmfit has a nice setup in that you can denote whether a variable can be
+    # changed or not, which means we don't actually have to change which variables
+    # are passed to the function.
+    def objectiveFunction(params, trueImage, z, radius, center):
+        forceArr = np.array([params[f"f{j}"] for j in range(z)])
+        betaArr = np.array([params[f"b{j}"] for j in range(z)])
+        alphaArr = np.array([params[f"a{j}"] for j in range(z)])
+
+        synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter, brightfield, imageSize=trueImage.shape, center=center)
+        residuals.append(np.sum(np.abs(synImage - trueImage)))
+        return np.sum(np.abs(synImage - trueImage))
+
+
+    # Mask our real image
+    particleMask = circularMask(realImage.shape, center, radius)[:,:,0]
+    maskedImage = realImage * particleMask
+
+    # Since we may be doing multiple fits, we want to set up the initial conditions
+    # such that each fit uses the result of the previous one (and the first one
+    # of course uses what is provided to the function)
+    forceArr = np.array(forceGuessArr.copy())
+    betaArr = np.array(betaGuessArr.copy())
+    alphaArr = np.array(alphaGuessArr.copy())
+
+    # Now that we have all of that bookkeeping done, we can actually get on
+    # to doing the minimization
+    result = None
+    z = len(forceGuessArr)
+    for i in range(numFits):
+
+        # Out fitting parameters
+        # if vary kwarg is false, that value won't be fit
+        params = Parameters()
+
+
+        for j in range(z):
+            if useTolerance:
+                # Have to make sure that certain values aren't allowed to go negative, but
+                # otherwise the bounds are just the initial value +/- the tolerances
+                params.add(f'f{j}', value=forceArr[j], vary='f' in parametersToFitList[i], min=max(forceArr[j]-forceTolList[i], 0), max=forceArr[j]+forceTolList[i])
+                params.add(f'b{j}', value=betaArr[j], vary='b' in parametersToFitList[i], min=max(betaArr[j]-betaTolList[i], -np.pi), max=min(betaArr[j]+betaTolList[i], np.pi))
+                params.add(f'a{j}', value=alphaArr[j], vary='a' in parametersToFitList[i], min=max(alphaArr[j]-alphaTolList[i], 0), max=alphaArr[j]+alphaTolList[i])
+            else:
+                params.add(f'f{j}', value=forceArr[j], vary='f' in parametersToFitList[i], min=forceBounds[0], max=forceBounds[1])
+                params.add(f'b{j}', value=betaArr[j], vary='b' in parametersToFitList[i], min=betaBounds[0], max=betaBounds[1])
+                params.add(f'a{j}', value=alphaArr[j], vary='a' in parametersToFitList[i], min=alphaBounds[0], max=alphaBounds[1])
+
+
+        # Now do the optimization
+        result = minimize(objectiveFunction, params,
+                         args=(maskedImage, z, radius, center),
+                         method=methodList[i], nan_policy='omit', max_nfev=maxEvalsList[i])
+
+        # Copy over the new values of the forces, alphas, and betas
+        for j in range(z):
+            forceArr[j] = result.params[f"f{j}"] 
+            betaArr[j] = result.params[f"b{j}"] 
+            alphaArr[j] = result.params[f"a{j}"] 
+
+    if returnOptResult:
+        return result
+
+    else:
+        return forceArr, betaArr, alphaArr, residuals
+
 
 
 @numba.jit(nopython=True)
