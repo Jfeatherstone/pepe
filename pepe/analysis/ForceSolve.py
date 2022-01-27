@@ -3,6 +3,7 @@ import numpy as np
 from pepe.preprocess import circularMask, rectMask, ellipticalMask, mergeMasks
 from pepe.analysis import gSquared, adjacencyMatrix
 from pepe.simulate import genSyntheticResponse
+from pepe.utils import outerSubtract
 
 import numba
 
@@ -187,7 +188,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTol=.5, betaTol=.5, alphaTol=.1, useTolerance=True, returnOptResult=False):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTol=.5, betaTol=.5, alphaTol=.1, useTolerance=True, returnOptResult=False, minForceThreshold=.01):
     """
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -286,6 +287,9 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         and residuals (False). Note that if multiple optimizations are being performed, only the
         final result object will be returned.
     
+    minForceThreshold : float
+        The minimizer will automatically remove any forces whose magnitude is lower than
+        this value between fittings and after the final one.
     """
 
     residuals = []
@@ -374,13 +378,13 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     # Now that we have all of that bookkeeping done, we can actually get on
     # to doing the minimization
     result = None
-    z = len(forceGuessArr)
     for i in range(numFits):
+
+        z = len(forceArr)
 
         # Out fitting parameters
         # if vary kwarg is false, that value won't be fit
         params = Parameters()
-
 
         for j in range(z):
             if useTolerance:
@@ -405,6 +409,14 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
             forceArr[j] = result.params[f"f{j}"] 
             betaArr[j] = result.params[f"b{j}"] 
             alphaArr[j] = result.params[f"a{j}"] 
+
+        if len(forceArr[forceArr > minForceThreshold]) > 0:
+            # Remove forces that aren't actually doing anything
+            betaArr = betaArr[forceArr > minForceThreshold]
+            alphaArr = alphaArr[forceArr > minForceThreshold]
+            # This one has to be done last for the other indexing to work
+            forceArr = forceArr[forceArr > minForceThreshold]
+            #print(f'Removed {z - len(forceArr)} forces.')
 
     if returnOptResult:
         return result
@@ -720,7 +732,7 @@ def g2ForceCalibrationDebug(fSigma, radius, pxPerMeter, alphaArr=np.array([0., 0
 
 
 @numba.jit(nopython=True)
-def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=None, contactPadding=10, g2EdgePadding=.95, angleClusterThreshold=.2, contactMaskRadius=50):
+def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=None, contactPadding=10, g2EdgePadding=.95, angleClusterThreshold=.2, contactMaskRadius=50, maxContactExtent=.75):
     """
     Detect potential particle contacts with the wall.
 
@@ -759,6 +771,10 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
     contactMaskRadius : int
         The size of the circular mask that is used to determine average gradient squared
         value around detected contacts.
+
+    maxContactExtent : float
+        The maximum range of angles that can be included in a single cluster. If any particular
+        cluster exceeds this value, it will be divided up into multiple new clusters.
 
     Returns
     -------
@@ -863,6 +879,7 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
             clusterCentroids = np.zeros((numClusters, 2))
             for j in range(numClusters):
                 clusterCentroids[j] = [np.mean(points[labels == j][:,0]), np.mean(points[labels == j][:,1])]
+ 
 
             # --------------------------------------------------------------
             # Calculate the angle with respect to the particle center (beta)
@@ -870,6 +887,45 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
             clusterBetas = np.zeros(numClusters)
             for j in range(numClusters):
                 clusterBetas[j] = np.arctan2(clusterCentroids[j,1] - centers[i][1], clusterCentroids[j,0] - centers[i][0])
+
+            # -------------------------------------
+            # Divide up big clusters (if necessary)
+            # -------------------------------------
+            newBetas = np.zeros(0)
+            for j in range(numClusters):
+                # First, calculate the extent of the cluster
+                # This isn't as simple as subtract max from min, because
+                # of the periodicity, so the most reliable method is as follows
+
+                # Locate every unique angle in this cluster (in order)
+                uniqueBetas = np.sort(np.unique(angles[labels == j]))
+
+                # If you only have 1 beta, then clearly we don't need to divide
+                # this cluster up
+                if len(uniqueBetas) < 2:
+                    newBetas = np.append(newBetas, clusterBetas[j])
+                    continue
+
+                clusterBounds = np.array([np.max(np.array([uniqueBetas[0], uniqueBetas[-1]])) - np.min(np.array([uniqueBetas[0], uniqueBetas[-1]]))])
+                clusterExtent = clusterBounds[0] - clusterBounds[1]
+
+                # This is usually a good way to identify that the region
+                # passes across the top of the circle
+                if clusterExtent < .01 or 2*np.pi - clusterExtent < .01:
+                #if (clusterBetas[j] < clusterBounds[0] and clusterBetas[j] > clusterBounds[1]):
+                    clusterBounds = [np.max(uniqueBetas[uniqueBetas < 0]), np.min(uniqueBetas[uniqueBetas > 0])]
+                    clusterExtent = 2*np.pi - (clusterBounds[1] - clusterBounds[0])
+
+                if clusterExtent > maxContactExtent:
+                    numNewClusters = np.int16(np.ceil(clusterExtent / maxContactExtent))
+                    dBeta = clusterExtent/numNewClusters
+                    newBetas = np.append(newBetas, np.linspace(clusterBetas[j] + clusterExtent/2., clusterBetas[j] - clusterExtent/2., numNewClusters))
+                else:
+                    newBetas = np.append(newBetas, clusterBetas[j])
+                    
+            #print(newBetas)
+
+            clusterBetas = newBetas.copy()
 
             # --------------------------------------------------------------------------
             # Apply a mask to get the magnitude of the average g2 value for that contact
@@ -906,7 +962,7 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
             # ---------------------------
             # Save all of the information
             # ---------------------------            
-            numWallContacts[i] = numClusters
+            numWallContacts[i] = len(clusterBetas)
             betaArr.append(clusterBetas)
             contactG2Arr.append(clusterAvgG2)
 

@@ -4,7 +4,11 @@ import numba
 
 from pepe.preprocess import circularMask
 
-@numba.jit(nopython=True)
+# fastmath relaxes some of the floating point precision,
+# and leads to an accumulated error of around 1e-10
+# It doesn't speed up a ton, but this error is so small that
+# any amount of speed up is worth it (I think it's about 5ms/evaluation)
+@numba.njit(parallel=True, fastmath=True)
 def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter=1, brightfield=True, imageSize=None, center=None):
     """
     Generate the theoretical photoelastic response given the material
@@ -87,16 +91,17 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
     intensityArr = np.zeros((imageSize[0], imageSize[1]))
 
     # As per conventions through the rest of the library, order of points is y,x
-    for p in points:
+    for i in range(points.shape[0]):
         # While we index for the points on the entire grid,
         # we have to pass the stress evaluation method the position relative
         # to the center of the partice
-        intensityArr[p[0],p[1]] = evaluateStress(p[0]-center[0], p[1]-center[1], forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter, brightfield)
+        intensityArr[points[i,0],points[i,1]] = evaluateStress(points[i,0]-center[0], points[i,1]-center[1], forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter, brightfield)
 
     return intensityArr
     
 
-@numba.jit(nopython=True)
+# See genSyntheticResponse note about fastmath
+@numba.njit(fastmath=True)
 def evaluateStress(yInd, xInd, forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter, brightfield=True):
     """
     Evaluate the stress (and resulting photoelastic intensity) at a particular point within
