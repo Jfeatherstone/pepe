@@ -8,6 +8,7 @@ from pepe.utils import outerSubtract
 import numba
 
 from lmfit import minimize, Parameters, fit_report
+from scipy.signal import find_peaks
 
 import matplotlib.pyplot as plt
 
@@ -188,7 +189,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTol=.5, betaTol=.5, alphaTol=.1, useTolerance=True, returnOptResult=False, minForceThreshold=.01):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTol=.5, betaTol=.5, alphaTol=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8):
     """
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -378,7 +379,10 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     # Now that we have all of that bookkeeping done, we can actually get on
     # to doing the minimization
     result = None
-    for i in range(numFits):
+    i = 0
+    # We use a while loop here because we may want to repeat a fit if
+    # we add a new force, which isn't possible in a for loop
+    while i < numFits:
 
         z = len(forceArr)
 
@@ -410,13 +414,79 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
             betaArr[j] = result.params[f"b{j}"] 
             alphaArr[j] = result.params[f"a{j}"] 
 
-        if len(forceArr[forceArr > minForceThreshold]) > 0:
+        # ---------------------
+        # Detect missing forces
+        # ---------------------
+        # If the code detects there is a missing force (no idea how yet)
+        if result.chisqr > missingForceChiSqrThreshold and allowAddForces:
+            # We sweep around the edge of the particle to see if there
+            # are any regions that look like they could have a force
+            # (denoted by a particularly high g2 value, or rather a peak)
+            testBetaCount = 30
+            avgG2Arr = np.zeros(testBetaCount)
+            newBetaArr = np.linspace(-np.pi, np.pi, testBetaCount)
+
+            # Calculate all of the g2s around the edge of the particle
+            gSqr = gSquared(realImage)
+            for j in range(testBetaCount):
+                contactPoint = center + radius * np.array([np.cos(newBetaArr[j]), np.sin(newBetaArr[j])])
+                
+                # Create a mask just over the small area inside of the particle
+                contactMask = circularMask(realImage.shape, contactPoint, newBetaContactMaskRadius)[:,:,0]
+                contactMask = (contactMask + particleMask) == 2
+
+                avgG2Arr[j] = np.sum(contactMask * gSqr) / np.sum(contactMask)
+
+            # Identify any peaks in the average g2s
+            peakIndArr = find_peaks(avgG2Arr, height=newBetaG2Height)[0]
+            peakIndArr = np.sort(peakIndArr)
+
+            # Make sure that there aren't any artifacts of periodicity
+            # Usually this isn't actually a problem, because the peak
+            # finding algorithm requires a proper peak, which can only
+            # be on one side (but we'll leave it here just in case)
+            if np.arange(3).any() in peakIndArr and np.arange(len(avgG2Arr)-3, len(avgG2Arr)).any() in peakIndArr:
+                # Remove last entry
+                peakIndArr = peakIndArr[:-1]
+
+            peakBetaArr = newBetaArr[peakIndArr]
+            
+            # Now we have a list of likely points, we need to see if our original
+            # list is missing any of these.
+            differenceArr = np.abs(np.subtract.outer(peakBetaArr, betaArr))
+
+            # Check to see if there is a new peak that doesn't have
+            # a previous force close to it
+            for j in range(len(peakBetaArr)):
+                if np.min(differenceArr[j]) > newBetaMinSeparation:
+                    # Add the new force
+                    betaArr = np.append(betaArr, peakBetaArr[j])
+                    forceArr = np.append(forceArr, .1) # Value isn't too imporant here
+                    alphaArr = np.append(alphaArr, 0.)
+
+
+            # If we have added a force, we should run the optimization again, and see if it improves
+            if len(forceArr) > z:
+                print(f'Added {len(forceArr) - z} force(s).')
+                # We also want to make sure we're allowed to vary beta on the next iteration
+                parametersToFitList[i] += ['b'] # (It's okay that it might be in there twice)
+                # This skips the i += 1 at the end of the loop, and makes the optimization run again
+                continue
+
+
+        # ------------------------------------
+        # Remove forces that don't do anything
+        # ------------------------------------
+        if len(forceArr[forceArr < minForceThreshold]) > 0 and allowRemoveForces:
             # Remove forces that aren't actually doing anything
             betaArr = betaArr[forceArr > minForceThreshold]
             alphaArr = alphaArr[forceArr > minForceThreshold]
             # This one has to be done last for the other indexing to work
             forceArr = forceArr[forceArr > minForceThreshold]
-            #print(f'Removed {z - len(forceArr)} forces.')
+            print(f'Removed {z - len(forceArr)} force(s).')
+       
+        # Iterate (since we have a while not a for)
+        i += 1
 
     if returnOptResult:
         return result
