@@ -122,7 +122,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
             boundaryMask = rectMask(photoelasticSingleChannel.shape, topLeftCorner, dimensions, channels=None)
 
         # See detectWallContacts for more information
-        numWallContacts, wallBetaArr, wallG2AvgArr = detectWallContacts(centers, radii, boundaryMask, contactPadding=contactPadding)
+        numWallContacts, wallBetaArr, wallG2AvgArr = detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel, contactPadding=contactPadding)
         for i in range(numParticles):
             for j in range(numWallContacts[i]):
                 betaGuessArr[i] = np.append(betaGuessArr[i], wallBetaArr[i][j])
@@ -731,7 +731,7 @@ def g2ForceCalibrationDebug(fSigma, radius, pxPerMeter, alphaArr=np.array([0., 0
     return 2*forceValues, gSqrAvgArr
 
 
-@numba.jit(nopython=True)
+#@numba.jit(nopython=True)
 def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=None, contactPadding=10, g2EdgePadding=.95, angleClusterThreshold=.2, contactMaskRadius=50, maxContactExtent=.75):
     """
     Detect potential particle contacts with the wall.
@@ -906,7 +906,7 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
                     newBetas = np.append(newBetas, clusterBetas[j])
                     continue
 
-                clusterBounds = np.array([np.max(np.array([uniqueBetas[0], uniqueBetas[-1]])) - np.min(np.array([uniqueBetas[0], uniqueBetas[-1]]))])
+                clusterBounds = np.array([np.max(np.array([uniqueBetas[0], uniqueBetas[-1]])), np.min(np.array([uniqueBetas[0], uniqueBetas[-1]]))])
                 clusterExtent = clusterBounds[0] - clusterBounds[1]
 
                 # This is usually a good way to identify that the region
@@ -926,6 +926,13 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
             #print(newBetas)
 
             clusterBetas = newBetas.copy()
+            numClusters = len(clusterBetas)
+
+            # Now we want to recalculate our centroids, since there are
+            # potentially some new ones
+            clusterCentroids = np.zeros((numClusters, 2))
+            for j in range(numClusters):
+                clusterCentroids[j] = centers[i] + radii[i] * np.array([np.cos(clusterBetas[j]), np.sin(clusterBetas[j])])
 
             # --------------------------------------------------------------------------
             # Apply a mask to get the magnitude of the average g2 value for that contact
@@ -951,9 +958,7 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
                     contactMask = circularMask(photoelasticSingleChannel.shape, clusterCentroids[j], contactMaskRadius)
 
                     # Now cut off the part outside of the particle
-                    contactMask = mergeMasks([contactMask,
-                                              1 - circularMask(photoelasticSingleChannel.shape, centers[i], g2MaskRadii[i])],
-                                             signs=np.array([1, -1], dtype=np.int16))[:,:,0]
+                    contactMask = (contactMask + circularMask(photoelasticSingleChannel.shape, centers[i], g2MaskRadii[i]))[:,:,0] == 2
 
                     # Calculate average G2
                     clusterAvgG2[j] = np.sum(contactMask * gSqr) / np.sum(contactMask)

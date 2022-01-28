@@ -194,7 +194,8 @@ def evaluateStress(yInd, xInd, forceArr, alphaArr, betaArr, fSigma, radius, pxPe
         # but we'll get a nan if it is exactly 1, so we need to subtract a little
         # bit slightly above the order of machine error
         # This is most likely the issue that Jonathan commented about in his code
-        arccosArgument -= np.float64(xInd+yInd + xInd*yInd == 0)*1e-10
+        #arccosArgument -= np.float64(xInd+yInd + xInd*yInd == 0)*1e-10
+        arccosArgument -= 1e-10
 
         th = np.sign(vecY*chordX - vecX*chordY) * np.arccos(arccosArgument)
 
