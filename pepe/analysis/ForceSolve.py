@@ -12,7 +12,7 @@ from scipy.signal import find_peaks
 
 import matplotlib.pyplot as plt
 
-def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2MaskPadding=1, contactThreshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False):
+def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={}):
     """
     Calculate the approximate forces on each particle based on the photoelastic response.
     No optimization/gradient descent is done in this method; this should be used either where
@@ -50,11 +50,12 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
         Maximum difference between distance and sum of radii for which
         two particles will still be considered in contact.
 
-    g2MaskPadding : int
+    g2EdgePadding : int or float
         Number of pixels to ignore at the edge of each particle when calculating the average
-        G^2.
+        G^2. If float value < 1 is passed, gradient mask radius will be taken as that percent
+        of the full particle radius. A value of 0 means no padding is included.
 
-    contactThreshold : float
+    contactG2Threshold : float
         The neighbor weight value under which edges will be removed from the network,
         as they would be considered to weak to represent anything physical. This will
         help remove particle neighbors that are only barely touching, but not transmitting
@@ -84,6 +85,12 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     brightfield : bool
         Whether the photoelastic response is seen through a brightfield (True)
         polariscope or darkfield (False) polariscope.
+
+    boundaryDetectionOptions : kwargs
+        Dictionary of kwargs to be passed to the detectWallContact method, assuming
+        boundaries are being included in the solver. If none are provided, relevant
+        values are carried over from the kwargs for this method (`contactPadding`, 
+        `g2EdgePadding`, `contactMaskRadius`, `contactG2Threshold`).
     """
 
     # We are passed centers and radii
@@ -122,8 +129,21 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
 
             boundaryMask = rectMask(photoelasticSingleChannel.shape, topLeftCorner, dimensions, channels=None)
 
+        # We want to carry a few arguments over to the boundary detection
+        # if they haven't been explicitly provided
+        if not 'contactPadding' in boundaryDetectionOptions:
+            boundaryDetectionOptions["contactPadding"] = contactPadding
+        if not 'g2EdgePadding' in boundaryDetectionOptions:
+            boundaryDetectionOptions["g2EdgePadding"] = g2EdgePadding
+        if not 'contactMaskRadius' in boundaryDetectionOptions:
+            boundaryDetectionOptions["contactMaskRadius"] = contactMaskRadius
+        if not 'contactG2Threshold' in boundaryDetectionOptions:
+            boundaryDetectionOptions["contactG2Threshold"] = contactG2Threshold
+
         # See detectWallContacts for more information
-        numWallContacts, wallBetaArr, wallG2AvgArr = detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel, contactPadding=contactPadding)
+        numWallContacts, wallBetaArr, wallG2AvgArr = detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel, **boundaryDetectionOptions)
+
+        # Now merge these contacts with the interparticle ones
         for i in range(numParticles):
             for j in range(numWallContacts[i]):
                 betaGuessArr[i] = np.append(betaGuessArr[i], wallBetaArr[i][j])
@@ -148,9 +168,17 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     # Mean of the radii should be fine, though TODO would be a good idea to have options here
     g2Cal = g2ForceCalibration(fSigma, np.mean(radii), pxPerMeter, brightfield=brightfield)
 
-    for i in range(numParticles):
-        g2Mask = circularMask(photoelasticSingleChannel.shape, centers[i], radii[i] - g2MaskPadding)[:,:,0]
+    # Figure out how much of the particle we will be calculating the g2 over
+    if g2EdgePadding < 1. and g2EdgePadding > 0:
+        g2MaskRadii = radii * g2EdgePadding
+    elif g2EdgePadding >= 1:
+        g2MaskRadii = radii - g2EdgePadding
+    else:
+        g2MaskRadii = radii
 
+    for i in range(numParticles):
+        g2Mask = circularMask(photoelasticSingleChannel.shape, centers[i], g2MaskRadii[i])[:,:,0]
+ 
         # This is the average g2 of the whole particle
         avgGSqr = np.sum(gSqr * g2Mask) / np.sum(g2Mask)
 
@@ -802,7 +830,7 @@ def g2ForceCalibrationDebug(fSigma, radius, pxPerMeter, alphaArr=np.array([0., 0
 
 
 #@numba.jit(nopython=True)
-def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=None, contactPadding=10, g2EdgePadding=.95, angleClusterThreshold=.2, contactMaskRadius=50, maxContactExtent=.75):
+def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=None, contactPadding=10, g2EdgePadding=.95, contactG2Threshold=1e-4, angleClusterThreshold=.2, contactMaskRadius=50, maxContactExtent=.75):
     """
     Detect potential particle contacts with the wall.
 
@@ -832,7 +860,13 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
     g2EdgePadding : int or float
         Number of pixels to ignore at the edge of each particle when calculating the average
         G^2. If float value < 1 is passed, gradient mask radius will be taken as that percent
-        of the full particle radius.
+        of the full particle radius. A value of 0 means no padding is included.
+
+    contactG2Threshold : float
+        The neighbor weight value under which edges will be removed from the network,
+        as they would be considered to weak to represent anything physical. This will
+        help remove particle neighbors that are only barely touching, but not transmitting
+        any real force.
 
     angleClusterThreshold : float
         The minimum difference in consecutive angle (beta) for which two wall contacts
@@ -862,9 +896,9 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
 
     # Figure out how much of the particle we will be calculating the g2 over
     g2MaskRadii = radii.astype(np.float64)
-    if g2EdgePadding < 1.:
+    if g2EdgePadding < 1. and g2EdgePadding > 0:
         g2MaskRadii = (radii.astype(np.float64) * g2EdgePadding)
-    elif g2EdgePadding > 1:
+    elif g2EdgePadding >= 1:
         g2MaskRadii = (radii - g2EdgePadding).astype(np.float64)
 
     # Things that will be returned
@@ -1021,7 +1055,7 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
                     # of the particle.
                     #majorAxisDir = clusterCentroids[j] - centers[i]
                     #majorAxisDir /= np.sqrt(majorAxisDir[0]**2 + majorAxisDir[1]**2)
-                    #ellipseEndpoint = majorAxisDir * 2 *radii[i] + centers[i]
+                    #ellipseE radii[i] - g2EdgePaddingndpoint = majorAxisDir * 2 *radii[i] + centers[i]
                     #contactMask = ellipticalMask(photoelasticSingleChannel.shape, centers[i], ellipseEndpoint, radii[i]/2)
 
                     # Just kidding, a circular mask seems to work better
