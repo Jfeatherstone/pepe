@@ -30,12 +30,66 @@
 <pre><code class="python">import numpy as np
 
 import cv2
+from scipy.ndimage import filters
+
+import numba
 
 from pepe.analysis import gSquared
+from pepe.preprocess import sobelEdgeDetection, laplacianEdgeDetection, cannyEdgeDetection
 
-def g2HoughCircle(singleChannelFrame, radius, cannyEdgeThreshold=70, accumulatorThreshold=20, radiusTolerance=15, minSeparation=None):
+import matplotlib.pyplot as plt
+
+def houghCircle(singleChannelFrame, radius, edgeDetection=&#39;laplacian&#39;, blurKernel=None, cannyEdgeThreshold=70, accumulatorThreshold=20, radiusTolerance=15, minSeparation=None, draw=False):
     &#34;&#34;&#34;
+    Perform Hough circle detection on the gradient squared of the provided image.
 
+    Parameters
+    ----------
+
+    singleChannelFrame : np.uint8[H, W]
+        The frame to perform circle detection on. Should not include multiple
+        color channels.
+
+    radius : float or [float, float]
+        The approximate radius to look for, or a range of radii to look between.
+        If a single value is provided, a range will be constructed around that
+        value with the `radiusTolerance` parameter.
+
+    edgeDetection : [&#39;sobel&#39;, &#39;laplacian&#39;, &#39;canny&#39;, None]
+        What type of edge detection should be performed on the image before the hough
+        algorithm is applied.
+
+    cannyEdgeThreshold : float
+        Value between 0 and 100 representing the threshold for edge detection. Smaller
+        values means the edges of circles do not have to be as strongly defined, but
+        this also means you may get false positive detections.
+
+    accumulatorThreshold : float
+        Value between 0 and 100 representing the threshold for the accumulator (how
+        the Hough method votes on which objects are circles). Higher values should
+        be used when circles are well defined, and lower values for weaker signals.
+
+    radiusTolerance : float
+        Value used to construct a radius interval assuming only a single value is
+        passed for parameter `radius`. Interval will be [radius - radiusTolerance,
+        radius + radiusTolerance].
+
+    minSeparation : float
+        The minimum distance allowed between detected circles. If None (the
+        default value) this will be calculated as twice the radius minus the
+        radius tolerance.
+
+    draw : bool
+        Whether or not to draw debug information on a plot.
+
+    Returns
+    -------
+
+    centers : np.ndarray[N,2]
+        The detected circles&#39; centers.
+
+    radii : np.ndarray[N]
+        The detected circles&#39; radii.
     &#34;&#34;&#34;
 
     # Check if we are given a range of radii or just a single value
@@ -51,18 +105,31 @@ def g2HoughCircle(singleChannelFrame, radius, cannyEdgeThreshold=70, accumulator
         minRadius = radius - radiusTolerance
         maxRadius = radius + radiusTolerance
 
+
     if minRadius is None or maxRadius is None:
         raise Exception(&#39;Exception parsing expected radius!&#39;)
 
-    # Calculate the gradient squared of the image
-    gSqr = gSquared(singleChannelFrame)
+    if blurKernel is not None:
+        blurredImage = cv2.blur(singleChannelFrame, (blurKernel, blurKernel))
+    else:
+        blurredImage = singleChannelFrame
+
+    if edgeDetection == &#39;laplacian&#39;:
+        detectImage = laplacianEdgeDetection(blurredImage)
+    elif edgeDetection == &#39;sobel&#39;:
+        detectImage = sobelEdgeDetection(blurredImage)
+    elif edgeDetection == &#39;canny&#39;:
+        detectImage = cannyEdgeDetection(blurredImage)
+    else:
+        detectImage = blurredImage
+
 
     # We don&#39;t expect too much overlap, so this should be a reasonable
     # separation distance
     if minSeparation is None:
         minSeparation = 2*minRadius - radiusTolerance
 
-    detectedCircles = cv2.HoughCircles(np.array(gSqr, dtype=np.uint8), 
+    detectedCircles = cv2.HoughCircles(np.array(detectImage, dtype=np.uint8), 
                     cv2.HOUGH_GRADIENT,
                     dp=1, # Accumulator (no idea what it does, but 1 is good)
                     minDist=minSeparation, # Minimum distance between circles
@@ -72,11 +139,29 @@ def g2HoughCircle(singleChannelFrame, radius, cannyEdgeThreshold=70, accumulator
                     maxRadius=maxRadius)
 
     if detectedCircles is None:
-        return None, None
+        return np.array([]), np.array([])
 
     centers = np.array(list(zip(detectedCircles[0,:,1], detectedCircles[0,:,0])))
     radii = detectedCircles[0,:,2]
-    
+
+
+    if draw:
+        fig, ax = plt.subplots(1, 3, figsize=(10,4))
+        ax[0].imshow(singleChannelFrame)
+        ax[0].set_title(&#39;Original image&#39;)
+
+        ax[1].imshow(detectImage)
+        ax[1].set_title(&#39;Detection image&#39;)
+
+        ax[2].imshow(detectImage)
+        ax[2].set_title(&#39;Detected circles&#39;)
+        for i in range(len(centers)):
+            c = plt.Circle(centers[i][::-1], radii[i], color=&#39;red&#39;, fill=False, linewidth=1)
+            ax[2].add_artist(c)
+
+        fig.tight_layout()
+        plt.show()
+
     return centers, radii</code></pre>
 </details>
 </section>
@@ -87,18 +172,104 @@ def g2HoughCircle(singleChannelFrame, radius, cannyEdgeThreshold=70, accumulator
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="pepe.tracking.Hough.g2HoughCircle"><code class="name flex">
-<span>def <span class="ident">g2HoughCircle</span></span>(<span>singleChannelFrame, radius, cannyEdgeThreshold=70, accumulatorThreshold=20, radiusTolerance=15, minSeparation=None)</span>
+<dt id="pepe.tracking.Hough.houghCircle"><code class="name flex">
+<span>def <span class="ident">houghCircle</span></span>(<span>singleChannelFrame, radius, edgeDetection='laplacian', blurKernel=None, cannyEdgeThreshold=70, accumulatorThreshold=20, radiusTolerance=15, minSeparation=None, draw=False)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Perform Hough circle detection on the gradient squared of the provided image.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>singleChannelFrame</code></strong> :&ensp;<code>np.uint8[H, W]</code></dt>
+<dd>The frame to perform circle detection on. Should not include multiple
+color channels.</dd>
+<dt><strong><code>radius</code></strong> :&ensp;<code>float</code> or <code>[float, float]</code></dt>
+<dd>The approximate radius to look for, or a range of radii to look between.
+If a single value is provided, a range will be constructed around that
+value with the <code>radiusTolerance</code> parameter.</dd>
+<dt><strong><code>edgeDetection</code></strong> :&ensp;<code>['sobel', 'laplacian', 'canny', None]</code></dt>
+<dd>What type of edge detection should be performed on the image before the hough
+algorithm is applied.</dd>
+<dt><strong><code>cannyEdgeThreshold</code></strong> :&ensp;<code>float</code></dt>
+<dd>Value between 0 and 100 representing the threshold for edge detection. Smaller
+values means the edges of circles do not have to be as strongly defined, but
+this also means you may get false positive detections.</dd>
+<dt><strong><code>accumulatorThreshold</code></strong> :&ensp;<code>float</code></dt>
+<dd>Value between 0 and 100 representing the threshold for the accumulator (how
+the Hough method votes on which objects are circles). Higher values should
+be used when circles are well defined, and lower values for weaker signals.</dd>
+<dt><strong><code>radiusTolerance</code></strong> :&ensp;<code>float</code></dt>
+<dd>Value used to construct a radius interval assuming only a single value is
+passed for parameter <code>radius</code>. Interval will be [radius - radiusTolerance,
+radius + radiusTolerance].</dd>
+<dt><strong><code>minSeparation</code></strong> :&ensp;<code>float</code></dt>
+<dd>The minimum distance allowed between detected circles. If None (the
+default value) this will be calculated as twice the radius minus the
+radius tolerance.</dd>
+<dt><strong><code>draw</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether or not to draw debug information on a plot.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>centers</code></strong> :&ensp;<code>np.ndarray[N,2]</code></dt>
+<dd>The detected circles' centers.</dd>
+<dt><strong><code>radii</code></strong> :&ensp;<code>np.ndarray[N]</code></dt>
+<dd>The detected circles' radii.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def g2HoughCircle(singleChannelFrame, radius, cannyEdgeThreshold=70, accumulatorThreshold=20, radiusTolerance=15, minSeparation=None):
+<pre><code class="python">def houghCircle(singleChannelFrame, radius, edgeDetection=&#39;laplacian&#39;, blurKernel=None, cannyEdgeThreshold=70, accumulatorThreshold=20, radiusTolerance=15, minSeparation=None, draw=False):
     &#34;&#34;&#34;
+    Perform Hough circle detection on the gradient squared of the provided image.
 
+    Parameters
+    ----------
+
+    singleChannelFrame : np.uint8[H, W]
+        The frame to perform circle detection on. Should not include multiple
+        color channels.
+
+    radius : float or [float, float]
+        The approximate radius to look for, or a range of radii to look between.
+        If a single value is provided, a range will be constructed around that
+        value with the `radiusTolerance` parameter.
+
+    edgeDetection : [&#39;sobel&#39;, &#39;laplacian&#39;, &#39;canny&#39;, None]
+        What type of edge detection should be performed on the image before the hough
+        algorithm is applied.
+
+    cannyEdgeThreshold : float
+        Value between 0 and 100 representing the threshold for edge detection. Smaller
+        values means the edges of circles do not have to be as strongly defined, but
+        this also means you may get false positive detections.
+
+    accumulatorThreshold : float
+        Value between 0 and 100 representing the threshold for the accumulator (how
+        the Hough method votes on which objects are circles). Higher values should
+        be used when circles are well defined, and lower values for weaker signals.
+
+    radiusTolerance : float
+        Value used to construct a radius interval assuming only a single value is
+        passed for parameter `radius`. Interval will be [radius - radiusTolerance,
+        radius + radiusTolerance].
+
+    minSeparation : float
+        The minimum distance allowed between detected circles. If None (the
+        default value) this will be calculated as twice the radius minus the
+        radius tolerance.
+
+    draw : bool
+        Whether or not to draw debug information on a plot.
+
+    Returns
+    -------
+
+    centers : np.ndarray[N,2]
+        The detected circles&#39; centers.
+
+    radii : np.ndarray[N]
+        The detected circles&#39; radii.
     &#34;&#34;&#34;
 
     # Check if we are given a range of radii or just a single value
@@ -114,18 +285,31 @@ def g2HoughCircle(singleChannelFrame, radius, cannyEdgeThreshold=70, accumulator
         minRadius = radius - radiusTolerance
         maxRadius = radius + radiusTolerance
 
+
     if minRadius is None or maxRadius is None:
         raise Exception(&#39;Exception parsing expected radius!&#39;)
 
-    # Calculate the gradient squared of the image
-    gSqr = gSquared(singleChannelFrame)
+    if blurKernel is not None:
+        blurredImage = cv2.blur(singleChannelFrame, (blurKernel, blurKernel))
+    else:
+        blurredImage = singleChannelFrame
+
+    if edgeDetection == &#39;laplacian&#39;:
+        detectImage = laplacianEdgeDetection(blurredImage)
+    elif edgeDetection == &#39;sobel&#39;:
+        detectImage = sobelEdgeDetection(blurredImage)
+    elif edgeDetection == &#39;canny&#39;:
+        detectImage = cannyEdgeDetection(blurredImage)
+    else:
+        detectImage = blurredImage
+
 
     # We don&#39;t expect too much overlap, so this should be a reasonable
     # separation distance
     if minSeparation is None:
         minSeparation = 2*minRadius - radiusTolerance
 
-    detectedCircles = cv2.HoughCircles(np.array(gSqr, dtype=np.uint8), 
+    detectedCircles = cv2.HoughCircles(np.array(detectImage, dtype=np.uint8), 
                     cv2.HOUGH_GRADIENT,
                     dp=1, # Accumulator (no idea what it does, but 1 is good)
                     minDist=minSeparation, # Minimum distance between circles
@@ -135,11 +319,29 @@ def g2HoughCircle(singleChannelFrame, radius, cannyEdgeThreshold=70, accumulator
                     maxRadius=maxRadius)
 
     if detectedCircles is None:
-        return None, None
+        return np.array([]), np.array([])
 
     centers = np.array(list(zip(detectedCircles[0,:,1], detectedCircles[0,:,0])))
     radii = detectedCircles[0,:,2]
-    
+
+
+    if draw:
+        fig, ax = plt.subplots(1, 3, figsize=(10,4))
+        ax[0].imshow(singleChannelFrame)
+        ax[0].set_title(&#39;Original image&#39;)
+
+        ax[1].imshow(detectImage)
+        ax[1].set_title(&#39;Detection image&#39;)
+
+        ax[2].imshow(detectImage)
+        ax[2].set_title(&#39;Detected circles&#39;)
+        for i in range(len(centers)):
+            c = plt.Circle(centers[i][::-1], radii[i], color=&#39;red&#39;, fill=False, linewidth=1)
+            ax[2].add_artist(c)
+
+        fig.tight_layout()
+        plt.show()
+
     return centers, radii</code></pre>
 </details>
 </dd>
@@ -161,7 +363,7 @@ def g2HoughCircle(singleChannelFrame, radius, cannyEdgeThreshold=70, accumulator
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="pepe.tracking.Hough.g2HoughCircle" href="#pepe.tracking.Hough.g2HoughCircle">g2HoughCircle</a></code></li>
+<li><code><a title="pepe.tracking.Hough.houghCircle" href="#pepe.tracking.Hough.houghCircle">houghCircle</a></code></li>
 </ul>
 </li>
 </ul>

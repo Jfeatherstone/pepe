@@ -31,6 +31,9 @@
 
 from PIL import Image
 import cv2
+from scipy.signal import savgol_filter
+
+import matplotlib.pyplot as plt
 
 def checkImageType(frame):
     &#34;&#34;&#34;
@@ -54,7 +57,78 @@ def checkImageType(frame):
     else:
         newFrame = frame
 
-    return newFrame</code></pre>
+    return newFrame
+
+
+def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None, smoothCorrection=True, debug=False, smoothingKernel=31, channel=0, rectify=False):
+    &#34;&#34;&#34;
+    
+    &#34;&#34;&#34;
+
+    calImg = checkImageType(calibrationImage)
+    if calImg.ndim == 3:
+        calImg = calImg[:,:,channel]
+
+    if verticalMask is None:
+        verticalMask = np.ones_like(calImg)
+
+    if horizontalMask is None:
+        horizontalMask = np.ones_like(calImg)
+
+    verticallyMasked = calImg * verticalMask
+    horizontallyMasked = calImg * horizontalMask
+
+    # This excludes all values of zero, so that we get an actual pixel value we can directly add
+    brightnessByRow = np.nanmean(np.where(verticallyMasked != 0, verticallyMasked, np.nan), axis=1)
+    brightnessByColumn = np.nanmean(np.where(horizontallyMasked != 0, horizontallyMasked, np.nan), axis=0)
+
+    # Now smooth the two curves
+    # Can&#39;t say I know much about this filter, but it seems to work pretty well
+    if smoothCorrection:
+        smoothedBrightnessByColumn = savgol_filter(brightnessByColumn, smoothingKernel, 1)
+        smoothedBrightnessByRow = savgol_filter(brightnessByRow, smoothingKernel, 1)
+    else:
+        smoothedBrightnessByColumn = brightnessByColumn
+        smoothedBrightnessByRow = brightnessByRow
+
+    # Now calculate the correction
+    horizontalCorrection = np.mean(smoothedBrightnessByColumn) - smoothedBrightnessByColumn
+    verticalCorrection = np.mean(smoothedBrightnessByRow) - smoothedBrightnessByRow
+
+    # This object will have the same size as the image, and can just added to
+    # any similar image to correct detected light gradients
+    totalCorrection = np.add.outer(verticalCorrection, horizontalCorrection)
+
+    if rectify:
+        totalCorrection -= np.min(totalCorrection)
+
+    if debug:
+        fig, ax = plt.subplots(3, 2, figsize=(10, 10))
+
+        ax[0,0].imshow(verticallyMasked, cmap=plt.get_cmap(&#39;terrain&#39;))
+        ax[0,1].imshow(horizontallyMasked, cmap=plt.get_cmap(&#39;terrain&#39;))
+
+        ax[1,0].plot(brightnessByRow, label=&#39;Average&#39;)
+        ax[1,0].set_ylabel(&#39;Image brightness&#39;)
+        ax[1,0].set_xlabel(&#39;Y [pixels]&#39;)
+        ax[1,0].plot(smoothedBrightnessByRow, label=&#39;Smoothed&#39;)
+        ax[1,0].legend()
+
+        ax[1,1].plot(brightnessByColumn, label=&#39;Average&#39;)
+        ax[1,1].set_ylabel(&#39;Image brightness&#39;)
+        ax[1,1].set_xlabel(&#39;X [pixels]&#39;)
+        ax[1,1].plot(smoothedBrightnessByColumn, label=&#39;Smoothed&#39;)
+        ax[1,1].legend()
+
+        ax[2,0].imshow(totalCorrection)
+        ax[2,0].set_title(&#39;Correction&#39;)
+        ax[2,1].imshow(calImg + totalCorrection)
+        ax[2,1].set_title(&#39;Corrected image&#39;)
+
+        fig.tight_layout()
+        plt.show()
+
+    return totalCorrection</code></pre>
 </details>
 </section>
 <section>
@@ -108,6 +182,86 @@ def checkImageType(frame):
     return newFrame</code></pre>
 </details>
 </dd>
+<dt id="pepe.preprocess.Image.lightCorrectionDiff"><code class="name flex">
+<span>def <span class="ident">lightCorrectionDiff</span></span>(<span>calibrationImage, verticalMask=None, horizontalMask=None, smoothCorrection=True, debug=False, smoothingKernel=31, channel=0, rectify=False)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None, smoothCorrection=True, debug=False, smoothingKernel=31, channel=0, rectify=False):
+    &#34;&#34;&#34;
+    
+    &#34;&#34;&#34;
+
+    calImg = checkImageType(calibrationImage)
+    if calImg.ndim == 3:
+        calImg = calImg[:,:,channel]
+
+    if verticalMask is None:
+        verticalMask = np.ones_like(calImg)
+
+    if horizontalMask is None:
+        horizontalMask = np.ones_like(calImg)
+
+    verticallyMasked = calImg * verticalMask
+    horizontallyMasked = calImg * horizontalMask
+
+    # This excludes all values of zero, so that we get an actual pixel value we can directly add
+    brightnessByRow = np.nanmean(np.where(verticallyMasked != 0, verticallyMasked, np.nan), axis=1)
+    brightnessByColumn = np.nanmean(np.where(horizontallyMasked != 0, horizontallyMasked, np.nan), axis=0)
+
+    # Now smooth the two curves
+    # Can&#39;t say I know much about this filter, but it seems to work pretty well
+    if smoothCorrection:
+        smoothedBrightnessByColumn = savgol_filter(brightnessByColumn, smoothingKernel, 1)
+        smoothedBrightnessByRow = savgol_filter(brightnessByRow, smoothingKernel, 1)
+    else:
+        smoothedBrightnessByColumn = brightnessByColumn
+        smoothedBrightnessByRow = brightnessByRow
+
+    # Now calculate the correction
+    horizontalCorrection = np.mean(smoothedBrightnessByColumn) - smoothedBrightnessByColumn
+    verticalCorrection = np.mean(smoothedBrightnessByRow) - smoothedBrightnessByRow
+
+    # This object will have the same size as the image, and can just added to
+    # any similar image to correct detected light gradients
+    totalCorrection = np.add.outer(verticalCorrection, horizontalCorrection)
+
+    if rectify:
+        totalCorrection -= np.min(totalCorrection)
+
+    if debug:
+        fig, ax = plt.subplots(3, 2, figsize=(10, 10))
+
+        ax[0,0].imshow(verticallyMasked, cmap=plt.get_cmap(&#39;terrain&#39;))
+        ax[0,1].imshow(horizontallyMasked, cmap=plt.get_cmap(&#39;terrain&#39;))
+
+        ax[1,0].plot(brightnessByRow, label=&#39;Average&#39;)
+        ax[1,0].set_ylabel(&#39;Image brightness&#39;)
+        ax[1,0].set_xlabel(&#39;Y [pixels]&#39;)
+        ax[1,0].plot(smoothedBrightnessByRow, label=&#39;Smoothed&#39;)
+        ax[1,0].legend()
+
+        ax[1,1].plot(brightnessByColumn, label=&#39;Average&#39;)
+        ax[1,1].set_ylabel(&#39;Image brightness&#39;)
+        ax[1,1].set_xlabel(&#39;X [pixels]&#39;)
+        ax[1,1].plot(smoothedBrightnessByColumn, label=&#39;Smoothed&#39;)
+        ax[1,1].legend()
+
+        ax[2,0].imshow(totalCorrection)
+        ax[2,0].set_title(&#39;Correction&#39;)
+        ax[2,1].imshow(calImg + totalCorrection)
+        ax[2,1].set_title(&#39;Corrected image&#39;)
+
+        fig.tight_layout()
+        plt.show()
+
+    return totalCorrection</code></pre>
+</details>
+</dd>
 </dl>
 </section>
 <section>
@@ -127,6 +281,7 @@ def checkImageType(frame):
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="pepe.preprocess.Image.checkImageType" href="#pepe.preprocess.Image.checkImageType">checkImageType</a></code></li>
+<li><code><a title="pepe.preprocess.Image.lightCorrectionDiff" href="#pepe.preprocess.Image.lightCorrectionDiff">lightCorrectionDiff</a></code></li>
 </ul>
 </li>
 </ul>

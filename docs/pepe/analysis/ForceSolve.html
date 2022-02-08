@@ -37,10 +37,11 @@ from pepe.utils import outerSubtract
 import numba
 
 from lmfit import minimize, Parameters, fit_report
+from scipy.signal import find_peaks
 
 import matplotlib.pyplot as plt
 
-def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2MaskPadding=1, contactThreshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False):
+def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={}):
     &#34;&#34;&#34;
     Calculate the approximate forces on each particle based on the photoelastic response.
     No optimization/gradient descent is done in this method; this should be used either where
@@ -78,11 +79,12 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
         Maximum difference between distance and sum of radii for which
         two particles will still be considered in contact.
 
-    g2MaskPadding : int
+    g2EdgePadding : int or float
         Number of pixels to ignore at the edge of each particle when calculating the average
-        G^2.
+        G^2. If float value &lt; 1 is passed, gradient mask radius will be taken as that percent
+        of the full particle radius. A value of 0 means no padding is included.
 
-    contactThreshold : float
+    contactG2Threshold : float
         The neighbor weight value under which edges will be removed from the network,
         as they would be considered to weak to represent anything physical. This will
         help remove particle neighbors that are only barely touching, but not transmitting
@@ -112,6 +114,12 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     brightfield : bool
         Whether the photoelastic response is seen through a brightfield (True)
         polariscope or darkfield (False) polariscope.
+
+    boundaryDetectionOptions : kwargs
+        Dictionary of kwargs to be passed to the detectWallContact method, assuming
+        boundaries are being included in the solver. If none are provided, relevant
+        values are carried over from the kwargs for this method (`contactPadding`, 
+        `g2EdgePadding`, `contactMaskRadius`, `contactG2Threshold`).
     &#34;&#34;&#34;
 
     # We are passed centers and radii
@@ -150,8 +158,21 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
 
             boundaryMask = rectMask(photoelasticSingleChannel.shape, topLeftCorner, dimensions, channels=None)
 
+        # We want to carry a few arguments over to the boundary detection
+        # if they haven&#39;t been explicitly provided
+        if not &#39;contactPadding&#39; in boundaryDetectionOptions:
+            boundaryDetectionOptions[&#34;contactPadding&#34;] = contactPadding
+        if not &#39;g2EdgePadding&#39; in boundaryDetectionOptions:
+            boundaryDetectionOptions[&#34;g2EdgePadding&#34;] = g2EdgePadding
+        if not &#39;contactMaskRadius&#39; in boundaryDetectionOptions:
+            boundaryDetectionOptions[&#34;contactMaskRadius&#34;] = contactMaskRadius
+        if not &#39;contactG2Threshold&#39; in boundaryDetectionOptions:
+            boundaryDetectionOptions[&#34;contactG2Threshold&#34;] = contactG2Threshold
+
         # See detectWallContacts for more information
-        numWallContacts, wallBetaArr, wallG2AvgArr = detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel, contactPadding=contactPadding)
+        numWallContacts, wallBetaArr, wallG2AvgArr = detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel, **boundaryDetectionOptions)
+
+        # Now merge these contacts with the interparticle ones
         for i in range(numParticles):
             for j in range(numWallContacts[i]):
                 betaGuessArr[i] = np.append(betaGuessArr[i], wallBetaArr[i][j])
@@ -176,9 +197,17 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     # Mean of the radii should be fine, though TODO would be a good idea to have options here
     g2Cal = g2ForceCalibration(fSigma, np.mean(radii), pxPerMeter, brightfield=brightfield)
 
-    for i in range(numParticles):
-        g2Mask = circularMask(photoelasticSingleChannel.shape, centers[i], radii[i] - g2MaskPadding)[:,:,0]
+    # Figure out how much of the particle we will be calculating the g2 over
+    if g2EdgePadding &lt; 1. and g2EdgePadding &gt; 0:
+        g2MaskRadii = radii * g2EdgePadding
+    elif g2EdgePadding &gt;= 1:
+        g2MaskRadii = radii - g2EdgePadding
+    else:
+        g2MaskRadii = radii
 
+    for i in range(numParticles):
+        g2Mask = circularMask(photoelasticSingleChannel.shape, centers[i], g2MaskRadii[i])[:,:,0]
+ 
         # This is the average g2 of the whole particle
         avgGSqr = np.sum(gSqr * g2Mask) / np.sum(g2Mask)
 
@@ -217,7 +246,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTol=.5, betaTol=.5, alphaTol=.1, useTolerance=True, returnOptResult=False, minForceThreshold=.01):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTol=.5, betaTol=.5, alphaTol=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8):
     &#34;&#34;&#34;
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -407,7 +436,10 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     # Now that we have all of that bookkeeping done, we can actually get on
     # to doing the minimization
     result = None
-    for i in range(numFits):
+    i = 0
+    # We use a while loop here because we may want to repeat a fit if
+    # we add a new force, which isn&#39;t possible in a for loop
+    while i &lt; numFits:
 
         z = len(forceArr)
 
@@ -439,13 +471,79 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
             betaArr[j] = result.params[f&#34;b{j}&#34;] 
             alphaArr[j] = result.params[f&#34;a{j}&#34;] 
 
-        if len(forceArr[forceArr &gt; minForceThreshold]) &gt; 0:
+        # ---------------------
+        # Detect missing forces
+        # ---------------------
+        # If the code detects there is a missing force (no idea how yet)
+        if result.chisqr &gt; missingForceChiSqrThreshold and allowAddForces:
+            # We sweep around the edge of the particle to see if there
+            # are any regions that look like they could have a force
+            # (denoted by a particularly high g2 value, or rather a peak)
+            testBetaCount = 30
+            avgG2Arr = np.zeros(testBetaCount)
+            newBetaArr = np.linspace(-np.pi, np.pi, testBetaCount)
+
+            # Calculate all of the g2s around the edge of the particle
+            gSqr = gSquared(realImage)
+            for j in range(testBetaCount):
+                contactPoint = center + radius * np.array([np.cos(newBetaArr[j]), np.sin(newBetaArr[j])])
+                
+                # Create a mask just over the small area inside of the particle
+                contactMask = circularMask(realImage.shape, contactPoint, newBetaContactMaskRadius)[:,:,0]
+                contactMask = (contactMask + particleMask) == 2
+
+                avgG2Arr[j] = np.sum(contactMask * gSqr) / np.sum(contactMask)
+
+            # Identify any peaks in the average g2s
+            peakIndArr = find_peaks(avgG2Arr, height=newBetaG2Height)[0]
+            peakIndArr = np.sort(peakIndArr)
+
+            # Make sure that there aren&#39;t any artifacts of periodicity
+            # Usually this isn&#39;t actually a problem, because the peak
+            # finding algorithm requires a proper peak, which can only
+            # be on one side (but we&#39;ll leave it here just in case)
+            if np.arange(3).any() in peakIndArr and np.arange(len(avgG2Arr)-3, len(avgG2Arr)).any() in peakIndArr:
+                # Remove last entry
+                peakIndArr = peakIndArr[:-1]
+
+            peakBetaArr = newBetaArr[peakIndArr]
+            
+            # Now we have a list of likely points, we need to see if our original
+            # list is missing any of these.
+            differenceArr = np.abs(np.subtract.outer(peakBetaArr, betaArr))
+
+            # Check to see if there is a new peak that doesn&#39;t have
+            # a previous force close to it
+            for j in range(len(peakBetaArr)):
+                if np.min(differenceArr[j]) &gt; newBetaMinSeparation:
+                    # Add the new force
+                    betaArr = np.append(betaArr, peakBetaArr[j])
+                    forceArr = np.append(forceArr, .1) # Value isn&#39;t too imporant here
+                    alphaArr = np.append(alphaArr, 0.)
+
+
+            # If we have added a force, we should run the optimization again, and see if it improves
+            if len(forceArr) &gt; z:
+                print(f&#39;Added {len(forceArr) - z} force(s).&#39;)
+                # We also want to make sure we&#39;re allowed to vary beta on the next iteration
+                parametersToFitList[i] += [&#39;b&#39;] # (It&#39;s okay that it might be in there twice)
+                # This skips the i += 1 at the end of the loop, and makes the optimization run again
+                continue
+
+
+        # ------------------------------------
+        # Remove forces that don&#39;t do anything
+        # ------------------------------------
+        if len(forceArr[forceArr &lt; minForceThreshold]) &gt; 0 and allowRemoveForces:
             # Remove forces that aren&#39;t actually doing anything
             betaArr = betaArr[forceArr &gt; minForceThreshold]
             alphaArr = alphaArr[forceArr &gt; minForceThreshold]
             # This one has to be done last for the other indexing to work
             forceArr = forceArr[forceArr &gt; minForceThreshold]
-            #print(f&#39;Removed {z - len(forceArr)} forces.&#39;)
+            print(f&#39;Removed {z - len(forceArr)} force(s).&#39;)
+       
+        # Iterate (since we have a while not a for)
+        i += 1
 
     if returnOptResult:
         return result
@@ -761,7 +859,7 @@ def g2ForceCalibrationDebug(fSigma, radius, pxPerMeter, alphaArr=np.array([0., 0
 
 
 #@numba.jit(nopython=True)
-def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=None, contactPadding=10, g2EdgePadding=.95, angleClusterThreshold=.2, contactMaskRadius=50, maxContactExtent=.75):
+def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=None, contactPadding=10, g2EdgePadding=.95, contactG2Threshold=1e-4, angleClusterThreshold=.2, contactMaskRadius=50, maxContactExtent=.75):
     &#34;&#34;&#34;
     Detect potential particle contacts with the wall.
 
@@ -791,7 +889,13 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
     g2EdgePadding : int or float
         Number of pixels to ignore at the edge of each particle when calculating the average
         G^2. If float value &lt; 1 is passed, gradient mask radius will be taken as that percent
-        of the full particle radius.
+        of the full particle radius. A value of 0 means no padding is included.
+
+    contactG2Threshold : float
+        The neighbor weight value under which edges will be removed from the network,
+        as they would be considered to weak to represent anything physical. This will
+        help remove particle neighbors that are only barely touching, but not transmitting
+        any real force.
 
     angleClusterThreshold : float
         The minimum difference in consecutive angle (beta) for which two wall contacts
@@ -821,9 +925,9 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
 
     # Figure out how much of the particle we will be calculating the g2 over
     g2MaskRadii = radii.astype(np.float64)
-    if g2EdgePadding &lt; 1.:
+    if g2EdgePadding &lt; 1. and g2EdgePadding &gt; 0:
         g2MaskRadii = (radii.astype(np.float64) * g2EdgePadding)
-    elif g2EdgePadding &gt; 1:
+    elif g2EdgePadding &gt;= 1:
         g2MaskRadii = (radii - g2EdgePadding).astype(np.float64)
 
     # Things that will be returned
@@ -980,7 +1084,7 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
                     # of the particle.
                     #majorAxisDir = clusterCentroids[j] - centers[i]
                     #majorAxisDir /= np.sqrt(majorAxisDir[0]**2 + majorAxisDir[1]**2)
-                    #ellipseEndpoint = majorAxisDir * 2 *radii[i] + centers[i]
+                    #ellipseE radii[i] - g2EdgePaddingndpoint = majorAxisDir * 2 *radii[i] + centers[i]
                     #contactMask = ellipticalMask(photoelasticSingleChannel.shape, centers[i], ellipseEndpoint, radii[i]/2)
 
                     # Just kidding, a circular mask seems to work better
@@ -1021,7 +1125,7 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="pepe.analysis.ForceSolve.detectWallContacts"><code class="name flex">
-<span>def <span class="ident">detectWallContacts</span></span>(<span>centers, radii, boundaryMask, photoelasticSingleChannel=None, contactPadding=10, g2EdgePadding=0.95, angleClusterThreshold=0.2, contactMaskRadius=50, maxContactExtent=0.75)</span>
+<span>def <span class="ident">detectWallContacts</span></span>(<span>centers, radii, boundaryMask, photoelasticSingleChannel=None, contactPadding=10, g2EdgePadding=0.95, contactG2Threshold=0.0001, angleClusterThreshold=0.2, contactMaskRadius=50, maxContactExtent=0.75)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Detect potential particle contacts with the wall.</p>
@@ -1045,7 +1149,12 @@ that will still be tested as a wall contact.</dd>
 <dt><strong><code>g2EdgePadding</code></strong> :&ensp;<code>int</code> or <code>float</code></dt>
 <dd>Number of pixels to ignore at the edge of each particle when calculating the average
 G^2. If float value &lt; 1 is passed, gradient mask radius will be taken as that percent
-of the full particle radius.</dd>
+of the full particle radius. A value of 0 means no padding is included.</dd>
+<dt><strong><code>contactG2Threshold</code></strong> :&ensp;<code>float</code></dt>
+<dd>The neighbor weight value under which edges will be removed from the network,
+as they would be considered to weak to represent anything physical. This will
+help remove particle neighbors that are only barely touching, but not transmitting
+any real force.</dd>
 <dt><strong><code>angleClusterThreshold</code></strong> :&ensp;<code>float</code></dt>
 <dd>The minimum difference in consecutive angle (beta) for which two wall contacts
 will be considered unique (and not merged into the same contact).</dd>
@@ -1070,7 +1179,7 @@ multiplied by the g2 calibration value to get the initial force magnitude guess.
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=None, contactPadding=10, g2EdgePadding=.95, angleClusterThreshold=.2, contactMaskRadius=50, maxContactExtent=.75):
+<pre><code class="python">def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=None, contactPadding=10, g2EdgePadding=.95, contactG2Threshold=1e-4, angleClusterThreshold=.2, contactMaskRadius=50, maxContactExtent=.75):
     &#34;&#34;&#34;
     Detect potential particle contacts with the wall.
 
@@ -1100,7 +1209,13 @@ multiplied by the g2 calibration value to get the initial force magnitude guess.
     g2EdgePadding : int or float
         Number of pixels to ignore at the edge of each particle when calculating the average
         G^2. If float value &lt; 1 is passed, gradient mask radius will be taken as that percent
-        of the full particle radius.
+        of the full particle radius. A value of 0 means no padding is included.
+
+    contactG2Threshold : float
+        The neighbor weight value under which edges will be removed from the network,
+        as they would be considered to weak to represent anything physical. This will
+        help remove particle neighbors that are only barely touching, but not transmitting
+        any real force.
 
     angleClusterThreshold : float
         The minimum difference in consecutive angle (beta) for which two wall contacts
@@ -1130,9 +1245,9 @@ multiplied by the g2 calibration value to get the initial force magnitude guess.
 
     # Figure out how much of the particle we will be calculating the g2 over
     g2MaskRadii = radii.astype(np.float64)
-    if g2EdgePadding &lt; 1.:
+    if g2EdgePadding &lt; 1. and g2EdgePadding &gt; 0:
         g2MaskRadii = (radii.astype(np.float64) * g2EdgePadding)
-    elif g2EdgePadding &gt; 1:
+    elif g2EdgePadding &gt;= 1:
         g2MaskRadii = (radii - g2EdgePadding).astype(np.float64)
 
     # Things that will be returned
@@ -1289,7 +1404,7 @@ multiplied by the g2 calibration value to get the initial force magnitude guess.
                     # of the particle.
                     #majorAxisDir = clusterCentroids[j] - centers[i]
                     #majorAxisDir /= np.sqrt(majorAxisDir[0]**2 + majorAxisDir[1]**2)
-                    #ellipseEndpoint = majorAxisDir * 2 *radii[i] + centers[i]
+                    #ellipseE radii[i] - g2EdgePaddingndpoint = majorAxisDir * 2 *radii[i] + centers[i]
                     #contactMask = ellipticalMask(photoelasticSingleChannel.shape, centers[i], ellipseEndpoint, radii[i]/2)
 
                     # Just kidding, a circular mask seems to work better
@@ -1323,7 +1438,7 @@ multiplied by the g2 calibration value to get the initial force magnitude guess.
 </details>
 </dd>
 <dt id="pepe.analysis.ForceSolve.forceOptimize"><code class="name flex">
-<span>def <span class="ident">forceOptimize</span></span>(<span>forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-3.141592653589793, 3.141592653589793), alphaBounds=(0, 3.141592653589793), forceTol=0.5, betaTol=0.5, alphaTol=0.1, useTolerance=True, returnOptResult=False, minForceThreshold=0.01)</span>
+<span>def <span class="ident">forceOptimize</span></span>(<span>forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-3.141592653589793, 3.141592653589793), alphaBounds=(0, 3.141592653589793), forceTol=0.5, betaTol=0.5, alphaTol=0.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=0.01, newBetaContactMaskRadius=30, newBetaMinSeparation=0.4, newBetaG2Height=0.0005, missingForceChiSqrThreshold=210000000.0)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Optimize an initial guess for the forces acting on a particle using
@@ -1417,7 +1532,7 @@ this value between fittings and after the final one.</dd>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTol=.5, betaTol=.5, alphaTol=.1, useTolerance=True, returnOptResult=False, minForceThreshold=.01):
+<pre><code class="python">def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTol=.5, betaTol=.5, alphaTol=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8):
     &#34;&#34;&#34;
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -1607,7 +1722,10 @@ this value between fittings and after the final one.</dd>
     # Now that we have all of that bookkeeping done, we can actually get on
     # to doing the minimization
     result = None
-    for i in range(numFits):
+    i = 0
+    # We use a while loop here because we may want to repeat a fit if
+    # we add a new force, which isn&#39;t possible in a for loop
+    while i &lt; numFits:
 
         z = len(forceArr)
 
@@ -1639,13 +1757,79 @@ this value between fittings and after the final one.</dd>
             betaArr[j] = result.params[f&#34;b{j}&#34;] 
             alphaArr[j] = result.params[f&#34;a{j}&#34;] 
 
-        if len(forceArr[forceArr &gt; minForceThreshold]) &gt; 0:
+        # ---------------------
+        # Detect missing forces
+        # ---------------------
+        # If the code detects there is a missing force (no idea how yet)
+        if result.chisqr &gt; missingForceChiSqrThreshold and allowAddForces:
+            # We sweep around the edge of the particle to see if there
+            # are any regions that look like they could have a force
+            # (denoted by a particularly high g2 value, or rather a peak)
+            testBetaCount = 30
+            avgG2Arr = np.zeros(testBetaCount)
+            newBetaArr = np.linspace(-np.pi, np.pi, testBetaCount)
+
+            # Calculate all of the g2s around the edge of the particle
+            gSqr = gSquared(realImage)
+            for j in range(testBetaCount):
+                contactPoint = center + radius * np.array([np.cos(newBetaArr[j]), np.sin(newBetaArr[j])])
+                
+                # Create a mask just over the small area inside of the particle
+                contactMask = circularMask(realImage.shape, contactPoint, newBetaContactMaskRadius)[:,:,0]
+                contactMask = (contactMask + particleMask) == 2
+
+                avgG2Arr[j] = np.sum(contactMask * gSqr) / np.sum(contactMask)
+
+            # Identify any peaks in the average g2s
+            peakIndArr = find_peaks(avgG2Arr, height=newBetaG2Height)[0]
+            peakIndArr = np.sort(peakIndArr)
+
+            # Make sure that there aren&#39;t any artifacts of periodicity
+            # Usually this isn&#39;t actually a problem, because the peak
+            # finding algorithm requires a proper peak, which can only
+            # be on one side (but we&#39;ll leave it here just in case)
+            if np.arange(3).any() in peakIndArr and np.arange(len(avgG2Arr)-3, len(avgG2Arr)).any() in peakIndArr:
+                # Remove last entry
+                peakIndArr = peakIndArr[:-1]
+
+            peakBetaArr = newBetaArr[peakIndArr]
+            
+            # Now we have a list of likely points, we need to see if our original
+            # list is missing any of these.
+            differenceArr = np.abs(np.subtract.outer(peakBetaArr, betaArr))
+
+            # Check to see if there is a new peak that doesn&#39;t have
+            # a previous force close to it
+            for j in range(len(peakBetaArr)):
+                if np.min(differenceArr[j]) &gt; newBetaMinSeparation:
+                    # Add the new force
+                    betaArr = np.append(betaArr, peakBetaArr[j])
+                    forceArr = np.append(forceArr, .1) # Value isn&#39;t too imporant here
+                    alphaArr = np.append(alphaArr, 0.)
+
+
+            # If we have added a force, we should run the optimization again, and see if it improves
+            if len(forceArr) &gt; z:
+                print(f&#39;Added {len(forceArr) - z} force(s).&#39;)
+                # We also want to make sure we&#39;re allowed to vary beta on the next iteration
+                parametersToFitList[i] += [&#39;b&#39;] # (It&#39;s okay that it might be in there twice)
+                # This skips the i += 1 at the end of the loop, and makes the optimization run again
+                continue
+
+
+        # ------------------------------------
+        # Remove forces that don&#39;t do anything
+        # ------------------------------------
+        if len(forceArr[forceArr &lt; minForceThreshold]) &gt; 0 and allowRemoveForces:
             # Remove forces that aren&#39;t actually doing anything
             betaArr = betaArr[forceArr &gt; minForceThreshold]
             alphaArr = alphaArr[forceArr &gt; minForceThreshold]
             # This one has to be done last for the other indexing to work
             forceArr = forceArr[forceArr &gt; minForceThreshold]
-            #print(f&#39;Removed {z - len(forceArr)} forces.&#39;)
+            print(f&#39;Removed {z - len(forceArr)} force(s).&#39;)
+       
+        # Iterate (since we have a while not a for)
+        i += 1
 
     if returnOptResult:
         return result
@@ -1980,7 +2164,7 @@ polariscope or darkfield (False) polariscope.</dd>
 </details>
 </dd>
 <dt id="pepe.analysis.ForceSolve.initialForceSolve"><code class="name flex">
-<span>def <span class="ident">initialForceSolve</span></span>(<span>photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2MaskPadding=1, contactThreshold=0.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False)</span>
+<span>def <span class="ident">initialForceSolve</span></span>(<span>photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=0.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={})</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Calculate the approximate forces on each particle based on the photoelastic response.
@@ -2011,10 +2195,11 @@ measurements in granular materials. Review of Scientific Instruments, 88(5),
 <dt><strong><code>contactPadding</code></strong> :&ensp;<code>int</code></dt>
 <dd>Maximum difference between distance and sum of radii for which
 two particles will still be considered in contact.</dd>
-<dt><strong><code>g2MaskPadding</code></strong> :&ensp;<code>int</code></dt>
+<dt><strong><code>g2EdgePadding</code></strong> :&ensp;<code>int</code> or <code>float</code></dt>
 <dd>Number of pixels to ignore at the edge of each particle when calculating the average
-G^2.</dd>
-<dt><strong><code>contactThreshold</code></strong> :&ensp;<code>float</code></dt>
+G^2. If float value &lt; 1 is passed, gradient mask radius will be taken as that percent
+of the full particle radius. A value of 0 means no padding is included.</dd>
+<dt><strong><code>contactG2Threshold</code></strong> :&ensp;<code>float</code></dt>
 <dd>The neighbor weight value under which edges will be removed from the network,
 as they would be considered to weak to represent anything physical. This will
 help remove particle neighbors that are only barely touching, but not transmitting
@@ -2039,12 +2224,17 @@ regardless of whether a boundary mask is passed as a parameter.</dd>
 <dt><strong><code>brightfield</code></strong> :&ensp;<code>bool</code></dt>
 <dd>Whether the photoelastic response is seen through a brightfield (True)
 polariscope or darkfield (False) polariscope.</dd>
+<dt><strong><code>boundaryDetectionOptions</code></strong> :&ensp;<code>kwargs</code></dt>
+<dd>Dictionary of kwargs to be passed to the detectWallContact method, assuming
+boundaries are being included in the solver. If none are provided, relevant
+values are carried over from the kwargs for this method (<code>contactPadding</code>,
+<code>g2EdgePadding</code>, <code>contactMaskRadius</code>, <code>contactG2Threshold</code>).</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2MaskPadding=1, contactThreshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False):
+<pre><code class="python">def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={}):
     &#34;&#34;&#34;
     Calculate the approximate forces on each particle based on the photoelastic response.
     No optimization/gradient descent is done in this method; this should be used either where
@@ -2082,11 +2272,12 @@ polariscope or darkfield (False) polariscope.</dd>
         Maximum difference between distance and sum of radii for which
         two particles will still be considered in contact.
 
-    g2MaskPadding : int
+    g2EdgePadding : int or float
         Number of pixels to ignore at the edge of each particle when calculating the average
-        G^2.
+        G^2. If float value &lt; 1 is passed, gradient mask radius will be taken as that percent
+        of the full particle radius. A value of 0 means no padding is included.
 
-    contactThreshold : float
+    contactG2Threshold : float
         The neighbor weight value under which edges will be removed from the network,
         as they would be considered to weak to represent anything physical. This will
         help remove particle neighbors that are only barely touching, but not transmitting
@@ -2116,6 +2307,12 @@ polariscope or darkfield (False) polariscope.</dd>
     brightfield : bool
         Whether the photoelastic response is seen through a brightfield (True)
         polariscope or darkfield (False) polariscope.
+
+    boundaryDetectionOptions : kwargs
+        Dictionary of kwargs to be passed to the detectWallContact method, assuming
+        boundaries are being included in the solver. If none are provided, relevant
+        values are carried over from the kwargs for this method (`contactPadding`, 
+        `g2EdgePadding`, `contactMaskRadius`, `contactG2Threshold`).
     &#34;&#34;&#34;
 
     # We are passed centers and radii
@@ -2154,8 +2351,21 @@ polariscope or darkfield (False) polariscope.</dd>
 
             boundaryMask = rectMask(photoelasticSingleChannel.shape, topLeftCorner, dimensions, channels=None)
 
+        # We want to carry a few arguments over to the boundary detection
+        # if they haven&#39;t been explicitly provided
+        if not &#39;contactPadding&#39; in boundaryDetectionOptions:
+            boundaryDetectionOptions[&#34;contactPadding&#34;] = contactPadding
+        if not &#39;g2EdgePadding&#39; in boundaryDetectionOptions:
+            boundaryDetectionOptions[&#34;g2EdgePadding&#34;] = g2EdgePadding
+        if not &#39;contactMaskRadius&#39; in boundaryDetectionOptions:
+            boundaryDetectionOptions[&#34;contactMaskRadius&#34;] = contactMaskRadius
+        if not &#39;contactG2Threshold&#39; in boundaryDetectionOptions:
+            boundaryDetectionOptions[&#34;contactG2Threshold&#34;] = contactG2Threshold
+
         # See detectWallContacts for more information
-        numWallContacts, wallBetaArr, wallG2AvgArr = detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel, contactPadding=contactPadding)
+        numWallContacts, wallBetaArr, wallG2AvgArr = detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel, **boundaryDetectionOptions)
+
+        # Now merge these contacts with the interparticle ones
         for i in range(numParticles):
             for j in range(numWallContacts[i]):
                 betaGuessArr[i] = np.append(betaGuessArr[i], wallBetaArr[i][j])
@@ -2180,9 +2390,17 @@ polariscope or darkfield (False) polariscope.</dd>
     # Mean of the radii should be fine, though TODO would be a good idea to have options here
     g2Cal = g2ForceCalibration(fSigma, np.mean(radii), pxPerMeter, brightfield=brightfield)
 
-    for i in range(numParticles):
-        g2Mask = circularMask(photoelasticSingleChannel.shape, centers[i], radii[i] - g2MaskPadding)[:,:,0]
+    # Figure out how much of the particle we will be calculating the g2 over
+    if g2EdgePadding &lt; 1. and g2EdgePadding &gt; 0:
+        g2MaskRadii = radii * g2EdgePadding
+    elif g2EdgePadding &gt;= 1:
+        g2MaskRadii = radii - g2EdgePadding
+    else:
+        g2MaskRadii = radii
 
+    for i in range(numParticles):
+        g2Mask = circularMask(photoelasticSingleChannel.shape, centers[i], g2MaskRadii[i])[:,:,0]
+ 
         # This is the average g2 of the whole particle
         avgGSqr = np.sum(gSqr * g2Mask) / np.sum(g2Mask)
 

@@ -6,7 +6,6 @@ from scipy.ndimage import filters
 import numba
 
 from pepe.analysis import gSquared
-
 from pepe.preprocess import sobelEdgeDetection, laplacianEdgeDetection, cannyEdgeDetection
 
 import matplotlib.pyplot as plt

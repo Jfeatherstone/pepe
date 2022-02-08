@@ -2,7 +2,6 @@ import numpy as np
 
 import numba
 
-
 @numba.njit(parallel=True, fastmath=True, cache=True)
 def outerSubtract(x, y):
     """

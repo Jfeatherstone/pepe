@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import numba
-
 from scipy.fft import fft2, ifft2
 
 from pepe.preprocess import circularMask

@@ -5,9 +5,6 @@ from scipy.ndimage import filters
 import numba
 import cv2
 
-from pepe.analysis import gSquared
-
-
 def applyFilter(singleChannelFrame, filter):
     """
     Apply an arbitrary filter (in the form of a matrix) to an image.
@@ -134,6 +131,9 @@ def laplacianEdgeDetection(singleChannelFrame, threshold=.005):
     binarizedImage : np.uint8[H,W]
         Binarized image (containing only values of 0 and 1).
     """
+    # This has to go here otherwise we get a circular import warning
+    # Working on thinking of a more permanent solution rn.
+    from pepe.analysis import gSquared
 
     if singleChannelFrame.ndim > 2:
         image = singleChannelFrame.astype(np.float64)[:,:,0]
