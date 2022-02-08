@@ -82,7 +82,8 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, debug=False, trim
     paddedImageArr = np.zeros((imageArr.shape[0] + 2*fftPadding, imageArr.shape[1] + 2*fftPadding))
     # Note that the intensity is squared here, since we don't want to square the padding
     # later on
-    paddedImageArr[fftPadding:-fftPadding,fftPadding:-fftPadding] = imageArr**2
+    #paddedImageArr[fftPadding:-fftPadding,fftPadding:-fftPadding] = imageArr**2
+    paddedImageArr[fftPadding:-fftPadding,fftPadding:-fftPadding] = imageArr
 
     # Instead of just 0s in the padded area, we want to put in some real-ish values
     # We just use the tanh function to do this (though something like a sigmoid or (r)elu
@@ -121,7 +122,8 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, debug=False, trim
     kernelArr = circularMask(paddedImageArr.shape, center, radius)[:,:,0].astype(np.float64)
 
     # First convolutional term (and clip out the padding)
-    convTerm1 = ifft2(fft2(paddedImageArr) * fft2(kernelArr))
+    #convTerm1 = ifft2(fft2(paddedImageArr) * fft2(kernelArr))
+    convTerm1 = ifft2(fft2(paddedImageArr**2) * fft2(kernelArr))
 
     if trimPadding:
         convTerm1 = convTerm1[fftPadding:-fftPadding,fftPadding:-fftPadding]
@@ -132,7 +134,8 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, debug=False, trim
     #convTerm2 = ifft2(fft2(kernelArr) * fft2(kernelArr**2))
     # But for our case, this is just the kernel itself (since it only has values of 0 and 1)
     convTerm2 = kernelArr
-    
+    #convTerm2 = 2 * ifft2(fft2(paddedImageArr) * fft2(kernelArr))
+
     if trimPadding:
         convTerm2 = convTerm2[fftPadding:-fftPadding,fftPadding:-fftPadding]
 
