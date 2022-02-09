@@ -12,7 +12,6 @@
 <style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
 <style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
 <style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
-<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS_CHTML" integrity="sha256-kZafAc6mZvK3W3v1pHOcUix30OHQN6pU/NO2oFkqZVw=" crossorigin></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
 <script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
 </head>
@@ -29,32 +28,101 @@
 </summary>
 <pre><code class="python">import numpy as np
 
-
+import numba
 import matplotlib.pyplot as plt
 
-def findPeaks2D():
-    pass
 
-
-def findPeaks(data, returnValues=False, minPeakPrevalence=None, normalizePrevalence=True):
+def _iterNeighbors(p, tShape, neighborInclusion=1):
     &#34;&#34;&#34;
-    Find peaks in one dimensional data using persistent homology.
+    Find the indices of all neighbors of an `d`-dimensional point.
 
-    Peak prevalence is calculated as the age of topological features.
+    Used primarily in `pepe.topology.multiFindPeaks()`.
 
     Parameters
     ----------
 
-    data : np.ndarray
-        An array of data points within which to identify peaks.
+    p : tuple[d]
+        A tuple of indices representing a point in $Z^d$.
 
-    returnValues : bool
-        Whether to return the indices of maxima (False) or the values
-        at those maxima (True).
+    tShape : tuple[d]
+        The size of the grid/tensor in each dimension, such that
+        points outside of the domain can be removed.
+    &#34;&#34;&#34;
+    d = len(p)
+    # Convert to numpy array to do math (which can&#39;t be done on tuples)
+    nP = np.array(p, dtype=np.int16)
+    # This will create an array that looks like [-2, -1, 0, 1, 2], [-1, 0, 1], etc.
+    # depending on the value of neighborInclusion
+    neighborDirections = np.arange(-neighborInclusion, neighborInclusion+1, dtype=np.int16)
+        
+    # Now find the combinations based on the possible values
+    # This piece of code is partially taken from the method
+    # itertools.product.
+    # More or less the equivalent of itertools.product(neighborDirections, repeat=d)
+    result = [[]] 
+    for pool in [neighborDirections]*d:
+        result = [x+[y] for x in result for y in pool]
+       
+    # Result is just the difference vectors from our point to the neighbors
+    # (eg. [-1, 0] or [1, 1]) so we need to add these to our original point.
+    neighbors = [nP + np.array(n) for n in result]
+    
+    # This element will always be the original point because the ordering for arange is
+    # consistent such that the difference vector of [0,0,0,...] will always be at the
+    # center (even after permuting for arbitrary dimensions).
+    del neighbors[len(neighbors)//2]
+   
+    # Now make sure all of the points are within the domain of the data.
+    for n in neighbors:
+        if not True in ((np.array(tShape) - n - 1) &lt; 0) and not True in (n &lt; 0):
+            yield tuple(n)
+
+
+def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizePrevalence=True):
+    &#34;&#34;&#34;
+    Identify peaks in multi-dimensional data using persistent topology.
+
+    Peak prevalence is calculated as the age of topological features,
+    which is not necessarily the same as the actual height of the peaks.
+
+    Originally adapted from [1] (and partially from [2]), but generalized for data with
+    an arbitrary number of dimensions. For background on persistence, see: [3] for
+    application of persistence to signal processing, or [4] for general domain knowledge
+    (these are just my personal recommendations, probably plenty of other resources out there).
+
+    May struggle to find peaks in noisier data if the fluctuations due to
+    noise are large enough to create a spiky-looking profile. This is because
+    such fluctuations do represent topological objects, even if they are not ones
+    of any physical relevance; this method does not distinguish between the two.
+    In this case, smoothing functions are recommended to be used on the data before
+    it is passed to this method. A higher `neighborInclusion` can partially address this.
+
+    Method is not able to be optimized using `numba` (mostly due to the use of tuples,
+    which `numba` can&#39;t type as easily as a list or array. While this method can identify
+    peaks in 1D or 2D data, it is recommended to instead use either `pepe.topology.findPeaks1D()`
+    or `pepe.topology.findPeaks2D()`, as these *are* optimized.
+
+    Parameters
+    ----------
+
+    data : np.ndarray[d]
+        An array of data points within which to identify peaks in d-dimensional space.
+
+    neighborInclusion : int
+        Controls the number of neighbors on either side of a point to look
+        at when deciding which peak a given point belongs to. 
+
+        eg. In 1D, a value of `1` means that `[i-1, i+1]` are considered neighbors,
+        a value of `2` means that `[i-2, i-1, i+1, i+1]` are considered neighbors, etc.
+
+        May help to supress the effects of noise in data, but should not be treated
+        as a substitute for smoothing data properly beforehand.
 
     minPeakPrevalence : float or None
         The minimum prevalence of a peak (maximum - minimum) that will be
-        returned to the user.
+        returned to the user. If `normalizePrevalence` is True, this should
+        be in the range `[0, 1]`, representing a percentage of the full range
+        the data occupies.
 
     normalizePrevalence : bool
         Whether to normalize the prevalences such that they represent the
@@ -66,13 +134,363 @@ def findPeaks(data, returnValues=False, minPeakPrevalence=None, normalizePrevale
         kwarg to clip smaller peaks, and thus the minimum value should be
         specified as a percent (eg. .3 for 30%) is the normalizePrevalence
         kwarg is True.
+
+    Returns
+    -------
+
+    peakPositions : np.ndarray[N,d]
+        The indices of peaks in the provided data, sorted from most
+        to least prevalent (persistent).
+
+    peakPrevalences : np.ndarray[N]
+        The prevalence of each peak in the provided data, or the persistence
+        of the topological feature. If `normalizePrevalence` is True, this will
+        be normalized to the domain `[0, 1]`; otherwise, these values are
+        equivalent to the maximum data value minus the minimum data value evaluated
+        over all points that identify with a given peak.
+
+    References
+    ----------
+
+    [1] Huber, Stefan. Persistent Topology for Peak Detection. 
+    &lt;https://www.sthu.org/blog/13-perstopology-peakdetection/index.html&gt;
+
+    [2] Huber, Stefan. Topological peak detection in two-dimensional data.
+    &lt;https://www.sthu.org/code/codesnippets/imagepers.html&gt;
+
+    [3] Huber, S. (2021). Persistent Homology in Data Science. In P. Haber,
+    T. Lampoltshammer, M. Mayr, &amp; K. Plankensteiner (Eds.), Data Science – Analytics
+    and Applications (pp. 81–88). Springer Fachmedien. &lt;https://doi.org/10.1007/978-3-658-32182-6_13&gt;
+
+    [4] Edelsbrunner, H., &amp; Harer, J. (2010). Computational topology: An introduction.
+    Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8218-4925-5
+
+    &#34;&#34;&#34; 
+    
+    # This array contains the indices of the peak that each point
+    # belongs to (assuming it does belong to a peak)
+    # We start it at -1 such that we can check if a point belongs to
+    # a certain peak with peakMembership[i,j,...] &gt;= 0
+    peakMembership = np.zeros_like(data, dtype=np.int16) - 1
+    peakBirthIndices = []
+
+    # Go through each value in our data, starting from highest and ending
+    # with lowest. This is important because we will be merging points into
+    # groups as we go, and so starting with the highest values means that
+    # points will almost never have to be overwritten.
+    # This is a bit complex here because we could have any number of dimensions, but
+    # the gist is that we sort a flattened version of the array from highest to lowest,
+    # then turn those 1d indices into Nd indices, then pair the indices together.
+    # Each element of this array will be a set of indices that can index a single
+    # element of data. 
+    # eg. data[sortedIndices[0]] will be the largest value (for any number of dimensions)
+    sortedIndices = np.dstack(np.unravel_index(np.argsort(data.flatten())[::-1], data.shape))[0]
+    # To be able to actually index data with an element, they need to all be tuples
+    sortedIndices = [tuple(si) for si in sortedIndices]
+   
+    # I&#39;ve avoided using the index i here since we are iterating over sets of indices,
+    # not just a single number
+    for si in sortedIndices:
+        # See if any neighbors have been assigned to a peak
+        assignedNeighbors = [n for n in _iterNeighbors(si, data.shape, neighborInclusion) if peakMembership[n] &gt;= 0]
+
+        # If there aren&#39;t any assigned neighbors yet, then we create a new
+        # peak
+        if len(assignedNeighbors) == 0:
+            peakMembership[si] = len(peakBirthIndices)
+            peakBirthIndices.append(si)
+
+        # If only a single one has been assigned, or all of the assigned peaks have the
+        # same membership, then this point joins that peak
+        elif len(assignedNeighbors) == 1 or len(np.unique([(peakMembership[n] for n in assignedNeighbors)])) == 1:
+            peakMembership[si] = peakMembership[assignedNeighbors[0]]
+
+        # Otherwise, we have to resolve a conflict between multiple, in which the
+        # oldest one gains the new point.
+        else:      
+            # Find which one is the oldest
+            order = np.argsort(data[peakBirthIndices[(peakMembership[n] for n in assignedNeighbors)]])[::-1]
+
+            # New point joins oldest peak
+            peakMembership[si] = peakMembership[assignedNeighbors[order][0]]
+
+    # This is the position of the proper crest for each peak
+    peakPositions = peakBirthIndices
+
+    # Calculate the prevalence of each peak as the height of the birth points minus the
+    # height of the death point
+    # We could do this using the arrays we&#39;ve stored along the way, but it&#39;s easier just to take the
+    # max/min heights directly from the data
+    peakPrevalences = np.array([data[peakPositions[i]] - np.min(data[peakMembership == i]) for i in range(len(peakBirthIndices))])
+    # Also note that I have made the decision here to normalize these prevalences by the total range
+    # of the data, such that a prevalence of .6 means that the peak spans 60% of the range of the data.
+    # This can be altered with the normalizePrevalence kwarg
+    if normalizePrevalence:
+        dataRange = np.max(data) - np.min(data)
+        peakPrevalences /= dataRange
+
+    # Cut off small peaks, if necessary
+    if minPeakPrevalence is not None:
+        peakPositions = np.array([peakPositions[i] for i in range(len(peakPositions)) if peakPrevalences[i] &gt; minPeakPrevalence])
+        peakPrevalences = np.array([peakPrevalences[i] for i in range(len(peakPrevalences)) if peakPrevalences[i] &gt; minPeakPrevalence])
+
+    # Sort the peaks by their prevalence
+    #order = np.argsort(peakPrevalences)[::-1]
+    #peakPositions = peakPositions[order]
+    #peakPrevalences = peakPrevalences[order]
+
+    return (peakPositions, peakPrevalences)
+
+
+def findPeaks2D(data, minPeakPrevalence=None, normalizePrevalence=True):
+    &#34;&#34;&#34;
+    Identify peaks in 2-dimensional data using persistent topology.
+
+    Peak prevalence is calculated as the age of topological features,
+    which is not necessarily the same as the actual height of the peaks.
+
+    Originally adapted from [1] (and partially from [2]), but adjusted for data with
+    an specifically 2 dimensions. For background on persistence, see: [3] for
+    application of persistence to signal processing, or [4] for general domain knowledge
+    (these are just my personal recommendations, probably plenty of other resources out there).
+
+    May struggle to find peaks in noisier data if the fluctuations due to
+    noise are large enough to create a spiky-looking profile. This is because
+    such fluctuations do represent topological objects, even if they are not ones
+    of any physical relevance; this method does not distinguish between the two.
+    In this case, smoothing functions are recommended to be used on the data before
+    it is passed to this method.
+
+    Method is optimized using `numba`.
+
+    Parameters
+    ----------
+
+    data : np.ndarray[d]
+        An array of data points within which to identify peaks in d-dimensional space.
+
+    minPeakPrevalence : float or None
+        The minimum prevalence of a peak (maximum - minimum) that will be
+        returned to the user. If `normalizePrevalence` is True, this should
+        be in the range `[0, 1]`, representing a percentage of the full range
+        the data occupies.
+
+    normalizePrevalence : bool
+        Whether to normalize the prevalences such that they represent the
+        percent of the data range that is spanned by a peak (True) or not (False).
+        For example, if normalized, a prevalence of .4 would mean that the peak
+        spans 40% of the total range of the data.
+
+        Note that this normalization happens before using the minPeakPrevalence
+        kwarg to clip smaller peaks, and thus the minimum value should be
+        specified as a percent (eg. .3 for 30%) is the normalizePrevalence
+        kwarg is True.
+
+    Returns
+    -------
+
+    peakPositions : np.ndarray[N,d]
+        The indices of peaks in the provided data, sorted from most
+        to least prevalent (persistent).
+
+    peakPrevalences : np.ndarray[N]
+        The prevalence of each peak in the provided data, or the persistence
+        of the topological feature. If `normalizePrevalence` is True, this will
+        be normalized to the domain `[0, 1]`; otherwise, these values are
+        equivalent to the maximum data value minus the minimum data value evaluated
+        over all points that identify with a given peak.
+
+    References
+    ----------
+
+    [1] Huber, Stefan. Persistent Topology for Peak Detection. 
+    &lt;https://www.sthu.org/blog/13-perstopology-peakdetection/index.html&gt;
+
+    [2] Huber, Stefan. Topological peak detection in two-dimensional data.
+    &lt;https://www.sthu.org/code/codesnippets/imagepers.html&gt;
+
+    [3] Huber, S. (2021). Persistent Homology in Data Science. In P. Haber,
+    T. Lampoltshammer, M. Mayr, &amp; K. Plankensteiner (Eds.), Data Science – Analytics
+    and Applications (pp. 81–88). Springer Fachmedien. &lt;https://doi.org/10.1007/978-3-658-32182-6_13&gt;
+
+    [4] Edelsbrunner, H., &amp; Harer, J. (2010). Computational topology: An introduction.
+    Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8218-4925-5
+
+    &#34;&#34;&#34; 
+    # Go through each value in our data, starting from highest and ending
+    # with lowest. This is important because we will be merging points into
+    # groups as we go, and so starting with the highest values means that
+    # points will almost never have to be overwritten.
+    # This is a bit complex here because we could have any number of dimensions, but
+    # the gist is that we sort a flattened version of the array from highest to lowest,
+    # then turn those 1d indices into Nd indices, then pair the indices together.
+    # Each element of this array will be a set of indices that can index a single
+    # element of data. 
+    # eg. data[sortedIndices[0]] will be the largest value (for any number of dimensions)
+    sortedIndices = np.dstack(np.unravel_index(np.argsort(data.flatten())[::-1], data.shape))[0]
+    # To be able to actually index data with an element, they need to all be tuples
+    sortedIndices = [tuple(si) for si in sortedIndices]
+  
+    # Numba gets mad if we pass lists between methods, so we have to turn our list
+    # into a numba (typed) list
+    typedSortedIndices = numba.typed.List(sortedIndices)
+
+    peakMembership, peakBirthIndices = _findPeaks2DIter(data, typedSortedIndices)
+
+    # Calculate the prevalence of each peak as the height of the birth points minus the
+    # height of the death point
+    # We could do this using the arrays we&#39;ve stored along the way, but it&#39;s easier just to take the
+    # max/min heights directly from the data
+    peakPrevalences = np.array([data[peakBirthIndices[i]] - np.min(data[peakMembership == i]) for i in range(len(peakBirthIndices))])
+    # Also note that I have made the decision here to normalize these prevalences by the total range
+    # of the data, such that a prevalence of .6 means that the peak spans 60% of the range of the data.
+    # This can be altered with the normalizePrevalence kwarg
+    if normalizePrevalence:
+        dataRange = np.max(data) - np.min(data)
+        peakPrevalences /= dataRange
+
+    # Cut off small peaks, if necessary
+    if minPeakPrevalence is not None:
+        peakBirthIndices = [peakBirthIndices[i] for i in range(len(peakBirthIndices)) if peakPrevalences[i] &gt; minPeakPrevalence]
+        peakPrevalences = np.array([peakPrevalences[i] for i in range(len(peakPrevalences)) if peakPrevalences[i] &gt; minPeakPrevalence])
+
+    # Sort the peaks by their prevalence
+    #order = np.argsort(peakPrevalences)[::-1]
+    #peakPositions = peakPositions[order]
+    #peakPrevalences = peakPrevalences[order]
+
+    return (peakBirthIndices, peakPrevalences)
+
+
+@numba.njit(cache=True)
+def _findPeaks2DIter(data, sortedIndices):
+    &#34;&#34;&#34;
+    Iterative part of 2D peak finding, optimized using `numba`.
+
+    As usual with these types of methods, there may be some statements
+    that generally would be written better/easier another way, but end up
+    looking weird because of a particular `numba` requirement.
+
+    Not meant to be used outside of `pepe.topology.findPeaks2D()`.
+    &#34;&#34;&#34;
+    # This array contains the indices of the peak that each point
+    # belongs to (assuming it does belong to a peak)
+    # We start it at -1 such taht we can check if a point belongs to
+    # a certain peak with peakMembership[i,j,...] &gt;= 0
+    peakMembership = np.zeros_like(data, dtype=np.int16) - 1
+    peakBirthIndices = []
+
+    # I&#39;ve avoided using the index i here since we are iterating over sets of indices,
+    # not just a single number
+    for si in sortedIndices:
+        # See if any neighbors have been assigned to a peak
+        # No options for expanding which points are considered neighbors here
+        # since the 8 surrounding points should be fine.
+        assignedNeighbors = [(si[0]+i, si[1]+j) for i in [0, 1, -1] for j in [0, 1, -1]][1:]
+        # Cut off points outside the domain, or that haven&#39;t been assigned yet
+        assignedNeighbors = [n for n in assignedNeighbors if n[0] &gt;= 0 and n[1] &gt;= 0 and n[0] &lt; data.shape[0] and n[1] &lt; data.shape[1] and peakMembership[n] &gt;= 0]
+
+        # If there aren&#39;t any assigned neighbors yet, then we create a new
+        # peak
+        if len(assignedNeighbors) == 0:
+            peakMembership[si] = len(peakBirthIndices)
+            peakBirthIndices.append(si)
+
+        # If only a single one has been assigned, or all of the assigned peaks have the
+        # same membership, then this point joins that peak
+        elif len(assignedNeighbors) == 1 or len(np.unique(np.array([peakMembership[n] for n in assignedNeighbors]))) == 1:
+            peakMembership[si] = peakMembership[assignedNeighbors[0]]
+
+        # Otherwise, we have to resolve a conflict between multiple, in which the
+        # oldest one gains the new point.
+        else:      
+            # Find which one is the oldest
+            order = np.argsort(np.array([data[peakBirthIndices[peakMembership[n]]] for n in assignedNeighbors]))[::-1]
+            # New point joins oldest peak
+            peakMembership[si] = peakMembership[assignedNeighbors[order[0]]]
+
+    return peakMembership, peakBirthIndices
+
+
+@numba.njit(cache=True)
+def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
+    &#34;&#34;&#34;
+    Find peaks in one dimensional data using persistent homology.
+
+    Peak prevalence is calculated as the age of topological features,
+    which is not necessarily the same as the actual height of the peaks.
+
+    Originally adapted from [1], with changes mostly pertaining to readability and 
+    stronger emphasis on efficiency. For background on persistence, see: [2] for
+    application of persistence to signal processing, or [3] for general domain knowledge.
+
+    May struggle to find peaks in noisier data if the fluctuations due to
+    noise are large enough to create a spiky-looking profile. This is because
+    such fluctuations do represent topological objects, even if they are not ones
+    of any physical relevance; this method does not distinguish between the two.
+    In this case, smoothing functions are recommended to be used on the data before
+    it is passed to this method.
+
+    Parameters
+    ----------
+
+    data : np.ndarray
+        An array of data points within which to identify peaks.
+
+    minPeakPrevalence : float or None
+        The minimum prevalence of a peak (maximum - minimum) that will be
+        returned to the user. If `normalizePrevalence` is True, this should
+        be in the range `[0, 1]`, representing a percentage of the full range
+        the data occupies.
+
+    normalizePrevalence : bool
+        Whether to normalize the prevalences such that they represent the
+        percent of the data range that is spanned by a peak (True) or not (False).
+        For example, if normalized, a prevalence of .4 would mean that the peak
+        spans 40% of the total range of the data.
+
+        Note that this normalization happens before using the minPeakPrevalence
+        kwarg to clip smaller peaks, and thus the minimum value should be
+        specified as a percent (eg. .3 for 30%) is the normalizePrevalence
+        kwarg is True.
+
+    Returns
+    -------
+
+    peakPositions : np.ndarray[N]
+        The indices of peaks in the provided data, sorted from most
+        to least prevalent (persistent). If `returnValues` is True, this
+        will instead be the values at these indices, or `data[peakPositions]`.
+
+    peakPrevalences : np.ndarray[N]
+        The prevalence of each peak in the provided data, or the persistence
+        of the topological feature. If `normalizePrevalence` is True, this will
+        be normalized to the domain `[0, 1]`; otherwise, these values are
+        equivalent to the maximum data value minus the minimum data value evaluated
+        over all points that identify with a given peak.
+
+    References
+    ----------
+
+    [1] Huber, Stefan. Persistent Topology for Peak Detection. 
+    &lt;https://www.sthu.org/blog/13-perstopology-peakdetection/index.html&gt;
+
+    [2] Huber, S. (2021). Persistent Homology in Data Science. In P. Haber,
+    T. Lampoltshammer, M. Mayr, &amp; K. Plankensteiner (Eds.), Data Science – Analytics
+    and Applications (pp. 81–88). Springer Fachmedien. &lt;https://doi.org/10.1007/978-3-658-32182-6_13&gt;
+
+    [3] Edelsbrunner, H., &amp; Harer, J. (2010). Computational topology: An introduction.
+    Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8218-4925-5
+
     &#34;&#34;&#34;
 
     # Entries will be a list(2) in this list, with the first element as the
     # left index, and the second element as the right index
     peakBoundsIndices = []
     peakBirthIndices = []
-    peakDeathIndices = []
+    # We don&#39;t actually need to record when a peak dies, since we will eventually
+    # extract the persistence from the minimum value in each set of points,
+    #peakDeathIndices = []
 
     # This array contains the indices of the peak that each point
     # belongs to (assuming it does belong to a peak)
@@ -108,7 +526,8 @@ def findPeaks(data, returnValues=False, minPeakPrevalence=None, normalizePrevale
             # Create a new peak, and record it&#39;s birth
             peakBoundsIndices.append([i,i])
             peakBirthIndices.append(i)
-            peakDeathIndices.append(None)
+            # See note above about death
+            #peakDeathIndices.append(None)
 
         # If either the left or right peak exists (but only one) we merge this
         # point with the existing one
@@ -132,7 +551,8 @@ def findPeaks(data, returnValues=False, minPeakPrevalence=None, normalizePrevale
             # Determine which is taller
             if data[peakBirthIndices[peakMembership[i-1]]] &gt; data[peakBirthIndices[peakMembership[i+1]]]:
                 # If the left peak is higher, the right one dies
-                peakDeathIndices[peakMembership[i+1]] = i
+                # See note above about death
+                #peakDeathIndices[peakMembership[i+1]] = i
                 # Expand the bounds of the left peak to cover the right one
                 # (1 index because the peak is expanding to the right)
                 peakBoundsIndices[peakMembership[i-1]][1] = peakBoundsIndices[peakMembership[i+1]][1]
@@ -144,7 +564,8 @@ def findPeaks(data, returnValues=False, minPeakPrevalence=None, normalizePrevale
                 peakMembership[peakBoundsIndices[peakMembership[i-1]][1]] = peakMembership[i-1]
             else:
                 # If the right peak is higher, the left one dies
-                peakDeathIndices[peakMembership[i-1]] = i
+                # See note above about death
+                #peakDeathIndices[peakMembership[i-1]] = i
                 # Expand the bounds of the right peak to cover the left one
                 # (0 index because the peak is expanding to the left)
                 peakBoundsIndices[peakMembership[i+1]][0] = peakBoundsIndices[peakMembership[i-1]][0]
@@ -181,10 +602,7 @@ def findPeaks(data, returnValues=False, minPeakPrevalence=None, normalizePrevale
     peakPositions = peakPositions[order]
     peakPrevalences = peakPrevalences[order]
 
-    if returnValues:
-        return data[peakPositions], peakPrevalences
-    else:
-        return peakPositions, peakPrevalences</code></pre>
+    return (peakPositions, peakPrevalences)</code></pre>
 </details>
 </section>
 <section>
@@ -194,22 +612,31 @@ def findPeaks(data, returnValues=False, minPeakPrevalence=None, normalizePrevale
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="pepe.topology.PersistentHomology.findPeaks"><code class="name flex">
-<span>def <span class="ident">findPeaks</span></span>(<span>data, returnValues=False, minPeakPrevalence=None, normalizePrevalence=True)</span>
+<dt id="pepe.topology.PersistentHomology.findPeaks1D"><code class="name flex">
+<span>def <span class="ident">findPeaks1D</span></span>(<span>data, minPeakPrevalence=None, normalizePrevalence=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Find peaks in one dimensional data using persistent homology.</p>
-<p>Peak prevalence is calculated as the age of topological features.</p>
+<p>Peak prevalence is calculated as the age of topological features,
+which is not necessarily the same as the actual height of the peaks.</p>
+<p>Originally adapted from [1], with changes mostly pertaining to readability and
+stronger emphasis on efficiency. For background on persistence, see: [2] for
+application of persistence to signal processing, or [3] for general domain knowledge.</p>
+<p>May struggle to find peaks in noisier data if the fluctuations due to
+noise are large enough to create a spiky-looking profile. This is because
+such fluctuations do represent topological objects, even if they are not ones
+of any physical relevance; this method does not distinguish between the two.
+In this case, smoothing functions are recommended to be used on the data before
+it is passed to this method.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>data</code></strong> :&ensp;<code>np.ndarray</code></dt>
 <dd>An array of data points within which to identify peaks.</dd>
-<dt><strong><code>returnValues</code></strong> :&ensp;<code>bool</code></dt>
-<dd>Whether to return the indices of maxima (False) or the values
-at those maxima (True).</dd>
 <dt><strong><code>minPeakPrevalence</code></strong> :&ensp;<code>float</code> or <code>None</code></dt>
 <dd>The minimum prevalence of a peak (maximum - minimum) that will be
-returned to the user.</dd>
+returned to the user. If <code>normalizePrevalence</code> is True, this should
+be in the range <code>[0, 1]</code>, representing a percentage of the full range
+the data occupies.</dd>
 <dt><strong><code>normalizePrevalence</code></strong> :&ensp;<code>bool</code></dt>
 <dd>
 <p>Whether to normalize the prevalences such that they represent the
@@ -221,16 +648,50 @@ kwarg to clip smaller peaks, and thus the minimum value should be
 specified as a percent (eg. .3 for 30%) is the normalizePrevalence
 kwarg is True.</p>
 </dd>
-</dl></div>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>peakPositions</code></strong> :&ensp;<code>np.ndarray[N]</code></dt>
+<dd>The indices of peaks in the provided data, sorted from most
+to least prevalent (persistent). If <code>returnValues</code> is True, this
+will instead be the values at these indices, or <code>data[peakPositions]</code>.</dd>
+<dt><strong><code>peakPrevalences</code></strong> :&ensp;<code>np.ndarray[N]</code></dt>
+<dd>The prevalence of each peak in the provided data, or the persistence
+of the topological feature. If <code>normalizePrevalence</code> is True, this will
+be normalized to the domain <code>[0, 1]</code>; otherwise, these values are
+equivalent to the maximum data value minus the minimum data value evaluated
+over all points that identify with a given peak.</dd>
+</dl>
+<h2 id="references">References</h2>
+<p>[1] Huber, Stefan. Persistent Topology for Peak Detection.
+<a href="https://www.sthu.org/blog/13-perstopology-peakdetection/index.html">https://www.sthu.org/blog/13-perstopology-peakdetection/index.html</a></p>
+<p>[2] Huber, S. (2021). Persistent Homology in Data Science. In P. Haber,
+T. Lampoltshammer, M. Mayr, &amp; K. Plankensteiner (Eds.), Data Science – Analytics
+and Applications (pp. 81–88). Springer Fachmedien. <a href="https://doi.org/10.1007/978-3-658-32182-6_13">https://doi.org/10.1007/978-3-658-32182-6_13</a></p>
+<p>[3] Edelsbrunner, H., &amp; Harer, J. (2010). Computational topology: An introduction.
+Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8218-4925-5</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def findPeaks(data, returnValues=False, minPeakPrevalence=None, normalizePrevalence=True):
+<pre><code class="python">@numba.njit(cache=True)
+def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
     &#34;&#34;&#34;
     Find peaks in one dimensional data using persistent homology.
 
-    Peak prevalence is calculated as the age of topological features.
+    Peak prevalence is calculated as the age of topological features,
+    which is not necessarily the same as the actual height of the peaks.
+
+    Originally adapted from [1], with changes mostly pertaining to readability and 
+    stronger emphasis on efficiency. For background on persistence, see: [2] for
+    application of persistence to signal processing, or [3] for general domain knowledge.
+
+    May struggle to find peaks in noisier data if the fluctuations due to
+    noise are large enough to create a spiky-looking profile. This is because
+    such fluctuations do represent topological objects, even if they are not ones
+    of any physical relevance; this method does not distinguish between the two.
+    In this case, smoothing functions are recommended to be used on the data before
+    it is passed to this method.
 
     Parameters
     ----------
@@ -238,13 +699,11 @@ kwarg is True.</p>
     data : np.ndarray
         An array of data points within which to identify peaks.
 
-    returnValues : bool
-        Whether to return the indices of maxima (False) or the values
-        at those maxima (True).
-
     minPeakPrevalence : float or None
         The minimum prevalence of a peak (maximum - minimum) that will be
-        returned to the user.
+        returned to the user. If `normalizePrevalence` is True, this should
+        be in the range `[0, 1]`, representing a percentage of the full range
+        the data occupies.
 
     normalizePrevalence : bool
         Whether to normalize the prevalences such that they represent the
@@ -256,13 +715,44 @@ kwarg is True.</p>
         kwarg to clip smaller peaks, and thus the minimum value should be
         specified as a percent (eg. .3 for 30%) is the normalizePrevalence
         kwarg is True.
+
+    Returns
+    -------
+
+    peakPositions : np.ndarray[N]
+        The indices of peaks in the provided data, sorted from most
+        to least prevalent (persistent). If `returnValues` is True, this
+        will instead be the values at these indices, or `data[peakPositions]`.
+
+    peakPrevalences : np.ndarray[N]
+        The prevalence of each peak in the provided data, or the persistence
+        of the topological feature. If `normalizePrevalence` is True, this will
+        be normalized to the domain `[0, 1]`; otherwise, these values are
+        equivalent to the maximum data value minus the minimum data value evaluated
+        over all points that identify with a given peak.
+
+    References
+    ----------
+
+    [1] Huber, Stefan. Persistent Topology for Peak Detection. 
+    &lt;https://www.sthu.org/blog/13-perstopology-peakdetection/index.html&gt;
+
+    [2] Huber, S. (2021). Persistent Homology in Data Science. In P. Haber,
+    T. Lampoltshammer, M. Mayr, &amp; K. Plankensteiner (Eds.), Data Science – Analytics
+    and Applications (pp. 81–88). Springer Fachmedien. &lt;https://doi.org/10.1007/978-3-658-32182-6_13&gt;
+
+    [3] Edelsbrunner, H., &amp; Harer, J. (2010). Computational topology: An introduction.
+    Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8218-4925-5
+
     &#34;&#34;&#34;
 
     # Entries will be a list(2) in this list, with the first element as the
     # left index, and the second element as the right index
     peakBoundsIndices = []
     peakBirthIndices = []
-    peakDeathIndices = []
+    # We don&#39;t actually need to record when a peak dies, since we will eventually
+    # extract the persistence from the minimum value in each set of points,
+    #peakDeathIndices = []
 
     # This array contains the indices of the peak that each point
     # belongs to (assuming it does belong to a peak)
@@ -298,7 +788,8 @@ kwarg is True.</p>
             # Create a new peak, and record it&#39;s birth
             peakBoundsIndices.append([i,i])
             peakBirthIndices.append(i)
-            peakDeathIndices.append(None)
+            # See note above about death
+            #peakDeathIndices.append(None)
 
         # If either the left or right peak exists (but only one) we merge this
         # point with the existing one
@@ -322,7 +813,8 @@ kwarg is True.</p>
             # Determine which is taller
             if data[peakBirthIndices[peakMembership[i-1]]] &gt; data[peakBirthIndices[peakMembership[i+1]]]:
                 # If the left peak is higher, the right one dies
-                peakDeathIndices[peakMembership[i+1]] = i
+                # See note above about death
+                #peakDeathIndices[peakMembership[i+1]] = i
                 # Expand the bounds of the left peak to cover the right one
                 # (1 index because the peak is expanding to the right)
                 peakBoundsIndices[peakMembership[i-1]][1] = peakBoundsIndices[peakMembership[i+1]][1]
@@ -334,7 +826,8 @@ kwarg is True.</p>
                 peakMembership[peakBoundsIndices[peakMembership[i-1]][1]] = peakMembership[i-1]
             else:
                 # If the right peak is higher, the left one dies
-                peakDeathIndices[peakMembership[i-1]] = i
+                # See note above about death
+                #peakDeathIndices[peakMembership[i-1]] = i
                 # Expand the bounds of the right peak to cover the left one
                 # (0 index because the peak is expanding to the left)
                 peakBoundsIndices[peakMembership[i+1]][0] = peakBoundsIndices[peakMembership[i-1]][0]
@@ -371,23 +864,433 @@ kwarg is True.</p>
     peakPositions = peakPositions[order]
     peakPrevalences = peakPrevalences[order]
 
-    if returnValues:
-        return data[peakPositions], peakPrevalences
-    else:
-        return peakPositions, peakPrevalences</code></pre>
+    return (peakPositions, peakPrevalences)</code></pre>
 </details>
 </dd>
 <dt id="pepe.topology.PersistentHomology.findPeaks2D"><code class="name flex">
-<span>def <span class="ident">findPeaks2D</span></span>(<span>)</span>
+<span>def <span class="ident">findPeaks2D</span></span>(<span>data, minPeakPrevalence=None, normalizePrevalence=True)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Identify peaks in 2-dimensional data using persistent topology.</p>
+<p>Peak prevalence is calculated as the age of topological features,
+which is not necessarily the same as the actual height of the peaks.</p>
+<p>Originally adapted from [1] (and partially from [2]), but adjusted for data with
+an specifically 2 dimensions. For background on persistence, see: [3] for
+application of persistence to signal processing, or [4] for general domain knowledge
+(these are just my personal recommendations, probably plenty of other resources out there).</p>
+<p>May struggle to find peaks in noisier data if the fluctuations due to
+noise are large enough to create a spiky-looking profile. This is because
+such fluctuations do represent topological objects, even if they are not ones
+of any physical relevance; this method does not distinguish between the two.
+In this case, smoothing functions are recommended to be used on the data before
+it is passed to this method.</p>
+<p>Method is optimized using <code>numba</code>.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>np.ndarray[d]</code></dt>
+<dd>An array of data points within which to identify peaks in d-dimensional space.</dd>
+<dt><strong><code>minPeakPrevalence</code></strong> :&ensp;<code>float</code> or <code>None</code></dt>
+<dd>The minimum prevalence of a peak (maximum - minimum) that will be
+returned to the user. If <code>normalizePrevalence</code> is True, this should
+be in the range <code>[0, 1]</code>, representing a percentage of the full range
+the data occupies.</dd>
+<dt><strong><code>normalizePrevalence</code></strong> :&ensp;<code>bool</code></dt>
+<dd>
+<p>Whether to normalize the prevalences such that they represent the
+percent of the data range that is spanned by a peak (True) or not (False).
+For example, if normalized, a prevalence of .4 would mean that the peak
+spans 40% of the total range of the data.</p>
+<p>Note that this normalization happens before using the minPeakPrevalence
+kwarg to clip smaller peaks, and thus the minimum value should be
+specified as a percent (eg. .3 for 30%) is the normalizePrevalence
+kwarg is True.</p>
+</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>peakPositions</code></strong> :&ensp;<code>np.ndarray[N,d]</code></dt>
+<dd>The indices of peaks in the provided data, sorted from most
+to least prevalent (persistent).</dd>
+<dt><strong><code>peakPrevalences</code></strong> :&ensp;<code>np.ndarray[N]</code></dt>
+<dd>The prevalence of each peak in the provided data, or the persistence
+of the topological feature. If <code>normalizePrevalence</code> is True, this will
+be normalized to the domain <code>[0, 1]</code>; otherwise, these values are
+equivalent to the maximum data value minus the minimum data value evaluated
+over all points that identify with a given peak.</dd>
+</dl>
+<h2 id="references">References</h2>
+<p>[1] Huber, Stefan. Persistent Topology for Peak Detection.
+<a href="https://www.sthu.org/blog/13-perstopology-peakdetection/index.html">https://www.sthu.org/blog/13-perstopology-peakdetection/index.html</a></p>
+<p>[2] Huber, Stefan. Topological peak detection in two-dimensional data.
+<a href="https://www.sthu.org/code/codesnippets/imagepers.html">https://www.sthu.org/code/codesnippets/imagepers.html</a></p>
+<p>[3] Huber, S. (2021). Persistent Homology in Data Science. In P. Haber,
+T. Lampoltshammer, M. Mayr, &amp; K. Plankensteiner (Eds.), Data Science – Analytics
+and Applications (pp. 81–88). Springer Fachmedien. <a href="https://doi.org/10.1007/978-3-658-32182-6_13">https://doi.org/10.1007/978-3-658-32182-6_13</a></p>
+<p>[4] Edelsbrunner, H., &amp; Harer, J. (2010). Computational topology: An introduction.
+Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8218-4925-5</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def findPeaks2D():
-    pass</code></pre>
+<pre><code class="python">def findPeaks2D(data, minPeakPrevalence=None, normalizePrevalence=True):
+    &#34;&#34;&#34;
+    Identify peaks in 2-dimensional data using persistent topology.
+
+    Peak prevalence is calculated as the age of topological features,
+    which is not necessarily the same as the actual height of the peaks.
+
+    Originally adapted from [1] (and partially from [2]), but adjusted for data with
+    an specifically 2 dimensions. For background on persistence, see: [3] for
+    application of persistence to signal processing, or [4] for general domain knowledge
+    (these are just my personal recommendations, probably plenty of other resources out there).
+
+    May struggle to find peaks in noisier data if the fluctuations due to
+    noise are large enough to create a spiky-looking profile. This is because
+    such fluctuations do represent topological objects, even if they are not ones
+    of any physical relevance; this method does not distinguish between the two.
+    In this case, smoothing functions are recommended to be used on the data before
+    it is passed to this method.
+
+    Method is optimized using `numba`.
+
+    Parameters
+    ----------
+
+    data : np.ndarray[d]
+        An array of data points within which to identify peaks in d-dimensional space.
+
+    minPeakPrevalence : float or None
+        The minimum prevalence of a peak (maximum - minimum) that will be
+        returned to the user. If `normalizePrevalence` is True, this should
+        be in the range `[0, 1]`, representing a percentage of the full range
+        the data occupies.
+
+    normalizePrevalence : bool
+        Whether to normalize the prevalences such that they represent the
+        percent of the data range that is spanned by a peak (True) or not (False).
+        For example, if normalized, a prevalence of .4 would mean that the peak
+        spans 40% of the total range of the data.
+
+        Note that this normalization happens before using the minPeakPrevalence
+        kwarg to clip smaller peaks, and thus the minimum value should be
+        specified as a percent (eg. .3 for 30%) is the normalizePrevalence
+        kwarg is True.
+
+    Returns
+    -------
+
+    peakPositions : np.ndarray[N,d]
+        The indices of peaks in the provided data, sorted from most
+        to least prevalent (persistent).
+
+    peakPrevalences : np.ndarray[N]
+        The prevalence of each peak in the provided data, or the persistence
+        of the topological feature. If `normalizePrevalence` is True, this will
+        be normalized to the domain `[0, 1]`; otherwise, these values are
+        equivalent to the maximum data value minus the minimum data value evaluated
+        over all points that identify with a given peak.
+
+    References
+    ----------
+
+    [1] Huber, Stefan. Persistent Topology for Peak Detection. 
+    &lt;https://www.sthu.org/blog/13-perstopology-peakdetection/index.html&gt;
+
+    [2] Huber, Stefan. Topological peak detection in two-dimensional data.
+    &lt;https://www.sthu.org/code/codesnippets/imagepers.html&gt;
+
+    [3] Huber, S. (2021). Persistent Homology in Data Science. In P. Haber,
+    T. Lampoltshammer, M. Mayr, &amp; K. Plankensteiner (Eds.), Data Science – Analytics
+    and Applications (pp. 81–88). Springer Fachmedien. &lt;https://doi.org/10.1007/978-3-658-32182-6_13&gt;
+
+    [4] Edelsbrunner, H., &amp; Harer, J. (2010). Computational topology: An introduction.
+    Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8218-4925-5
+
+    &#34;&#34;&#34; 
+    # Go through each value in our data, starting from highest and ending
+    # with lowest. This is important because we will be merging points into
+    # groups as we go, and so starting with the highest values means that
+    # points will almost never have to be overwritten.
+    # This is a bit complex here because we could have any number of dimensions, but
+    # the gist is that we sort a flattened version of the array from highest to lowest,
+    # then turn those 1d indices into Nd indices, then pair the indices together.
+    # Each element of this array will be a set of indices that can index a single
+    # element of data. 
+    # eg. data[sortedIndices[0]] will be the largest value (for any number of dimensions)
+    sortedIndices = np.dstack(np.unravel_index(np.argsort(data.flatten())[::-1], data.shape))[0]
+    # To be able to actually index data with an element, they need to all be tuples
+    sortedIndices = [tuple(si) for si in sortedIndices]
+  
+    # Numba gets mad if we pass lists between methods, so we have to turn our list
+    # into a numba (typed) list
+    typedSortedIndices = numba.typed.List(sortedIndices)
+
+    peakMembership, peakBirthIndices = _findPeaks2DIter(data, typedSortedIndices)
+
+    # Calculate the prevalence of each peak as the height of the birth points minus the
+    # height of the death point
+    # We could do this using the arrays we&#39;ve stored along the way, but it&#39;s easier just to take the
+    # max/min heights directly from the data
+    peakPrevalences = np.array([data[peakBirthIndices[i]] - np.min(data[peakMembership == i]) for i in range(len(peakBirthIndices))])
+    # Also note that I have made the decision here to normalize these prevalences by the total range
+    # of the data, such that a prevalence of .6 means that the peak spans 60% of the range of the data.
+    # This can be altered with the normalizePrevalence kwarg
+    if normalizePrevalence:
+        dataRange = np.max(data) - np.min(data)
+        peakPrevalences /= dataRange
+
+    # Cut off small peaks, if necessary
+    if minPeakPrevalence is not None:
+        peakBirthIndices = [peakBirthIndices[i] for i in range(len(peakBirthIndices)) if peakPrevalences[i] &gt; minPeakPrevalence]
+        peakPrevalences = np.array([peakPrevalences[i] for i in range(len(peakPrevalences)) if peakPrevalences[i] &gt; minPeakPrevalence])
+
+    # Sort the peaks by their prevalence
+    #order = np.argsort(peakPrevalences)[::-1]
+    #peakPositions = peakPositions[order]
+    #peakPrevalences = peakPrevalences[order]
+
+    return (peakBirthIndices, peakPrevalences)</code></pre>
+</details>
+</dd>
+<dt id="pepe.topology.PersistentHomology.findPeaksMulti"><code class="name flex">
+<span>def <span class="ident">findPeaksMulti</span></span>(<span>data, neighborInclusion=1, minPeakPrevalence=None, normalizePrevalence=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Identify peaks in multi-dimensional data using persistent topology.</p>
+<p>Peak prevalence is calculated as the age of topological features,
+which is not necessarily the same as the actual height of the peaks.</p>
+<p>Originally adapted from [1] (and partially from [2]), but generalized for data with
+an arbitrary number of dimensions. For background on persistence, see: [3] for
+application of persistence to signal processing, or [4] for general domain knowledge
+(these are just my personal recommendations, probably plenty of other resources out there).</p>
+<p>May struggle to find peaks in noisier data if the fluctuations due to
+noise are large enough to create a spiky-looking profile. This is because
+such fluctuations do represent topological objects, even if they are not ones
+of any physical relevance; this method does not distinguish between the two.
+In this case, smoothing functions are recommended to be used on the data before
+it is passed to this method. A higher <code>neighborInclusion</code> can partially address this.</p>
+<p>Method is not able to be optimized using <code>numba</code> (mostly due to the use of tuples,
+which <code>numba</code> can't type as easily as a list or array. While this method can identify
+peaks in 1D or 2D data, it is recommended to instead use either <code>pepe.topology.findPeaks1D()</code>
+or <code>pepe.topology.findPeaks2D()</code>, as these <em>are</em> optimized.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>np.ndarray[d]</code></dt>
+<dd>An array of data points within which to identify peaks in d-dimensional space.</dd>
+<dt><strong><code>neighborInclusion</code></strong> :&ensp;<code>int</code></dt>
+<dd>
+<p>Controls the number of neighbors on either side of a point to look
+at when deciding which peak a given point belongs to. </p>
+<p>eg. In 1D, a value of <code>1</code> means that <code>[i-1, i+1]</code> are considered neighbors,
+a value of <code>2</code> means that <code>[i-2, i-1, i+1, i+1]</code> are considered neighbors, etc.</p>
+<p>May help to supress the effects of noise in data, but should not be treated
+as a substitute for smoothing data properly beforehand.</p>
+</dd>
+<dt><strong><code>minPeakPrevalence</code></strong> :&ensp;<code>float</code> or <code>None</code></dt>
+<dd>The minimum prevalence of a peak (maximum - minimum) that will be
+returned to the user. If <code>normalizePrevalence</code> is True, this should
+be in the range <code>[0, 1]</code>, representing a percentage of the full range
+the data occupies.</dd>
+<dt><strong><code>normalizePrevalence</code></strong> :&ensp;<code>bool</code></dt>
+<dd>
+<p>Whether to normalize the prevalences such that they represent the
+percent of the data range that is spanned by a peak (True) or not (False).
+For example, if normalized, a prevalence of .4 would mean that the peak
+spans 40% of the total range of the data.</p>
+<p>Note that this normalization happens before using the minPeakPrevalence
+kwarg to clip smaller peaks, and thus the minimum value should be
+specified as a percent (eg. .3 for 30%) is the normalizePrevalence
+kwarg is True.</p>
+</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>peakPositions</code></strong> :&ensp;<code>np.ndarray[N,d]</code></dt>
+<dd>The indices of peaks in the provided data, sorted from most
+to least prevalent (persistent).</dd>
+<dt><strong><code>peakPrevalences</code></strong> :&ensp;<code>np.ndarray[N]</code></dt>
+<dd>The prevalence of each peak in the provided data, or the persistence
+of the topological feature. If <code>normalizePrevalence</code> is True, this will
+be normalized to the domain <code>[0, 1]</code>; otherwise, these values are
+equivalent to the maximum data value minus the minimum data value evaluated
+over all points that identify with a given peak.</dd>
+</dl>
+<h2 id="references">References</h2>
+<p>[1] Huber, Stefan. Persistent Topology for Peak Detection.
+<a href="https://www.sthu.org/blog/13-perstopology-peakdetection/index.html">https://www.sthu.org/blog/13-perstopology-peakdetection/index.html</a></p>
+<p>[2] Huber, Stefan. Topological peak detection in two-dimensional data.
+<a href="https://www.sthu.org/code/codesnippets/imagepers.html">https://www.sthu.org/code/codesnippets/imagepers.html</a></p>
+<p>[3] Huber, S. (2021). Persistent Homology in Data Science. In P. Haber,
+T. Lampoltshammer, M. Mayr, &amp; K. Plankensteiner (Eds.), Data Science – Analytics
+and Applications (pp. 81–88). Springer Fachmedien. <a href="https://doi.org/10.1007/978-3-658-32182-6_13">https://doi.org/10.1007/978-3-658-32182-6_13</a></p>
+<p>[4] Edelsbrunner, H., &amp; Harer, J. (2010). Computational topology: An introduction.
+Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8218-4925-5</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizePrevalence=True):
+    &#34;&#34;&#34;
+    Identify peaks in multi-dimensional data using persistent topology.
+
+    Peak prevalence is calculated as the age of topological features,
+    which is not necessarily the same as the actual height of the peaks.
+
+    Originally adapted from [1] (and partially from [2]), but generalized for data with
+    an arbitrary number of dimensions. For background on persistence, see: [3] for
+    application of persistence to signal processing, or [4] for general domain knowledge
+    (these are just my personal recommendations, probably plenty of other resources out there).
+
+    May struggle to find peaks in noisier data if the fluctuations due to
+    noise are large enough to create a spiky-looking profile. This is because
+    such fluctuations do represent topological objects, even if they are not ones
+    of any physical relevance; this method does not distinguish between the two.
+    In this case, smoothing functions are recommended to be used on the data before
+    it is passed to this method. A higher `neighborInclusion` can partially address this.
+
+    Method is not able to be optimized using `numba` (mostly due to the use of tuples,
+    which `numba` can&#39;t type as easily as a list or array. While this method can identify
+    peaks in 1D or 2D data, it is recommended to instead use either `pepe.topology.findPeaks1D()`
+    or `pepe.topology.findPeaks2D()`, as these *are* optimized.
+
+    Parameters
+    ----------
+
+    data : np.ndarray[d]
+        An array of data points within which to identify peaks in d-dimensional space.
+
+    neighborInclusion : int
+        Controls the number of neighbors on either side of a point to look
+        at when deciding which peak a given point belongs to. 
+
+        eg. In 1D, a value of `1` means that `[i-1, i+1]` are considered neighbors,
+        a value of `2` means that `[i-2, i-1, i+1, i+1]` are considered neighbors, etc.
+
+        May help to supress the effects of noise in data, but should not be treated
+        as a substitute for smoothing data properly beforehand.
+
+    minPeakPrevalence : float or None
+        The minimum prevalence of a peak (maximum - minimum) that will be
+        returned to the user. If `normalizePrevalence` is True, this should
+        be in the range `[0, 1]`, representing a percentage of the full range
+        the data occupies.
+
+    normalizePrevalence : bool
+        Whether to normalize the prevalences such that they represent the
+        percent of the data range that is spanned by a peak (True) or not (False).
+        For example, if normalized, a prevalence of .4 would mean that the peak
+        spans 40% of the total range of the data.
+
+        Note that this normalization happens before using the minPeakPrevalence
+        kwarg to clip smaller peaks, and thus the minimum value should be
+        specified as a percent (eg. .3 for 30%) is the normalizePrevalence
+        kwarg is True.
+
+    Returns
+    -------
+
+    peakPositions : np.ndarray[N,d]
+        The indices of peaks in the provided data, sorted from most
+        to least prevalent (persistent).
+
+    peakPrevalences : np.ndarray[N]
+        The prevalence of each peak in the provided data, or the persistence
+        of the topological feature. If `normalizePrevalence` is True, this will
+        be normalized to the domain `[0, 1]`; otherwise, these values are
+        equivalent to the maximum data value minus the minimum data value evaluated
+        over all points that identify with a given peak.
+
+    References
+    ----------
+
+    [1] Huber, Stefan. Persistent Topology for Peak Detection. 
+    &lt;https://www.sthu.org/blog/13-perstopology-peakdetection/index.html&gt;
+
+    [2] Huber, Stefan. Topological peak detection in two-dimensional data.
+    &lt;https://www.sthu.org/code/codesnippets/imagepers.html&gt;
+
+    [3] Huber, S. (2021). Persistent Homology in Data Science. In P. Haber,
+    T. Lampoltshammer, M. Mayr, &amp; K. Plankensteiner (Eds.), Data Science – Analytics
+    and Applications (pp. 81–88). Springer Fachmedien. &lt;https://doi.org/10.1007/978-3-658-32182-6_13&gt;
+
+    [4] Edelsbrunner, H., &amp; Harer, J. (2010). Computational topology: An introduction.
+    Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8218-4925-5
+
+    &#34;&#34;&#34; 
+    
+    # This array contains the indices of the peak that each point
+    # belongs to (assuming it does belong to a peak)
+    # We start it at -1 such that we can check if a point belongs to
+    # a certain peak with peakMembership[i,j,...] &gt;= 0
+    peakMembership = np.zeros_like(data, dtype=np.int16) - 1
+    peakBirthIndices = []
+
+    # Go through each value in our data, starting from highest and ending
+    # with lowest. This is important because we will be merging points into
+    # groups as we go, and so starting with the highest values means that
+    # points will almost never have to be overwritten.
+    # This is a bit complex here because we could have any number of dimensions, but
+    # the gist is that we sort a flattened version of the array from highest to lowest,
+    # then turn those 1d indices into Nd indices, then pair the indices together.
+    # Each element of this array will be a set of indices that can index a single
+    # element of data. 
+    # eg. data[sortedIndices[0]] will be the largest value (for any number of dimensions)
+    sortedIndices = np.dstack(np.unravel_index(np.argsort(data.flatten())[::-1], data.shape))[0]
+    # To be able to actually index data with an element, they need to all be tuples
+    sortedIndices = [tuple(si) for si in sortedIndices]
+   
+    # I&#39;ve avoided using the index i here since we are iterating over sets of indices,
+    # not just a single number
+    for si in sortedIndices:
+        # See if any neighbors have been assigned to a peak
+        assignedNeighbors = [n for n in _iterNeighbors(si, data.shape, neighborInclusion) if peakMembership[n] &gt;= 0]
+
+        # If there aren&#39;t any assigned neighbors yet, then we create a new
+        # peak
+        if len(assignedNeighbors) == 0:
+            peakMembership[si] = len(peakBirthIndices)
+            peakBirthIndices.append(si)
+
+        # If only a single one has been assigned, or all of the assigned peaks have the
+        # same membership, then this point joins that peak
+        elif len(assignedNeighbors) == 1 or len(np.unique([(peakMembership[n] for n in assignedNeighbors)])) == 1:
+            peakMembership[si] = peakMembership[assignedNeighbors[0]]
+
+        # Otherwise, we have to resolve a conflict between multiple, in which the
+        # oldest one gains the new point.
+        else:      
+            # Find which one is the oldest
+            order = np.argsort(data[peakBirthIndices[(peakMembership[n] for n in assignedNeighbors)]])[::-1]
+
+            # New point joins oldest peak
+            peakMembership[si] = peakMembership[assignedNeighbors[order][0]]
+
+    # This is the position of the proper crest for each peak
+    peakPositions = peakBirthIndices
+
+    # Calculate the prevalence of each peak as the height of the birth points minus the
+    # height of the death point
+    # We could do this using the arrays we&#39;ve stored along the way, but it&#39;s easier just to take the
+    # max/min heights directly from the data
+    peakPrevalences = np.array([data[peakPositions[i]] - np.min(data[peakMembership == i]) for i in range(len(peakBirthIndices))])
+    # Also note that I have made the decision here to normalize these prevalences by the total range
+    # of the data, such that a prevalence of .6 means that the peak spans 60% of the range of the data.
+    # This can be altered with the normalizePrevalence kwarg
+    if normalizePrevalence:
+        dataRange = np.max(data) - np.min(data)
+        peakPrevalences /= dataRange
+
+    # Cut off small peaks, if necessary
+    if minPeakPrevalence is not None:
+        peakPositions = np.array([peakPositions[i] for i in range(len(peakPositions)) if peakPrevalences[i] &gt; minPeakPrevalence])
+        peakPrevalences = np.array([peakPrevalences[i] for i in range(len(peakPrevalences)) if peakPrevalences[i] &gt; minPeakPrevalence])
+
+    # Sort the peaks by their prevalence
+    #order = np.argsort(peakPrevalences)[::-1]
+    #peakPositions = peakPositions[order]
+    #peakPrevalences = peakPrevalences[order]
+
+    return (peakPositions, peakPrevalences)</code></pre>
 </details>
 </dd>
 </dl>
@@ -408,8 +1311,9 @@ kwarg is True.</p>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="pepe.topology.PersistentHomology.findPeaks" href="#pepe.topology.PersistentHomology.findPeaks">findPeaks</a></code></li>
+<li><code><a title="pepe.topology.PersistentHomology.findPeaks1D" href="#pepe.topology.PersistentHomology.findPeaks1D">findPeaks1D</a></code></li>
 <li><code><a title="pepe.topology.PersistentHomology.findPeaks2D" href="#pepe.topology.PersistentHomology.findPeaks2D">findPeaks2D</a></code></li>
+<li><code><a title="pepe.topology.PersistentHomology.findPeaksMulti" href="#pepe.topology.PersistentHomology.findPeaksMulti">findPeaksMulti</a></code></li>
 </ul>
 </li>
 </ul>

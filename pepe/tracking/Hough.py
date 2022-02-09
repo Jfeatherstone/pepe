@@ -12,7 +12,19 @@ import matplotlib.pyplot as plt
 
 def houghCircle(singleChannelFrame, radius, edgeDetection='laplacian', blurKernel=None, cannyEdgeThreshold=70, accumulatorThreshold=20, radiusTolerance=15, minSeparation=None, draw=False):
     """
-    Perform Hough circle detection on the gradient squared of the provided image.
+    Perform Hough circle detection on the provided image.
+
+    For background on the Hough method (especially in the context
+    of granular materials), see [1].
+
+    OpenCV's implementation of the  Hough transform is used, so this
+    method can be considered a wrapper for `cv2.HoughCircle()`.
+
+    Tends to be less accurate than the convolution method (see
+    `pepe.tracking.convCircle()`) but usually offers shorter computation
+    times, especially when the radius is not well known. For cases
+    in which the radius is known to a tolerance of ~10 pixels, the convolution
+    method is recommended.
 
     Parameters
     ----------
@@ -61,6 +73,14 @@ def houghCircle(singleChannelFrame, radius, edgeDetection='laplacian', blurKerne
 
     radii : np.ndarray[N]
         The detected circles' radii.
+
+    References
+    ----------
+
+    [1] Franklin, S. V., & Shattuck, M. D. (Eds.). (2016). Handbook
+    of Granular Materials. Chapter 2: Experimental Techniques. p.68-70.
+    CRC Press. https://doi.org/10.1201/b19291
+
     """
 
     # Check if we are given a range of radii or just a single value

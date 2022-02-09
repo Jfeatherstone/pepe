@@ -12,7 +12,7 @@ This is a collection of tools for working with photoelastic particle images, inc
 
 ## Documentation
 
-Maybe one day :)
+[Here](http://jfeatherstone.xyz/pepe/pepe)
 
 ## Requirements
 
