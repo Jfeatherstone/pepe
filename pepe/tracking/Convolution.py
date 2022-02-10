@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 import numba
 from scipy.fft import fft2, ifft2
 
-from pepe.preprocess import circularMask
+from pepe.preprocess import circularMask, rectMask
 from pepe.topology import findPeaks2D
 
 
-def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, peakDownsample=10, minPeakPrevalence=.1, draw=False, intensitySoftmax=1.2):
+def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, peakDownsample=10, minPeakPrevalence=.1, intensitySoftmax=1.2, invert=False, debug=False):
     """
     Perform convolution circle detection on the provided image.
 
@@ -91,14 +91,19 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
 
         See `pepe.topology.findPeaks2D()` for more information.
 
-    draw : bool
-        Whether or not to draw debug information on a plot.
-        
     intensitySoftmax : float
         Value at which to cap the intensity values in the image, calculated as
         this value multipled by the mean of the image.
 
         Set to `None` to skip this preprocessing step.
+
+    debug : bool
+        Whether or not to draw debug information on a plot. 
+
+    invert : bool
+        If particles appear dark on a bright background, this will invert the
+        image (and convolution peak finding will go from looking for maxima
+        to looking for minima).
    
     Returns
     -------
@@ -121,9 +126,9 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
 
     # General housekeeping of arguments, see if we need to parse anything
     if offscreenParticles:
-        paddingFactor = 2.5
+        paddingFactor = 2.
     else:
-        paddingFactor = 1.5
+        paddingFactor = 1.1
 
     if peakDownsample is None:
         peakDownsample = 1
@@ -146,23 +151,26 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
     # Start with just the mean of the possible radii options
     initialRadius = np.mean(possibleRadii)
 
-    # This is the amount that the coordinates will have to be shifted
-    # eventually. See documentation for circularKernelFind for more info.
-    # If we are varying the radius, this isn't actually true, since this might
-    # have to be changed eventually, which is why we call this the initial offset
-    initialConvOffset = np.repeat(int(-initialRadius*(paddingFactor+1)), 2)
-
     if singleChannelFrame.ndim > 2:
         imageArr = np.mean(singleChannelFrame, axis=-1)
     else:
-        imageArr = singleChannelFrame
+        imageArr = np.copy(singleChannelFrame)
 
     if intensitySoftmax is not None:
         softmax = np.mean(imageArr) * intensitySoftmax
-        imageArr[imageArr >= softmax] = softmax
+        if invert:
+            imageArr[imageArr <= softmax] = softmax
+        else:
+            imageArr[imageArr >= softmax] = softmax
+
+    if invert:
+        imageArr = 255 - imageArr
 
     # Calculate convolution
     convArr = circularKernelFind(imageArr, initialRadius, fftPadding=int(initialRadius*paddingFactor))
+
+    if invert:
+        convArr = np.max(convArr) - convArr
 
     # Downsample data by 5-10x and run peak detection
     downsampledConvArr = cv2.resize(cv2.blur(convArr, (peakDownsample,peakDownsample)), (0,0),
@@ -170,7 +178,7 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
 
     peakPositions, peakPrevalences = findPeaks2D(downsampledConvArr, minPeakPrevalence=minPeakPrevalence)
 
-        
+     
     # Look around each peak to find the real peak in the full-resolution image
     refinedPeakPositions = []
     refinedRadii = []
@@ -186,7 +194,7 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
             maximumValues = np.zeros(len(possibleRadii))
             maximumPositions = np.zeros((len(possibleRadii), 2))
 
-            upsampledPosition = np.array([peakPositions[i][0]*peakDownsample, peakPositions[i][1]*peakDownsample]) + initialConvOffset
+            upsampledPosition = np.array([peakPositions[i][0]*peakDownsample, peakPositions[i][1]*peakDownsample])
             for j in range(len(possibleRadii)):
                 # This is the point in the real image (not the conv arr)
                 imagePadding = int(possibleRadii[j]*1.2)
@@ -213,7 +221,7 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
             refinedRadii.append(possibleRadii[np.argmax(maximumValues)])
 
         else:
-
+            # Position of the peaks in the convolution image (NOT the real image)
             upsampledPosition = np.array([peakPositions[i][0]*peakDownsample, peakPositions[i][1]*peakDownsample])
             # This just looks long because my naming is a little verbose
             # + we also have to make sure we don't accidentally go off of the image
@@ -228,25 +236,21 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
             refinementOffset = realLocalMax - np.repeat(localPadding, 2)
 
             # Now put everything together the coordinates of the circle in the original image
-            refinedPeakPositions.append(tuple(upsampledPosition + refinementOffset + initialConvOffset))
+            refinedPeakPositions.append(tuple(upsampledPosition + refinementOffset))
             refinedRadii.append(initialRadius)
 
 
     # Debug option
-    if draw:
+    if debug:
         fig = plt.figure(figsize=(9,4))
 
-        #ax0 = fig.add_subplot(1, 2, 1)
-        #ax0.imshow(singleChannelFrame)
-        #ax0.set_title('Original image')
-
         ax1 = fig.add_subplot(1, 2, 1, projection='3d')
-        ax1.plot_surface(peakDownsample*np.arange(downsampledConvArr.shape[1]),
-                        peakDownsample*np.vstack(np.arange(downsampledConvArr.shape[0])), downsampledConvArr, cmap=plt.cm.jet)
+        ax1.plot_surface(np.arange(convArr.shape[1]),
+                        np.vstack(np.arange(convArr.shape[0])), convArr, cmap=plt.cm.jet)
         ax1.set_title('Convolution')
 
         ax2 = fig.add_subplot(1, 2, 2)
-        ax2.imshow(singleChannelFrame)
+        ax2.imshow(imageArr)
         ax2.set_title('Detected circles')
         for i in range(len(refinedPeakPositions)):
             c = plt.Circle(refinedPeakPositions[i][::-1], refinedRadii[i], color='red', fill=False, linewidth=2)
@@ -257,11 +261,11 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
     return refinedPeakPositions, refinedRadii
 
 
-def circularKernelFind(singleChannelFrame, radius, fftPadding, debug=False, trimPadding=False):
+def circularKernelFind(singleChannelFrame, radius, fftPadding, paddingValue=None, debug=False):
     """
     Calculate the convolution of a circular mask with an image,
     identifying likely locations of circles within the image. Adapted from
-    method described in pages 64-68 of [1].
+    method described in [1].
 
     To perform the convolution, we take the product of the fft of each the
     kernel and image, and then ifft the result to transform back to real space.
@@ -290,116 +294,108 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, debug=False, trim
         though, less padding can be used if circles are not expected to often
         be located near the edges.
 
+    paddingValue : [float, `'sigmoid'`, or `None`]
+        What value to fill in for the extra padding that is added during the fft/ifft.
+
+        `None` leaves the value at 0.
+
+        `'sigmoid'` will create a smooth-ish transition to 0.
+
+        Any float value will be inserted into every point.
+
     debug : bool
         Whether or not to plot various quantities of the calculation for inspection
         at the end of the evaluation.
 
-    trimPadding : bool
-        Whether to trim the added padding to the image (True) or leave it in the final
-        result (False). If trying to identify circles near the outskirts of the image,
-        it is recommended to not trim the padding off, since the minimum of the function
-        may be located there. In this case, the grid point at which the intensity is maximum
-        will be offset from the actual center of that feature by an amount:
-
-        `(-radius - fftPadding, -radius - fftPadding)`.
-
-        If the padding is removed, the offset will simply be:
-
-        `(-radius, -radius)`.
-
-        This offset arises from the fact that the convolutional method expects the center of
-        the kernel to be located at `(0, 0)`, but for any real image, we cannot have negative
-        coordinates. We center the kernel in the top left corner of an image, but the center
-        of the circle has to be at `(radius, radius)` for the entire shape to show up.
     Returns
     -------
+
+    chiSqr : np.ndarray[H,W]
+        The convolution of the kernel with the image. Larger values represent
+        higher likelihood that there is a particle centered there.
 
     References
     ----------
 
-    [1] Franklin, S.V., Shattuck, M.D. Handbook of Granular Materials (2016) Chapter 2:
-        Experimental Techniques
+    [1] Franklin, S. V., & Shattuck, M. D. (Eds.). (2016). Handbook
+    of Granular Materials. Chapter 2: Experimental Techniques. p.64-68.
+    CRC Press. https://doi.org/10.1201/b19291
     """
 
     if singleChannelFrame.ndim > 2:
         imageArr = np.mean(singleChannelFrame, axis=-1)
     else:
         imageArr = singleChannelFrame
-    ## First, we calculate conv(I^2, W)
+
+    fftPadding = int(fftPadding)
 
     # Pad the proper image
     paddedImageArr = np.zeros((int(imageArr.shape[0] + 2*fftPadding), int(imageArr.shape[1] + 2*fftPadding)))
-    # Note that the intensity is squared here, since we don't want to square the padding
-    # later on
-    #paddedImageArr[fftPadding:-fftPadding,fftPadding:-fftPadding] = imageArr**2
     paddedImageArr[fftPadding:-fftPadding,fftPadding:-fftPadding] = imageArr
 
-    # Instead of just 0s in the padded area, we want to put in some real-ish values
-    # We just use the tanh function to do this (though something like a sigmoid or (r)elu
-    # would probably work fine too)
-    #rowMat = (1 + np.tanh(3 * np.arange(-0.5, 0.5, paddedImageArr.shape[0])))/2
-    #columnMat = (1 + np.tanh(3 * np.arange(-0.5, 0.5, paddedImageArr.shape[1])))/2 
-    #Y, X = np.ogrid[:paddedImageArr.shape[0], :paddedImageArr.shape[1]]
-    #paddingValues = .1/(1 + np.exp(3*(Y/paddedImageArr.shape[0] - .5)**2 + 3*(X/paddedImageArr.shape[1] - .5)**2))
+    # Both dimensions will always have the same first crop index, but possibly a different second one
+    cropBounds = [int(fftPadding + radius), int(-fftPadding + radius), int(-fftPadding + radius)]
+    # If the fftpadding and the radius are exactly the same, we get some weird behavior
+    # This happens because python can index negative values as that element from the end of
+    # the array, but indexing -0 just gives 0, and so it gives you a (0,0) array.
+    if cropBounds[1] == 0:
+        cropBounds[1] = None
+        cropBounds[2] = None
 
-    # Just some flat value
-    #paddingValues = np.zeros_like(paddedImageArr) + .02
+    # We have a couple options for what values to put in the padding
+    if paddingValue is None or paddingValue == 0:
+        # Do nothing, and leave the value at 0
+        pass
 
-    # Now fill in the values
-    #paddedImageArr[:fftPadding] = paddingValues[:fftPadding]
-    #paddedImageArr[-fftPadding:] = paddingValues[-fftPadding:]
-    #paddedImageArr[:,:fftPadding] = paddingValues[:,:fftPadding]
-    #paddedImageArr[:,-fftPadding:] = paddingValues[:,-fftPadding:]
+    elif paddingValue == 'sigmoid':
+        # Sigmoid gives a smoothish decay from the image to 0 at the boundaries
+        # Most of the constants here are just arbitrarily chosen to make things look good
+        # Top
+        paddedImageArr[:fftPadding] += np.multiply.outer(2/(1 + np.exp(np.linspace(0, 5, fftPadding))), paddedImageArr[fftPadding])[::-1,:] 
+        # Bottom
+        paddedImageArr[-fftPadding:] += np.multiply.outer(2/(1 + np.exp(np.linspace(0, 5, fftPadding))), paddedImageArr[-fftPadding-1])
+        # Left
+        paddedImageArr[:,:fftPadding] += np.multiply.outer(paddedImageArr[:,fftPadding], 2/(1 + np.exp(np.linspace(0, 5, fftPadding))))[:,::-1]
+        # Right
+        paddedImageArr[:,-fftPadding:] += np.multiply.outer(paddedImageArr[:,-fftPadding-1], 2/(1 + np.exp(np.linspace(0, 5, fftPadding))))
 
-    # Top
-    paddedImageArr[:fftPadding] += np.multiply.outer(2/(1 + np.exp(np.arange(0, 5, 5/fftPadding))), paddedImageArr[fftPadding])[::-1,:] 
-    #paddedImageArr[:fftPadding] += np.multiply.outer(4/(1 + np.exp(np.arange(0, 3, 3/fftPadding))), np.repeat(np.mean(imageArr[0]), paddedImageArr.shape[1]))[::-1,:]
-    # Bottom
-    paddedImageArr[-fftPadding:] += np.multiply.outer(2/(1 + np.exp(np.arange(0, 5, 5/fftPadding))), paddedImageArr[-fftPadding-1])
+    else:
+        # Just put a fixed value in
+        paddedImageArr[:fftPadding] = paddingValue
+        paddedImageArr[-fftPadding:] = paddingValue
+        paddedImageArr[fftPadding:-fftPadding,:fftPadding] = paddingValue
+        paddedImageArr[fftPadding:-fftPadding,-fftPadding:] = paddingValue
 
-    # Left
-    paddedImageArr[:,:fftPadding] += np.multiply.outer(paddedImageArr[:,fftPadding], 2/(1 + np.exp(np.arange(0, 5, 5/fftPadding))))[:,::-1]
-    # Right
-    paddedImageArr[:,-fftPadding:] += np.multiply.outer(paddedImageArr[:,-fftPadding-1], 2/(1 + np.exp(np.arange(0, 5, 5/fftPadding))))
-
-
-    #center = np.array([paddedImageArr.shape[0]/2, paddedImageArr.shape[1]/2])
     center = np.array([radius,radius])
     # To be able to properly convolute the kernel with the image, they have to
     # be the same size, so just just put our kernel into an array the same size
     # as the image (though most entries will just be zero)
     kernelArr = circularMask(paddedImageArr.shape, center, radius)[:,:,0].astype(np.float64)
 
-    # First convolutional term (and clip out the padding)
-    #convTerm1 = ifft2(fft2(paddedImageArr) * fft2(kernelArr))
+    # First convolutional term
     convTerm1 = ifft2(fft2(paddedImageArr**2) * fft2(kernelArr))
-
-    if trimPadding:
-        convTerm1 = convTerm1[fftPadding:-fftPadding,fftPadding:-fftPadding]
+    # Trim padding
+    convTerm1 = convTerm1[cropBounds[0]:cropBounds[1],cropBounds[0]:cropBounds[2]]
 
     # Second term is pretty easy since we choose our weight function to be our
-    # particle mask
-    # This value is explicitly:
-    #convTerm2 = ifft2(fft2(kernelArr) * fft2(kernelArr**2))
-    # But for our case, this is just the kernel itself (since it only has values of 0 and 1)
-    convTerm2 = kernelArr
-    #convTerm2 = 2 * ifft2(fft2(paddedImageArr) * fft2(kernelArr))
+    # particle mask (and it just has 0s and 1s, so it is equal to it's square)
+    convTerm2 = 2 * ifft2(fft2(paddedImageArr) * fft2(kernelArr))
+    # Trim padding
+    convTerm2 = convTerm2[cropBounds[0]:cropBounds[1],cropBounds[0]:cropBounds[2]]
 
-    if trimPadding:
-        convTerm2 = convTerm2[fftPadding:-fftPadding,fftPadding:-fftPadding]
-
-    # This is technically <W I_p^2>, but W = I_p which only have 0s or 1s
-    normalizationTerm = np.sum(kernelArr)#[fftPadding:-fftPadding,fftPadding:-fftPadding])
-
-    if trimPadding:
-        normalizationTerm = np.sum(kernelAr[fftPadding:-fftPadding,fftPadding:-fftPadding])
+    # For the normalization term, we want to sum all parts of the kernel that are
+    # on screen (in the original image's frame) as we translate it across the image.
+    originalImageMask = rectMask(paddedImageArr.shape, np.repeat(fftPadding, 2), np.array(imageArr.shape))[:,:,0]
+    normalizationTerm = ifft2(fft2(originalImageMask) * fft2(kernelArr))
+    # Trim padding
+    normalizationTerm = normalizationTerm[cropBounds[0]:cropBounds[1],cropBounds[0]:cropBounds[2]]
 
     # Put everything together
     # Technically there is a +1 here, but that won't affect any minima, so we don't really care
     chiSqr = np.abs((convTerm1 - convTerm2) / normalizationTerm)
 
     if debug:
-        fig, ax = plt.subplots(1, 3, figsize=(10,4))
+        fig, ax = plt.subplots(1, 4, figsize=(13,4))
 
         ax[0].imshow(kernelArr)
         ax[0].set_title('Kernel')
@@ -407,12 +403,13 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, debug=False, trim
         ax[1].imshow(paddedImageArr)
         ax[1].set_title('Padded image')
 
-        ax[2].imshow(chiSqr)
-        ax[2].set_title('Real-space convolution (Norm)')
+        ax[2].imshow(np.abs(normalizationTerm))
+        ax[2].set_title('Normalization')
+
+        ax[3].imshow(chiSqr)
+        ax[3].set_title('Real-space convolution (Norm)')
 
         fig.tight_layout()
-        plt.show()
-
 
     return chiSqr
 
