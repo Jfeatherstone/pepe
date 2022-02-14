@@ -258,7 +258,7 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
 
         fig.tight_layout()
 
-    return refinedPeakPositions, refinedRadii
+    return np.array(refinedPeakPositions), np.array(refinedRadii)
 
 
 def circularKernelFind(singleChannelFrame, radius, fftPadding, paddingValue=None, debug=False):

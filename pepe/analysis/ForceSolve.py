@@ -486,7 +486,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
             # Check to see if there is a new peak that doesn't have
             # a previous force close to it
             for j in range(len(peakBetaArr)):
-                if np.min(differenceArr[j]) > newBetaMinSeparation:
+                if np.min(differenceArr[j]) > newBetaMinSeparation and np.max(differenceArr[j]) < 2*np.pi - newBetaMinSeparation:
                     # Add the new force
                     betaArr = np.append(betaArr, peakBetaArr[j])
                     forceArr = np.append(forceArr, .1) # Value isn't too imporant here
@@ -830,7 +830,7 @@ def g2ForceCalibrationDebug(fSigma, radius, pxPerMeter, alphaArr=np.array([0., 0
 
 
 #@numba.jit(nopython=True)
-def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=None, contactPadding=10, g2EdgePadding=.95, contactG2Threshold=1e-4, angleClusterThreshold=.2, contactMaskRadius=50, maxContactExtent=.75):
+def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=None, contactPadding=10, g2EdgePadding=.95, contactG2Threshold=1e-4, angleClusterThreshold=.2, contactMaskRadius=50, extendedContacts=False, maxContactExtent=.75):
     """
     Detect potential particle contacts with the wall.
 
@@ -875,6 +875,9 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
     contactMaskRadius : int
         The size of the circular mask that is used to determine average gradient squared
         value around detected contacts.
+
+    extendedContacts : bool
+        Whether or not to break up larger potential contacts in multiple. See `maxContactExtent`.
 
     maxContactExtent : float
         The maximum range of angles that can be included in a single cluster. If any particular
@@ -995,42 +998,43 @@ def detectWallContacts(centers, radii, boundaryMask, photoelasticSingleChannel=N
             # -------------------------------------
             # Divide up big clusters (if necessary)
             # -------------------------------------
-            newBetas = np.zeros(0)
-            for j in range(numClusters):
-                # First, calculate the extent of the cluster
-                # This isn't as simple as subtract max from min, because
-                # of the periodicity, so the most reliable method is as follows
+            if extendedContacts:
+                newBetas = np.zeros(0)
+                for j in range(numClusters):
+                    # First, calculate the extent of the cluster
+                    # This isn't as simple as subtract max from min, because
+                    # of the periodicity, so the most reliable method is as follows
 
-                # Locate every unique angle in this cluster (in order)
-                uniqueBetas = np.sort(np.unique(angles[labels == j]))
+                    # Locate every unique angle in this cluster (in order)
+                    uniqueBetas = np.sort(np.unique(angles[labels == j]))
 
-                # If you only have 1 beta, then clearly we don't need to divide
-                # this cluster up
-                if len(uniqueBetas) < 2:
-                    newBetas = np.append(newBetas, clusterBetas[j])
-                    continue
+                    # If you only have 1 beta, then clearly we don't need to divide
+                    # this cluster up
+                    if len(uniqueBetas) < 2:
+                        newBetas = np.append(newBetas, clusterBetas[j])
+                        continue
 
-                clusterBounds = np.array([np.max(np.array([uniqueBetas[0], uniqueBetas[-1]])), np.min(np.array([uniqueBetas[0], uniqueBetas[-1]]))])
-                clusterExtent = clusterBounds[0] - clusterBounds[1]
+                    clusterBounds = np.array([np.max(np.array([uniqueBetas[0], uniqueBetas[-1]])), np.min(np.array([uniqueBetas[0], uniqueBetas[-1]]))])
+                    clusterExtent = clusterBounds[0] - clusterBounds[1]
 
-                # This is usually a good way to identify that the region
-                # passes across the top of the circle
-                if clusterExtent < .01 or 2*np.pi - clusterExtent < .01:
-                #if (clusterBetas[j] < clusterBounds[0] and clusterBetas[j] > clusterBounds[1]):
-                    clusterBounds = [np.max(uniqueBetas[uniqueBetas < 0]), np.min(uniqueBetas[uniqueBetas > 0])]
-                    clusterExtent = 2*np.pi - (clusterBounds[1] - clusterBounds[0])
+                    # This is usually a good way to identify that the region
+                    # passes across the top of the circle
+                    if (clusterExtent < .01 or 2*np.pi - clusterExtent < .01) and np.min(uniqueBetas) < 0 and np.max(uniqueBetas) > 0:
+                    #if (clusterBetas[j] < clusterBounds[0] and clusterBetas[j] > clusterBounds[1]):
+                        clusterBounds = [np.max(uniqueBetas[uniqueBetas < 0]), np.min(uniqueBetas[uniqueBetas > 0])]
+                        clusterExtent = 2*np.pi - (clusterBounds[1] - clusterBounds[0])
 
-                if clusterExtent > maxContactExtent:
-                    numNewClusters = np.int16(np.ceil(clusterExtent / maxContactExtent))
-                    dBeta = clusterExtent/numNewClusters
-                    newBetas = np.append(newBetas, np.linspace(clusterBetas[j] + clusterExtent/2., clusterBetas[j] - clusterExtent/2., numNewClusters))
-                else:
-                    newBetas = np.append(newBetas, clusterBetas[j])
-                    
-            #print(newBetas)
+                    if clusterExtent > maxContactExtent:
+                        numNewClusters = np.int16(np.ceil(clusterExtent / maxContactExtent))
+                        dBeta = clusterExtent/numNewClusters
+                        newBetas = np.append(newBetas, np.linspace(clusterBetas[j] + clusterExtent/2., clusterBetas[j] - clusterExtent/2., numNewClusters))
+                    else:
+                        newBetas = np.append(newBetas, clusterBetas[j])
+                        
+                #print(newBetas)
 
-            clusterBetas = newBetas.copy()
-            numClusters = len(clusterBetas)
+                clusterBetas = newBetas.copy()
+                numClusters = len(clusterBetas)
 
             # Now we want to recalculate our centroids, since there are
             # potentially some new ones
