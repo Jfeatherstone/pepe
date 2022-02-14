@@ -217,7 +217,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTol=.5, betaTol=.5, alphaTol=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.5, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8):
     """
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -284,21 +284,21 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         The upper and lower limits for the values of alpha that the minimizer can explore, 
         assuming that `useTolerance` is set to False.
 
-    forceTol : float
+    forceTolerance : float
         If `useTolerance` is set to True, this value will be used to calculate the bounds for each
         force individually, as the initial value minus this tolerance, and the initial value plus
         this tolerance.
 
         Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
 
-    betaTol : float
+    betaTolerance : float
         If `useTolerance` is set to True, this value will be used to calculate the bounds for each
         beta individually, as the initial value minus this tolerance, and the initial value plus
         this tolerance.
 
         Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
 
-    alphaTol : float
+    alphaTolerance : float
         If `useTolerance` is set to True, this value will be used to calculate the bounds for each
         alpha individually, as the initial value minus this tolerance, and the initial value plus
         this tolerance.
@@ -354,20 +354,20 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     
     # Same deal for all of the tolerances (we don't do bound intervals, since tolerances
     # are the recommended way to handle parameters bounds)
-    if type(forceTol) is not list:
-        forceTolList = [forceTol for i in range(numFits)]
+    if type(forceTolerance) is not list:
+        forceTolList = [forceTolerance for i in range(numFits)]
     else:
-        forceTolList = forceTol
+        forceTolList = forceTolerance
 
     if type(betaTol) is not list:
-        betaTolList = [betaTol for i in range(numFits)]
+        betaTolList = [betaTolerance for i in range(numFits)]
     else:
-        betaTolList = betaTol
+        betaTolList = betaTolerance
 
     if type(alphaTol) is not list:
-        alphaTolList = [alphaTol for i in range(numFits)]
+        alphaTolList = [alphaTolerance for i in range(numFits)]
     else:
-        alphaTolList = alphaTol
+        alphaTolList = alphaTolerance
 
     # Make sure everything is the same length
     assert len(parametersToFitList) == numFits, 'Invalid parametersToFit provided'
