@@ -12,7 +12,7 @@ from scipy.signal import find_peaks
 
 import matplotlib.pyplot as plt
 
-def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={}):
+def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={}, g2Cal=None):
     """
     Calculate the approximate forces on each particle based on the photoelastic response.
     No optimization/gradient descent is done in this method; this should be used either where
@@ -91,6 +91,11 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
         boundaries are being included in the solver. If none are provided, relevant
         values are carried over from the kwargs for this method (`contactPadding`, 
         `g2EdgePadding`, `contactMaskRadius`, `contactG2Threshold`).
+
+    g2Cal : float
+        Gradient squared to force calibration value. For numerous calls of the
+        function, it is recommended to calculate this value once externally,
+        and pass it in. If left as None, will be recalculated internally.
     """
 
     # We are passed centers and radii
@@ -166,7 +171,8 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
 
     # Find G2 calibration value
     # Mean of the radii should be fine, though TODO would be a good idea to have options here
-    g2Cal = g2ForceCalibration(fSigma, np.mean(radii), pxPerMeter, brightfield=brightfield)
+    if g2Cal is None:
+        g2Cal = g2ForceCalibration(fSigma, np.mean(radii), pxPerMeter, brightfield=brightfield)
 
     # Figure out how much of the particle we will be calculating the g2 over
     if g2EdgePadding < 1. and g2EdgePadding > 0:
@@ -217,7 +223,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.5, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8):
     """
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -359,12 +365,12 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     else:
         forceTolList = forceTolerance
 
-    if type(betaTol) is not list:
+    if type(betaTolerance) is not list:
         betaTolList = [betaTolerance for i in range(numFits)]
     else:
         betaTolList = betaTolerance
 
-    if type(alphaTol) is not list:
+    if type(alphaTolerance) is not list:
         alphaTolList = [alphaTolerance for i in range(numFits)]
     else:
         alphaTolList = alphaTolerance
@@ -424,7 +430,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
                 # otherwise the bounds are just the initial value +/- the tolerances
                 params.add(f'f{j}', value=forceArr[j], vary='f' in parametersToFitList[i], min=max(forceArr[j]-forceTolList[i], 0), max=forceArr[j]+forceTolList[i])
                 params.add(f'b{j}', value=betaArr[j], vary='b' in parametersToFitList[i], min=max(betaArr[j]-betaTolList[i], -np.pi), max=min(betaArr[j]+betaTolList[i], np.pi))
-                params.add(f'a{j}', value=alphaArr[j], vary='a' in parametersToFitList[i], min=max(alphaArr[j]-alphaTolList[i], 0), max=alphaArr[j]+alphaTolList[i])
+                params.add(f'a{j}', value=alphaArr[j], vary='a' in parametersToFitList[i], min=alphaArr[j]-alphaTolList[i], max=alphaArr[j]+alphaTolList[i])
             else:
                 params.add(f'f{j}', value=forceArr[j], vary='f' in parametersToFitList[i], min=forceBounds[0], max=forceBounds[1])
                 params.add(f'b{j}', value=betaArr[j], vary='b' in parametersToFitList[i], min=betaBounds[0], max=betaBounds[1])
@@ -527,6 +533,9 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
 @numba.jit(nopython=True)
 def singleParticleForceBalance(forceArr, alphaArr, betaArr):
     """
+    **Does not currently work! Any calls to this function will just return the original
+    arrays**
+
     Takes a set of forces acting on a single particle and ensures they obey
     force balance.
 
@@ -555,6 +564,10 @@ def singleParticleForceBalance(forceArr, alphaArr, betaArr):
     np.ndarray[N] : Balanced contact angles alpha
 
     """
+
+    # TODO: Get this function working
+    print("Warning: force balance is not yet implemented, do not call the singleParticleForceBalance function!")
+    return forceArr, alphaArr
 
     # Number of contacts (coordination number, often denoted by z)
     numContacts = len(forceArr)
