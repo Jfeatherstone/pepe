@@ -440,7 +440,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         # Now do the optimization
         result = minimize(objectiveFunction, params,
                          args=(maskedImage, z, radius, center),
-                         method=methodList[i], nan_policy='omit', max_nfev=maxEvalsList[i])
+                         method=methodList[i], max_nfev=maxEvalsList[i])
 
         # Copy over the new values of the forces, alphas, and betas
         for j in range(z):
