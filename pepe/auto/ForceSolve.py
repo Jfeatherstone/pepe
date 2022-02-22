@@ -10,13 +10,13 @@ import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw
 from IPython.display import clear_output
 
-from pepe.preprocess import checkImageType
+from pepe.preprocess import checkImageType, lightCorrectionDiff, circularMask
 from pepe.analysis import initialForceSolve, forceOptimize, gSquared, g2ForceCalibration, singleParticleForceBalance
 from pepe.tracking import houghCircle, convCircle
 from pepe.simulate import genSyntheticResponse
 from pepe.utils import genRandomColors, preserveOrderArgsort, rectangularizeForceArrays
 
-def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, correctionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, maskImage=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True):
+def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, maskImage=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True):
     """
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be saved to a text file and optionally compiled into
@@ -47,9 +47,10 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
                 "imageEndIndex": imageEndIndex,
                 "imageStartIndex": imageStartIndex,
                 "showProgressBar": showProgressBar,
-                "correctionImage": correctionImage,
+                "lightCorrectionImage": lightCorrectionImage,
                 "lightCorrectionVerticalMask": lightCorrectionVerticalMask,
                 "lightCorrectionHorizontalMask": lightCorrectionHorizontalMask,
+                "g2CalibrationImage": g2CalibrationImage,
                 "maskImage": maskImage,
                 "circleDetectionMethod": circleDetectionMethod,
                 "guessRadius": guessRadius,
@@ -98,9 +99,16 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
         bar = progressbar.ProgressBar(max_value=len(imageFiles))
 
     # This will calculation the light correction across the images 
-    if settings["correctionImage"] is not None:
-        cImageProper = checkImageType(settings["correctionImage"])
-        lightCorrection = lightCorrectionDiff(cImageProper, settings["lightCorrectionVerticalMask"], settings["lightCorrectionHorizontalMask"])
+    if settings["lightCorrectionImage"] is not None:
+        cImageProper = checkImageType(settings["lightCorrectionImage"])
+        vMask = checkImageType(settings["lightCorrectionVerticalMask"])
+        hMask = checkImageType(settings["lightCorrectionHorizontalMask"])
+
+        if vMask.ndim == 3:
+            vMask = vMask[:,:,0]
+        if hMask.ndim == 3:
+            hMask = hMask[:,:,0]
+        lightCorrection = lightCorrectionDiff(cImageProper, vMask, hMask)
     else:
         # It probably isn't great hygiene to have this variableflip between a single
         # value and an array, but you can always add a scalar to a numpy array, so
@@ -128,6 +136,22 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
     else:
         print(f'Error: circle detection option \'{settings["circleDetectionMethod"]}\' not recognized!')
         return None
+
+    checkMinG2 = False
+    if settings["g2CalibrationImage"] is not None:
+        g2CalImage = checkImageType(settings["g2CalibrationImage"])
+
+        g2CalPEImage = cv2.blur((g2CalImage[:,:,settings["photoelasticChannel"]] + lightCorrection).astype(np.float64) / 255, (settings["peBlurKernel"],settings["peBlurKernel"]))
+        # Locate particles
+        centers, radii = circFunc(g2CalImage[:,:,settings["circleTrackingChannel"]] * maskArr[:,:,0], settings["guessRadius"], **circleTrackingKwargs)
+        # There should only be 1 particle in the calibration image
+        if len(centers) < 0:
+            print(f'Warning: Gradient-squared calibration image does not contain any particles! Ignoring...')
+        else:
+            particleMask = circularMask(g2CalPEImage.shape, centers[0], radii[0])[:,:,0]
+            gSqr = gSquared(g2CalPEImage)
+            minParticleG2 = np.sum(gSqr * particleMask) / np.sum(particleMask)
+            checkMinG2 = True
 
     # TODO: make sure all settings exist
 
@@ -206,13 +230,14 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
 
             # This variable will certainly exist (even though it was defined in an if statement
             for j in range(len(centers)):
-                # Centers should already be in the same order, so now we just have to order
-                # the forces in case one was added/removed
-                forceOrder = preserveOrderArgsort(betaGuessArr[j], betaArr[-1][j], padMissingValues=True, maxDistance=settings["maxBetaDisplacement"])
-                for k in range(len(forceGuessArr[j])):
-                    if forceOrder[k] is not None:
-                        forceGuessArr[j][k] = forceArr[-1][j][forceOrder[k]]
-                        alphaGuessArr[j][k] = alphaArr[-1][j][forceOrder[k]]
+                if len(betaArr[-1][j]) > 0:
+                    # Centers should already be in the same order, so now we just have to order
+                    # the forces in case one was added/removed
+                    forceOrder = preserveOrderArgsort(betaGuessArr[j], betaArr[-1][j], padMissingValues=True, maxDistance=settings["maxBetaDisplacement"])
+                    for k in range(len(forceGuessArr[j])):
+                        if forceOrder[k] is not None:
+                            forceGuessArr[j][k] = forceArr[-1][j][forceOrder[k]]
+                            alphaGuessArr[j][k] = alphaArr[-1][j][forceOrder[k]]
 
 
             # In this case, we want to add a small randomly generated contribution
@@ -251,6 +276,17 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
         if requireForceBalance:
             for j in range(len(centers)):
                 optimizedForceArr[j], optimizedAlphaArr[j] = singleParticleForceBalance(optimizedForceArr[j], optimizedAlphaArr[j], optimizedBetaArr[j])
+
+        # Drop forces on any particles whose g2 is lower than the min value
+        if checkMinG2:
+            gSqr = gSquared(peImage)
+            for j in range(len(centers)):
+                cMask = circularMask(peImage.shape, centers[j], radii[j])[:,:,0]
+                avgG2 = np.sum(gSqr * cMask) / np.sum(cMask)
+                if avgG2 < minParticleG2:
+                    optimizedForceArr[j] = []
+                    optimizedAlphaArr[j] = []
+                    optimizedBetaArr[j] = []
 
         optimizationTimes[i] = time.perf_counter() - initialGuessTimes[i] - trackingTimes[i] - start
 
