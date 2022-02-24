@@ -42,7 +42,7 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
     # For the sake of saving the options to a readme file (and potentially)
     # reading them back out, it is easiest to keep all of the settings in a
     # dictionary
-    settings = {"imageDirectory": os.path.abspath(imageDirectory), # Convert to absolute path
+    settings = {"imageDirectory": os.path.abspath(imageDirectory) + '/', # Convert to absolute path
                 "imageExtension": imageExtension,
                 "imageEndIndex": imageEndIndex,
                 "imageStartIndex": imageStartIndex,
