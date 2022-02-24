@@ -260,22 +260,36 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
         optimizedAlphaArr = []
         failed = [False for i in range(len(centers))]
 
+        # Drop forces on any particles whose g2 is lower than the min value
+        skipParticles = [False for i in range(len(centers))]
+        if checkMinG2:
+            gSqr = gSquared(peImage)
+            for j in range(len(centers)):
+                cMask = circularMask(peImage.shape, centers[j], radii[j])[:,:,0]
+                avgG2 = np.sum(gSqr * cMask) / np.sum(cMask)
+                skipParticles[j] = avgG2 < minParticleG2
+
         for j in range(len(centers)):
-            try:
-                optForceArr, optBetaArr, optAlphaArr, res = forceOptimize(forceGuessArr[j], betaGuessArr[j], alphaGuessArr[j], radii[j], centers[j], peImage,
-                                                                          settings["fSigma"], settings["pxPerMeter"], settings["brightfield"], **optimizationKwargs)
-                optimizedForceArr.append(optForceArr)
-                optimizedBetaArr.append(optBetaArr)
-                optimizedAlphaArr.append(optAlphaArr)
-            except Exception as ex:
-                print(ex)
-                errorMsgs.append(f'File {imageFiles[i]}: ' + str(ex) + '\n')
-                failed[j] = True
-                totalFailedParticles += 1
-                # Append empty lists (ie say there are no forces) 
-                #optimizedForceArr.append(forceGuessArr[j])
-                #optimizedBetaArr.append(betaGuessArr[j])
-                #optimizedAlphaArr.append(alphaGuessArr[j])
+            if not skipParticles[j]:
+                try:
+                    optForceArr, optBetaArr, optAlphaArr, res = forceOptimize(forceGuessArr[j], betaGuessArr[j], alphaGuessArr[j], radii[j], centers[j], peImage,
+                                                                              settings["fSigma"], settings["pxPerMeter"], settings["brightfield"], **optimizationKwargs)
+                    optimizedForceArr.append(optForceArr)
+                    optimizedBetaArr.append(optBetaArr)
+                    optimizedAlphaArr.append(optAlphaArr)
+                except Exception as ex:
+                    print(ex)
+                    errorMsgs.append(f'File {imageFiles[i]}: ' + str(ex) + '\n')
+                    failed[j] = True
+                    totalFailedParticles += 1
+                    # Append empty lists (ie say there are no forces) 
+                    #optimizedForceArr.append(forceGuessArr[j])
+                    #optimizedBetaArr.append(betaGuessArr[j])
+                    #optimizedAlphaArr.append(alphaGuessArr[j])
+                    optimizedForceArr.append([])
+                    optimizedBetaArr.append([])
+                    optimizedAlphaArr.append([])
+            else:
                 optimizedForceArr.append([])
                 optimizedBetaArr.append([])
                 optimizedAlphaArr.append([])
@@ -284,17 +298,6 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
         if requireForceBalance:
             for j in range(len(centers)):
                 optimizedForceArr[j], optimizedAlphaArr[j] = singleParticleForceBalance(optimizedForceArr[j], optimizedAlphaArr[j], optimizedBetaArr[j])
-
-        # Drop forces on any particles whose g2 is lower than the min value
-        if checkMinG2:
-            gSqr = gSquared(peImage)
-            for j in range(len(centers)):
-                cMask = circularMask(peImage.shape, centers[j], radii[j])[:,:,0]
-                avgG2 = np.sum(gSqr * cMask) / np.sum(cMask)
-                if avgG2 < minParticleG2:
-                    optimizedForceArr[j] = []
-                    optimizedAlphaArr[j] = []
-                    optimizedBetaArr[j] = []
 
         optimizationTimes[i] = time.perf_counter() - initialGuessTimes[i] - trackingTimes[i] - start
 
