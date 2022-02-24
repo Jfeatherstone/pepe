@@ -76,6 +76,10 @@ def preserveOrderSort(oldValues, newValues, padMissingValues=False, maxDistance=
     # the same length, it doesn't matter.
 
     if len(npOldValues) > len(npNewValues):
+        # If we have an empty old list, we just the (original) new list
+        if len(npOldValues) == 0:
+            return newValues
+
         # The list that we will be building
         addedIndices = [None for i in range(len(npOldValues))]
 
@@ -109,6 +113,15 @@ def preserveOrderSort(oldValues, newValues, padMissingValues=False, maxDistance=
         return orderedValues
 
     else:
+
+        # If there are no new values, we return empty list (the new values)
+        # or a list of None values
+        if len(npNewValues) == 0:
+            if padMissingValues:
+                return [None for _ in range(len(npOldValues))]
+            else:
+                return newValues
+
         # The list that we will be building
         # We'll append new entries on at the end
         addedIndices = [None for i in range(len(npOldValues))]
@@ -221,6 +234,10 @@ def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistan
     # the same length, it doesn't matter.
 
     if len(npOldValues) > len(npNewValues):
+        # If we have an empty old list, we just the original indexing
+        if len(npOldValues) == 0:
+            return [i for i in range(len(npNewValues))]
+
         # The list that we will be building
         addedIndices = [None for i in range(len(npOldValues))]
 
@@ -252,6 +269,14 @@ def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistan
         return addedIndices
 
     else:
+        # If there are no new values, we return empty list (the new values)
+        # or a list of None values
+        if len(npNewValues) == 0:
+            if padMissingValues:
+                return [None for _ in range(len(npOldValues))]
+            else:
+                return newValues
+
         # The list that we will be building
         # We'll append new entries on at the end
         addedIndices = [None for i in range(len(npOldValues))]

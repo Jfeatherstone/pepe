@@ -16,7 +16,7 @@ from pepe.tracking import houghCircle, convCircle
 from pepe.simulate import genSyntheticResponse
 from pepe.utils import genRandomColors, preserveOrderArgsort, rectangularizeForceArrays
 
-def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, maskImage=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True):
+def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True):
     """
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be saved to a text file and optionally compiled into
@@ -51,6 +51,7 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
                 "lightCorrectionVerticalMask": lightCorrectionVerticalMask,
                 "lightCorrectionHorizontalMask": lightCorrectionHorizontalMask,
                 "g2CalibrationImage": g2CalibrationImage,
+                "g2CalibrationCutoffFactor": g2CalibrationCutoffFactor,
                 "maskImage": maskImage,
                 "circleDetectionMethod": circleDetectionMethod,
                 "guessRadius": guessRadius,
@@ -67,6 +68,7 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
                 "maxBetaDisplacement": maxBetaDisplacement,
                 "forceNoiseWidth": forceNoiseWidth,
                 "saveMovie": saveMovie,
+                "pickleArrays": pickleArrays,
                 "outputRootFolder": outputRootFolder}
 
 
@@ -150,7 +152,7 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
         else:
             particleMask = circularMask(g2CalPEImage.shape, centers[0], radii[0])[:,:,0]
             gSqr = gSquared(g2CalPEImage)
-            minParticleG2 = np.sum(gSqr * particleMask) / np.sum(particleMask)
+            minParticleG2 = np.sum(gSqr * particleMask) / np.sum(particleMask) * settings["g2CalibrationCutoffFactor"]
             checkMinG2 = True
 
     # TODO: make sure all settings exist
@@ -172,6 +174,8 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
     optimizationTimes = np.zeros(len(imageFiles))
     miscTimes = np.zeros(len(imageFiles))
     totalFailedParticles = 0
+
+    errorMsgs = []
 
     # Calculate the gradient-squared-to-force calibration value
     g2Cal = g2ForceCalibration(fSigma, guessRadius, pxPerMeter)
@@ -265,12 +269,16 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
                 optimizedAlphaArr.append(optAlphaArr)
             except Exception as ex:
                 print(ex)
+                errorMsgs.append(f'File {imageFiles[i]}: ' + str(ex) + '\n')
                 failed[j] = True
                 totalFailedParticles += 1
-               
-                optimizedForceArr.append(forceGuessArr[j])
-                optimizedBetaArr.append(betaGuessArr[j])
-                optimizedAlphaArr.append(alphaGuessArr[j])
+                # Append empty lists (ie say there are no forces) 
+                #optimizedForceArr.append(forceGuessArr[j])
+                #optimizedBetaArr.append(betaGuessArr[j])
+                #optimizedAlphaArr.append(alphaGuessArr[j])
+                optimizedForceArr.append([])
+                optimizedBetaArr.append([])
+                optimizedAlphaArr.append([])
 
         # If necessary, impose force balance on all particles
         if requireForceBalance:
@@ -422,14 +430,17 @@ def forceSolve(imageDirectory, guessRadius, fSigma, pxPerMeter, brightfield, con
     lines += ['## Settings\n']
     for k,v in settings.items():
         lines += [f'{k}: {v}\n']
-    
+   
+    lines += ['## Errors\n']
+    lines += errorMsgs
+
     with open(outputFolderPath + 'readme.txt', 'w') as readmeFile:
         readmeFile.writelines(lines)
 
     # Restructure the arrays to make them more friendly, and to track forces/particles across timesteps
     rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr = rectangularizeForceArrays(forceArr, alphaArr, betaArr, centersArr, radiiArr)
 
-    if pickleArrays:
+    if settings["pickleArrays"]:
         with open(outputFolderPath + 'forces.pickle', 'wb') as f:
             pickle.dump(rectForceArr, f)
 

@@ -420,8 +420,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
 
         z = len(forceArr)
        
-        # If we lose all of our forces in the optimization,
-        # the next optimization will fail.
+        # If we lose all of our forces in the optimization
         if z == 0:
             break
 
