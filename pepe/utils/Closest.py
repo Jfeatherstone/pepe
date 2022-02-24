@@ -233,10 +233,11 @@ def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistan
     # for the kdtree, and the shorter be the query points. If they are
     # the same length, it doesn't matter.
 
+    # If we have an empty old list, we just the original indexing
+    if len(npOldValues) == 0:
+        return [i for i in range(len(npNewValues))]
+
     if len(npOldValues) > len(npNewValues):
-        # If we have an empty old list, we just the original indexing
-        if len(npOldValues) == 0:
-            return [i for i in range(len(npNewValues))]
 
         # The list that we will be building
         addedIndices = [None for i in range(len(npOldValues))]
