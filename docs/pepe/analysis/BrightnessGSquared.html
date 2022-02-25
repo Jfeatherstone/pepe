@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>pepe.analysis.BrightnessGSquared API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="Basic methods for computing metrics based on the pixel intensity of images." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -23,11 +23,16 @@
 <h1 class="title">Module <code>pepe.analysis.BrightnessGSquared</code></h1>
 </header>
 <section id="section-intro">
+<p>Basic methods for computing metrics based on the pixel intensity of images.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import numpy as np
+<pre><code class="python">&#34;&#34;&#34;
+Basic methods for computing metrics based on the pixel intensity of images.
+&#34;&#34;&#34;
+
+import numpy as np
 
 import cv2
 import numba
@@ -36,32 +41,80 @@ from pepe.preprocess.Image import checkImageType
 
 def averageBrightness(frame):
     r&#34;&#34;&#34;
-    Compute the average brightness of a frame.
+    Compute the average brightness (pixel intensity) of a frame.
 
     Parameters
     ----------
 
-    frame : numpy.array
-        The frame to compute for (or path to an image)
+    frame : np.ndarray[H,W] or str
+        The frame for which to compute the average brightness. Can also
+        be a path to an image.
+
+
+    Returns
+    -------
+
+    averageBrightness : float
+        The average brightness of the image.
     &#34;&#34;&#34;
     return np.mean(checkImageType(frame))
 
 
 def varianceBrightness(frame):
     r&#34;&#34;&#34;
-    Compute the standard deviation in brightness of a frame.
+    Compute the standard deviation in brightness (pixel intensity) of a frame.
 
     Parameters
     ----------
 
-    frame : numpy.array
-        The frame to compute for (or path to an image)
+    frame : np.ndarray[H,W] or str
+        The frame for which to compute the average brightness. Can also
+        be a path to an image.
+
+
+    Returns
+    -------
+
+    varianceBrightness: float
+        The standard deviation of the brightness of the image.
     &#34;&#34;&#34;
     return np.var(checkImageType(frame))
 
 
 @numba.jit(nopython=True)
 def gSquared(properFrame):
+    &#34;&#34;&#34;
+    The gradient squared at each pixel of the image, also known as the convolution
+    of a Laplacian kernel across the image.
+
+    Optimized via `numba`.
+
+    Edge values are padded with values of 0.
+
+    Parameters
+    ----------
+
+    properFrame : np.ndarray[H,W]
+        An array representing a single channel of an image.
+
+
+    Returns
+    -------
+
+    gSqr : np.ndarray[H,W]
+        The gradient squared at every point.
+
+
+    References
+    ----------
+
+    [1] DanielsLab Matlab implementation, https://github.com/DanielsNonlinearLab/Gsquared
+
+    [2] Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N.,
+    Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H.
+    (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular
+    Matter, 21(4), 83. [10.1007/s10035-019-0942-2](https://doi.org/10.1007/s10035-019-0942-2)
+    &#34;&#34;&#34;
     
     # Take the full size of the image, though know that the outermost row and
     # column of pixels will be 0
@@ -103,17 +156,35 @@ def gSquared(properFrame):
 
 def averageGSquared(frame):
     r&#34;&#34;&#34;
-    Compute the average local gradient squared, or $G^2$, of a frame.
+    Compute the average local gradient squared, or \(G^2\), of a frame.
 
-    For more information, see the [DanielsLab Matlab implementation](https://github.com/DanielsNonlinearLab/Gsquared) or:
-
-    Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N., Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H. (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular Matter, 21(4), 83. [10.1007/s10035-019-0942-2](https://doi.org/10.1007/s10035-019-0942-2)
+    If multichannel image is provided, will convert to grayscale by averaging
+    over the channels.
 
     Parameters
     ----------
 
-    frame : numpy.array
-        The frame to compute the average of (or path to an image)
+    frame : np.ndarray[H,W] or str
+        The frame for which to compute the average gradient squared. Can also
+        be a path to an image.
+
+
+    Returns
+    -------
+
+    averageGSquared : float
+        The average gradient squared of the image.
+
+
+    References
+    ----------
+
+    [1] DanielsLab Matlab implementation, https://github.com/DanielsNonlinearLab/Gsquared
+
+    [2] Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N.,
+    Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H.
+    (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular
+    Matter, 21(4), 83. [10.1007/s10035-019-0942-2](https://doi.org/10.1007/s10035-019-0942-2)
     &#34;&#34;&#34;
     
     # This will load in the image if the method is passed an image
@@ -121,8 +192,8 @@ def averageGSquared(frame):
     properFrame = checkImageType(frame)
 
     # Make sure that our image is grayscale
-    if len(np.shape(properFrame)) == 3:
-        properFrame = properFrame[:,:,0] 
+    if properFrame.ndim == 3:
+        properFrame = np.mean(properFrame, axis=-1)
 
     # Use the optimzed gSquared method so it is fast
     return np.mean(gSquared(properFrame))
@@ -130,12 +201,35 @@ def averageGSquared(frame):
 
 def varianceGSquared(frame):
     r&#34;&#34;&#34;
-    Compute the variance in the local gradient squared, or $G^2$, of a frame.
+    Compute the variance in the local gradient squared, or \(G^2\), of a frame.
 
-    For more information, see:
+    If multichannel image is provided, will convert to grayscale by averaging
+    over the channels.
 
-    Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N., Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H. (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular Matter, 21(4), 83. [10.1007/s10035-019-0942-2](https://doi.org/10.1007/s10035-019-0942-2)
+    Parameters
+    ----------
+
+    frame : np.ndarray[H,W] or str
+        The frame for which to compute the variance of the gradient squared. Can also
+        be a path to an image.
+
+
+    Returns
+    -------
+
+    varianceGSquared : float
+        The variance of the gradient squared of the image.
  
+
+    References
+    ----------
+
+    [1] DanielsLab Matlab implementation, https://github.com/DanielsNonlinearLab/Gsquared
+
+    [2] Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N.,
+    Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H.
+    (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular
+    Matter, 21(4), 83. [10.1007/s10035-019-0942-2](https://doi.org/10.1007/s10035-019-0942-2)
     &#34;&#34;&#34;
 
     # This will load in the image if the method is passed an image
@@ -143,8 +237,8 @@ def varianceGSquared(frame):
     properFrame = checkImageType(frame)
 
     # Make sure that our image is grayscale
-    if len(np.shape(properFrame)) == 3:
-        properFrame = properFrame[:,:,0] 
+    if properFrame.ndim == 3:
+        properFrame = np.mean(properFrame, axis=-1)
 
     # Use the optimzed gSquared method so it is fast
     return np.var(gSquared(properFrame))</code></pre>
@@ -161,11 +255,17 @@ def varianceGSquared(frame):
 <span>def <span class="ident">averageBrightness</span></span>(<span>frame)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Compute the average brightness of a frame.</p>
+<div class="desc"><p>Compute the average brightness (pixel intensity) of a frame.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
-<dt><strong><code>frame</code></strong> :&ensp;<code>numpy.array</code></dt>
-<dd>The frame to compute for (or path to an image)</dd>
+<dt><strong><code>frame</code></strong> :&ensp;<code>np.ndarray[H,W]</code> or <code>str</code></dt>
+<dd>The frame for which to compute the average brightness. Can also
+be a path to an image.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>averageBrightness</code></strong> :&ensp;<code>float</code></dt>
+<dd>The average brightness of the image.</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -173,13 +273,21 @@ def varianceGSquared(frame):
 </summary>
 <pre><code class="python">def averageBrightness(frame):
     r&#34;&#34;&#34;
-    Compute the average brightness of a frame.
+    Compute the average brightness (pixel intensity) of a frame.
 
     Parameters
     ----------
 
-    frame : numpy.array
-        The frame to compute for (or path to an image)
+    frame : np.ndarray[H,W] or str
+        The frame for which to compute the average brightness. Can also
+        be a path to an image.
+
+
+    Returns
+    -------
+
+    averageBrightness : float
+        The average brightness of the image.
     &#34;&#34;&#34;
     return np.mean(checkImageType(frame))</code></pre>
 </details>
@@ -188,31 +296,61 @@ def varianceGSquared(frame):
 <span>def <span class="ident">averageGSquared</span></span>(<span>frame)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Compute the average local gradient squared, or $G^2$, of a frame.</p>
-<p>For more information, see the <a href="https://github.com/DanielsNonlinearLab/Gsquared">DanielsLab Matlab implementation</a> or:</p>
-<p>Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N., Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H. (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular Matter, 21(4), 83. <a href="https://doi.org/10.1007/s10035-019-0942-2">10.1007/s10035-019-0942-2</a></p>
+<div class="desc"><p>Compute the average local gradient squared, or <span><span class="MathJax_Preview">G^2</span><script type="math/tex">G^2</script></span>, of a frame.</p>
+<p>If multichannel image is provided, will convert to grayscale by averaging
+over the channels.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
-<dt><strong><code>frame</code></strong> :&ensp;<code>numpy.array</code></dt>
-<dd>The frame to compute the average of (or path to an image)</dd>
-</dl></div>
+<dt><strong><code>frame</code></strong> :&ensp;<code>np.ndarray[H,W]</code> or <code>str</code></dt>
+<dd>The frame for which to compute the average gradient squared. Can also
+be a path to an image.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>averageGSquared</code></strong> :&ensp;<code>float</code></dt>
+<dd>The average gradient squared of the image.</dd>
+</dl>
+<h2 id="references">References</h2>
+<p>[1] DanielsLab Matlab implementation, <a href="https://github.com/DanielsNonlinearLab/Gsquared">https://github.com/DanielsNonlinearLab/Gsquared</a></p>
+<p>[2] Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N.,
+Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H.
+(2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular
+Matter, 21(4), 83. <a href="https://doi.org/10.1007/s10035-019-0942-2">10.1007/s10035-019-0942-2</a></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def averageGSquared(frame):
     r&#34;&#34;&#34;
-    Compute the average local gradient squared, or $G^2$, of a frame.
+    Compute the average local gradient squared, or \(G^2\), of a frame.
 
-    For more information, see the [DanielsLab Matlab implementation](https://github.com/DanielsNonlinearLab/Gsquared) or:
-
-    Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N., Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H. (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular Matter, 21(4), 83. [10.1007/s10035-019-0942-2](https://doi.org/10.1007/s10035-019-0942-2)
+    If multichannel image is provided, will convert to grayscale by averaging
+    over the channels.
 
     Parameters
     ----------
 
-    frame : numpy.array
-        The frame to compute the average of (or path to an image)
+    frame : np.ndarray[H,W] or str
+        The frame for which to compute the average gradient squared. Can also
+        be a path to an image.
+
+
+    Returns
+    -------
+
+    averageGSquared : float
+        The average gradient squared of the image.
+
+
+    References
+    ----------
+
+    [1] DanielsLab Matlab implementation, https://github.com/DanielsNonlinearLab/Gsquared
+
+    [2] Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N.,
+    Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H.
+    (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular
+    Matter, 21(4), 83. [10.1007/s10035-019-0942-2](https://doi.org/10.1007/s10035-019-0942-2)
     &#34;&#34;&#34;
     
     # This will load in the image if the method is passed an image
@@ -220,8 +358,8 @@ def varianceGSquared(frame):
     properFrame = checkImageType(frame)
 
     # Make sure that our image is grayscale
-    if len(np.shape(properFrame)) == 3:
-        properFrame = properFrame[:,:,0] 
+    if properFrame.ndim == 3:
+        properFrame = np.mean(properFrame, axis=-1)
 
     # Use the optimzed gSquared method so it is fast
     return np.mean(gSquared(properFrame))</code></pre>
@@ -231,13 +369,64 @@ def varianceGSquared(frame):
 <span>def <span class="ident">gSquared</span></span>(<span>properFrame)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>The gradient squared at each pixel of the image, also known as the convolution
+of a Laplacian kernel across the image.</p>
+<p>Optimized via <code>numba</code>.</p>
+<p>Edge values are padded with values of 0.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>properFrame</code></strong> :&ensp;<code>np.ndarray[H,W]</code></dt>
+<dd>An array representing a single channel of an image.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>gSqr</code></strong> :&ensp;<code>np.ndarray[H,W]</code></dt>
+<dd>The gradient squared at every point.</dd>
+</dl>
+<h2 id="references">References</h2>
+<p>[1] DanielsLab Matlab implementation, <a href="https://github.com/DanielsNonlinearLab/Gsquared">https://github.com/DanielsNonlinearLab/Gsquared</a></p>
+<p>[2] Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N.,
+Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H.
+(2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular
+Matter, 21(4), 83. <a href="https://doi.org/10.1007/s10035-019-0942-2">10.1007/s10035-019-0942-2</a></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@numba.jit(nopython=True)
 def gSquared(properFrame):
+    &#34;&#34;&#34;
+    The gradient squared at each pixel of the image, also known as the convolution
+    of a Laplacian kernel across the image.
+
+    Optimized via `numba`.
+
+    Edge values are padded with values of 0.
+
+    Parameters
+    ----------
+
+    properFrame : np.ndarray[H,W]
+        An array representing a single channel of an image.
+
+
+    Returns
+    -------
+
+    gSqr : np.ndarray[H,W]
+        The gradient squared at every point.
+
+
+    References
+    ----------
+
+    [1] DanielsLab Matlab implementation, https://github.com/DanielsNonlinearLab/Gsquared
+
+    [2] Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N.,
+    Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H.
+    (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular
+    Matter, 21(4), 83. [10.1007/s10035-019-0942-2](https://doi.org/10.1007/s10035-019-0942-2)
+    &#34;&#34;&#34;
     
     # Take the full size of the image, though know that the outermost row and
     # column of pixels will be 0
@@ -281,11 +470,17 @@ def gSquared(properFrame):
 <span>def <span class="ident">varianceBrightness</span></span>(<span>frame)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Compute the standard deviation in brightness of a frame.</p>
+<div class="desc"><p>Compute the standard deviation in brightness (pixel intensity) of a frame.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
-<dt><strong><code>frame</code></strong> :&ensp;<code>numpy.array</code></dt>
-<dd>The frame to compute for (or path to an image)</dd>
+<dt><strong><code>frame</code></strong> :&ensp;<code>np.ndarray[H,W]</code> or <code>str</code></dt>
+<dd>The frame for which to compute the average brightness. Can also
+be a path to an image.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>varianceBrightness</code></strong> :&ensp;<code>float</code></dt>
+<dd>The standard deviation of the brightness of the image.</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -293,13 +488,21 @@ def gSquared(properFrame):
 </summary>
 <pre><code class="python">def varianceBrightness(frame):
     r&#34;&#34;&#34;
-    Compute the standard deviation in brightness of a frame.
+    Compute the standard deviation in brightness (pixel intensity) of a frame.
 
     Parameters
     ----------
 
-    frame : numpy.array
-        The frame to compute for (or path to an image)
+    frame : np.ndarray[H,W] or str
+        The frame for which to compute the average brightness. Can also
+        be a path to an image.
+
+
+    Returns
+    -------
+
+    varianceBrightness: float
+        The standard deviation of the brightness of the image.
     &#34;&#34;&#34;
     return np.var(checkImageType(frame))</code></pre>
 </details>
@@ -308,21 +511,61 @@ def gSquared(properFrame):
 <span>def <span class="ident">varianceGSquared</span></span>(<span>frame)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Compute the variance in the local gradient squared, or $G^2$, of a frame.</p>
-<p>For more information, see:</p>
-<p>Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N., Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H. (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular Matter, 21(4), 83. <a href="https://doi.org/10.1007/s10035-019-0942-2">10.1007/s10035-019-0942-2</a></p></div>
+<div class="desc"><p>Compute the variance in the local gradient squared, or <span><span class="MathJax_Preview">G^2</span><script type="math/tex">G^2</script></span>, of a frame.</p>
+<p>If multichannel image is provided, will convert to grayscale by averaging
+over the channels.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>frame</code></strong> :&ensp;<code>np.ndarray[H,W]</code> or <code>str</code></dt>
+<dd>The frame for which to compute the variance of the gradient squared. Can also
+be a path to an image.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>varianceGSquared</code></strong> :&ensp;<code>float</code></dt>
+<dd>The variance of the gradient squared of the image.</dd>
+</dl>
+<h2 id="references">References</h2>
+<p>[1] DanielsLab Matlab implementation, <a href="https://github.com/DanielsNonlinearLab/Gsquared">https://github.com/DanielsNonlinearLab/Gsquared</a></p>
+<p>[2] Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N.,
+Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H.
+(2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular
+Matter, 21(4), 83. <a href="https://doi.org/10.1007/s10035-019-0942-2">10.1007/s10035-019-0942-2</a></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def varianceGSquared(frame):
     r&#34;&#34;&#34;
-    Compute the variance in the local gradient squared, or $G^2$, of a frame.
+    Compute the variance in the local gradient squared, or \(G^2\), of a frame.
 
-    For more information, see:
+    If multichannel image is provided, will convert to grayscale by averaging
+    over the channels.
 
-    Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N., Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H. (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular Matter, 21(4), 83. [10.1007/s10035-019-0942-2](https://doi.org/10.1007/s10035-019-0942-2)
+    Parameters
+    ----------
+
+    frame : np.ndarray[H,W] or str
+        The frame for which to compute the variance of the gradient squared. Can also
+        be a path to an image.
+
+
+    Returns
+    -------
+
+    varianceGSquared : float
+        The variance of the gradient squared of the image.
  
+
+    References
+    ----------
+
+    [1] DanielsLab Matlab implementation, https://github.com/DanielsNonlinearLab/Gsquared
+
+    [2] Abed Zadeh, A., Bares, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N.,
+    Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H.
+    (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular
+    Matter, 21(4), 83. [10.1007/s10035-019-0942-2](https://doi.org/10.1007/s10035-019-0942-2)
     &#34;&#34;&#34;
 
     # This will load in the image if the method is passed an image
@@ -330,8 +573,8 @@ def gSquared(properFrame):
     properFrame = checkImageType(frame)
 
     # Make sure that our image is grayscale
-    if len(np.shape(properFrame)) == 3:
-        properFrame = properFrame[:,:,0] 
+    if properFrame.ndim == 3:
+        properFrame = np.mean(properFrame, axis=-1)
 
     # Use the optimzed gSquared method so it is fast
     return np.var(gSquared(properFrame))</code></pre>

@@ -195,7 +195,7 @@ def evaluateStress(yInd, xInd, forceArr, alphaArr, betaArr, fSigma, radius, pxPe
         # The middle expression is really just the sign function, but we
         # need sign(0)=1 (sign(0)=0 by default) so we do a little
         # boolean magic
-        b2 = b1 - (2 - int(np.sign(alphaArr[i]) &gt; -1)) *np.pi + 2*alphaArr[i]
+        b2 = b1 - (-1 + 2*int(np.sign(alphaArr[i]) &gt; -1)) * np.pi + 2*alphaArr[i]
 
         # Calculate the length of the chord
         chordX = radiusM * (np.sin(b2) - np.sin(b1))
@@ -360,7 +360,7 @@ def evaluateStress(yInd, xInd, forceArr, alphaArr, betaArr, fSigma, radius, pxPe
         # The middle expression is really just the sign function, but we
         # need sign(0)=1 (sign(0)=0 by default) so we do a little
         # boolean magic
-        b2 = b1 - (2 - int(np.sign(alphaArr[i]) &gt; -1)) *np.pi + 2*alphaArr[i]
+        b2 = b1 - (-1 + 2*int(np.sign(alphaArr[i]) &gt; -1)) * np.pi + 2*alphaArr[i]
 
         # Calculate the length of the chord
         chordX = radiusM * (np.sin(b2) - np.sin(b1))

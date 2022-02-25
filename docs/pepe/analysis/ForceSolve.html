@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>pepe.analysis.ForceSolve API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="Methods to solve for vector contact forces from a photoelastic image." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -23,11 +23,16 @@
 <h1 class="title">Module <code>pepe.analysis.ForceSolve</code></h1>
 </header>
 <section id="section-intro">
+<p>Methods to solve for vector contact forces from a photoelastic image.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import numpy as np
+<pre><code class="python">&#34;&#34;&#34;
+Methods to solve for vector contact forces from a photoelastic image.
+&#34;&#34;&#34;
+
+import numpy as np
 
 from pepe.preprocess import circularMask, rectMask, ellipticalMask, mergeMasks
 from pepe.analysis import gSquared, adjacencyMatrix
@@ -41,7 +46,7 @@ from scipy.signal import find_peaks
 
 import matplotlib.pyplot as plt
 
-def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={}):
+def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={}, g2Cal=None):
     &#34;&#34;&#34;
     Calculate the approximate forces on each particle based on the photoelastic response.
     No optimization/gradient descent is done in this method; this should be used either where
@@ -62,6 +67,14 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     3. Determine if there are any boundary contacts (optional)
     4. Calculate the position of each (boundary or interparticle) force for each particle
     5. Use the average gradient from step 2 to estimate the magnitude of force at each position
+
+    Intended to be used as the initial condition for optimization process; see
+    `pepe.analysis.forceOptimize()` for more information.
+
+    When significant noise is present in the images, this method will often way overestimate
+    the magnitudes of forces (because it is based on the gradient squared). If the guesses
+    are much too high, it can be better to just set all force magnitudes to a reasonable
+    flat value, like `.1`.
 
     Parameters
     ----------
@@ -120,6 +133,27 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
         boundaries are being included in the solver. If none are provided, relevant
         values are carried over from the kwargs for this method (`contactPadding`, 
         `g2EdgePadding`, `contactMaskRadius`, `contactG2Threshold`).
+
+    g2Cal : float
+        Gradient squared to force calibration value. For numerous calls of the
+        function, it is recommended to calculate this value once externally,
+        and pass it in. If left as None, will be recalculated internally.
+
+
+    Returns
+    -------
+
+    forceGuessArr : np.object[N,F(N)]
+        Triangular array of force magnitude guesses for N particles with F(N) forces each
+        (could be different number of forces per particle).
+
+    alphaGuessArr : np.object[N,F(N)]
+        Triangular array of alpha angle guesses for N particles with F(N) forces each
+        (could be different number of forces per particle).
+
+    betaGuessArr : np.object[N,F(N)]
+        Triangular array of beta angle guesses for N particles with F(N) forces each
+        (could be different number of forces per particle).
     &#34;&#34;&#34;
 
     # We are passed centers and radii
@@ -195,7 +229,8 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
 
     # Find G2 calibration value
     # Mean of the radii should be fine, though TODO would be a good idea to have options here
-    g2Cal = g2ForceCalibration(fSigma, np.mean(radii), pxPerMeter, brightfield=brightfield)
+    if g2Cal is None:
+        g2Cal = g2ForceCalibration(fSigma, np.mean(radii), pxPerMeter, brightfield=brightfield)
 
     # Figure out how much of the particle we will be calculating the g2 over
     if g2EdgePadding &lt; 1. and g2EdgePadding &gt; 0:
@@ -246,7 +281,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTol=.5, betaTol=.5, alphaTol=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8):
     &#34;&#34;&#34;
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -313,21 +348,21 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         The upper and lower limits for the values of alpha that the minimizer can explore, 
         assuming that `useTolerance` is set to False.
 
-    forceTol : float
+    forceTolerance : float
         If `useTolerance` is set to True, this value will be used to calculate the bounds for each
         force individually, as the initial value minus this tolerance, and the initial value plus
         this tolerance.
 
         Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
 
-    betaTol : float
+    betaTolerance : float
         If `useTolerance` is set to True, this value will be used to calculate the bounds for each
         beta individually, as the initial value minus this tolerance, and the initial value plus
         this tolerance.
 
         Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
 
-    alphaTol : float
+    alphaTolerance : float
         If `useTolerance` is set to True, this value will be used to calculate the bounds for each
         alpha individually, as the initial value minus this tolerance, and the initial value plus
         this tolerance.
@@ -383,20 +418,20 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     
     # Same deal for all of the tolerances (we don&#39;t do bound intervals, since tolerances
     # are the recommended way to handle parameters bounds)
-    if type(forceTol) is not list:
-        forceTolList = [forceTol for i in range(numFits)]
+    if type(forceTolerance) is not list:
+        forceTolList = [forceTolerance for i in range(numFits)]
     else:
-        forceTolList = forceTol
+        forceTolList = forceTolerance
 
-    if type(betaTol) is not list:
-        betaTolList = [betaTol for i in range(numFits)]
+    if type(betaTolerance) is not list:
+        betaTolList = [betaTolerance for i in range(numFits)]
     else:
-        betaTolList = betaTol
+        betaTolList = betaTolerance
 
-    if type(alphaTol) is not list:
-        alphaTolList = [alphaTol for i in range(numFits)]
+    if type(alphaTolerance) is not list:
+        alphaTolList = [alphaTolerance for i in range(numFits)]
     else:
-        alphaTolList = alphaTol
+        alphaTolList = alphaTolerance
 
     # Make sure everything is the same length
     assert len(parametersToFitList) == numFits, &#39;Invalid parametersToFit provided&#39;
@@ -442,6 +477,11 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     while i &lt; numFits:
 
         z = len(forceArr)
+       
+        # If we lose all of our forces in the optimization,
+        # the next optimization will fail.
+        if z == 0:
+            break
 
         # Out fitting parameters
         # if vary kwarg is false, that value won&#39;t be fit
@@ -453,7 +493,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
                 # otherwise the bounds are just the initial value +/- the tolerances
                 params.add(f&#39;f{j}&#39;, value=forceArr[j], vary=&#39;f&#39; in parametersToFitList[i], min=max(forceArr[j]-forceTolList[i], 0), max=forceArr[j]+forceTolList[i])
                 params.add(f&#39;b{j}&#39;, value=betaArr[j], vary=&#39;b&#39; in parametersToFitList[i], min=max(betaArr[j]-betaTolList[i], -np.pi), max=min(betaArr[j]+betaTolList[i], np.pi))
-                params.add(f&#39;a{j}&#39;, value=alphaArr[j], vary=&#39;a&#39; in parametersToFitList[i], min=max(alphaArr[j]-alphaTolList[i], 0), max=alphaArr[j]+alphaTolList[i])
+                params.add(f&#39;a{j}&#39;, value=alphaArr[j], vary=&#39;a&#39; in parametersToFitList[i], min=alphaArr[j]-alphaTolList[i], max=alphaArr[j]+alphaTolList[i])
             else:
                 params.add(f&#39;f{j}&#39;, value=forceArr[j], vary=&#39;f&#39; in parametersToFitList[i], min=forceBounds[0], max=forceBounds[1])
                 params.add(f&#39;b{j}&#39;, value=betaArr[j], vary=&#39;b&#39; in parametersToFitList[i], min=betaBounds[0], max=betaBounds[1])
@@ -463,7 +503,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         # Now do the optimization
         result = minimize(objectiveFunction, params,
                          args=(maskedImage, z, radius, center),
-                         method=methodList[i], nan_policy=&#39;omit&#39;, max_nfev=maxEvalsList[i])
+                         method=methodList[i], max_nfev=maxEvalsList[i])
 
         # Copy over the new values of the forces, alphas, and betas
         for j in range(z):
@@ -556,6 +596,9 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
 @numba.jit(nopython=True)
 def singleParticleForceBalance(forceArr, alphaArr, betaArr):
     &#34;&#34;&#34;
+    **Does not currently work! Any calls to this function will just return the original
+    arrays**
+
     Takes a set of forces acting on a single particle and ensures they obey
     force balance.
 
@@ -584,6 +627,10 @@ def singleParticleForceBalance(forceArr, alphaArr, betaArr):
     np.ndarray[N] : Balanced contact angles alpha
 
     &#34;&#34;&#34;
+
+    # TODO: Get this function working
+    print(&#34;Warning: force balance is not yet implemented, do not call the singleParticleForceBalance function!&#34;)
+    return forceArr, alphaArr
 
     # Number of contacts (coordination number, often denoted by z)
     numContacts = len(forceArr)
@@ -1448,7 +1495,7 @@ multiplied by the g2 calibration value to get the initial force magnitude guess.
 </details>
 </dd>
 <dt id="pepe.analysis.ForceSolve.forceOptimize"><code class="name flex">
-<span>def <span class="ident">forceOptimize</span></span>(<span>forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-3.141592653589793, 3.141592653589793), alphaBounds=(0, 3.141592653589793), forceTol=0.5, betaTol=0.5, alphaTol=0.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=0.01, newBetaContactMaskRadius=30, newBetaMinSeparation=0.4, newBetaG2Height=0.0005, missingForceChiSqrThreshold=210000000.0)</span>
+<span>def <span class="ident">forceOptimize</span></span>(<span>forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-3.141592653589793, 3.141592653589793), alphaBounds=(0, 3.141592653589793), forceTolerance=0.5, betaTolerance=0.2, alphaTolerance=0.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=0.01, newBetaContactMaskRadius=30, newBetaMinSeparation=0.4, newBetaG2Height=0.0005, missingForceChiSqrThreshold=210000000.0)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Optimize an initial guess for the forces acting on a particle using
@@ -1504,21 +1551,21 @@ assuming that <code>useTolerance</code> is set to False.</dd>
 <dt><strong><code>alphaBounds</code></strong> :&ensp;<code>(float, float)</code></dt>
 <dd>The upper and lower limits for the values of alpha that the minimizer can explore,
 assuming that <code>useTolerance</code> is set to False.</dd>
-<dt><strong><code>forceTol</code></strong> :&ensp;<code>float</code></dt>
+<dt><strong><code>forceTolerance</code></strong> :&ensp;<code>float</code></dt>
 <dd>
 <p>If <code>useTolerance</code> is set to True, this value will be used to calculate the bounds for each
 force individually, as the initial value minus this tolerance, and the initial value plus
 this tolerance.</p>
 <p>Can be provided as a list of values when performing multiple optimizations; see <code>parametersToFit</code>.</p>
 </dd>
-<dt><strong><code>betaTol</code></strong> :&ensp;<code>float</code></dt>
+<dt><strong><code>betaTolerance</code></strong> :&ensp;<code>float</code></dt>
 <dd>
 <p>If <code>useTolerance</code> is set to True, this value will be used to calculate the bounds for each
 beta individually, as the initial value minus this tolerance, and the initial value plus
 this tolerance.</p>
 <p>Can be provided as a list of values when performing multiple optimizations; see <code>parametersToFit</code>.</p>
 </dd>
-<dt><strong><code>alphaTol</code></strong> :&ensp;<code>float</code></dt>
+<dt><strong><code>alphaTolerance</code></strong> :&ensp;<code>float</code></dt>
 <dd>
 <p>If <code>useTolerance</code> is set to True, this value will be used to calculate the bounds for each
 alpha individually, as the initial value minus this tolerance, and the initial value plus
@@ -1542,7 +1589,7 @@ this value between fittings and after the final one.</dd>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTol=.5, betaTol=.5, alphaTol=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8):
+<pre><code class="python">def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8):
     &#34;&#34;&#34;
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -1609,21 +1656,21 @@ this value between fittings and after the final one.</dd>
         The upper and lower limits for the values of alpha that the minimizer can explore, 
         assuming that `useTolerance` is set to False.
 
-    forceTol : float
+    forceTolerance : float
         If `useTolerance` is set to True, this value will be used to calculate the bounds for each
         force individually, as the initial value minus this tolerance, and the initial value plus
         this tolerance.
 
         Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
 
-    betaTol : float
+    betaTolerance : float
         If `useTolerance` is set to True, this value will be used to calculate the bounds for each
         beta individually, as the initial value minus this tolerance, and the initial value plus
         this tolerance.
 
         Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
 
-    alphaTol : float
+    alphaTolerance : float
         If `useTolerance` is set to True, this value will be used to calculate the bounds for each
         alpha individually, as the initial value minus this tolerance, and the initial value plus
         this tolerance.
@@ -1679,20 +1726,20 @@ this value between fittings and after the final one.</dd>
     
     # Same deal for all of the tolerances (we don&#39;t do bound intervals, since tolerances
     # are the recommended way to handle parameters bounds)
-    if type(forceTol) is not list:
-        forceTolList = [forceTol for i in range(numFits)]
+    if type(forceTolerance) is not list:
+        forceTolList = [forceTolerance for i in range(numFits)]
     else:
-        forceTolList = forceTol
+        forceTolList = forceTolerance
 
-    if type(betaTol) is not list:
-        betaTolList = [betaTol for i in range(numFits)]
+    if type(betaTolerance) is not list:
+        betaTolList = [betaTolerance for i in range(numFits)]
     else:
-        betaTolList = betaTol
+        betaTolList = betaTolerance
 
-    if type(alphaTol) is not list:
-        alphaTolList = [alphaTol for i in range(numFits)]
+    if type(alphaTolerance) is not list:
+        alphaTolList = [alphaTolerance for i in range(numFits)]
     else:
-        alphaTolList = alphaTol
+        alphaTolList = alphaTolerance
 
     # Make sure everything is the same length
     assert len(parametersToFitList) == numFits, &#39;Invalid parametersToFit provided&#39;
@@ -1738,6 +1785,11 @@ this value between fittings and after the final one.</dd>
     while i &lt; numFits:
 
         z = len(forceArr)
+       
+        # If we lose all of our forces in the optimization,
+        # the next optimization will fail.
+        if z == 0:
+            break
 
         # Out fitting parameters
         # if vary kwarg is false, that value won&#39;t be fit
@@ -1749,7 +1801,7 @@ this value between fittings and after the final one.</dd>
                 # otherwise the bounds are just the initial value +/- the tolerances
                 params.add(f&#39;f{j}&#39;, value=forceArr[j], vary=&#39;f&#39; in parametersToFitList[i], min=max(forceArr[j]-forceTolList[i], 0), max=forceArr[j]+forceTolList[i])
                 params.add(f&#39;b{j}&#39;, value=betaArr[j], vary=&#39;b&#39; in parametersToFitList[i], min=max(betaArr[j]-betaTolList[i], -np.pi), max=min(betaArr[j]+betaTolList[i], np.pi))
-                params.add(f&#39;a{j}&#39;, value=alphaArr[j], vary=&#39;a&#39; in parametersToFitList[i], min=max(alphaArr[j]-alphaTolList[i], 0), max=alphaArr[j]+alphaTolList[i])
+                params.add(f&#39;a{j}&#39;, value=alphaArr[j], vary=&#39;a&#39; in parametersToFitList[i], min=alphaArr[j]-alphaTolList[i], max=alphaArr[j]+alphaTolList[i])
             else:
                 params.add(f&#39;f{j}&#39;, value=forceArr[j], vary=&#39;f&#39; in parametersToFitList[i], min=forceBounds[0], max=forceBounds[1])
                 params.add(f&#39;b{j}&#39;, value=betaArr[j], vary=&#39;b&#39; in parametersToFitList[i], min=betaBounds[0], max=betaBounds[1])
@@ -1759,7 +1811,7 @@ this value between fittings and after the final one.</dd>
         # Now do the optimization
         result = minimize(objectiveFunction, params,
                          args=(maskedImage, z, radius, center),
-                         method=methodList[i], nan_policy=&#39;omit&#39;, max_nfev=maxEvalsList[i])
+                         method=methodList[i], max_nfev=maxEvalsList[i])
 
         # Copy over the new values of the forces, alphas, and betas
         for j in range(z):
@@ -2174,7 +2226,7 @@ polariscope or darkfield (False) polariscope.</dd>
 </details>
 </dd>
 <dt id="pepe.analysis.ForceSolve.initialForceSolve"><code class="name flex">
-<span>def <span class="ident">initialForceSolve</span></span>(<span>photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=0.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={})</span>
+<span>def <span class="ident">initialForceSolve</span></span>(<span>photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=0.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={}, g2Cal=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Calculate the approximate forces on each particle based on the photoelastic response.
@@ -2194,6 +2246,12 @@ measurements in granular materials. Review of Scientific Instruments, 88(5),
 <li>Calculate the position of each (boundary or interparticle) force for each particle</li>
 <li>Use the average gradient from step 2 to estimate the magnitude of force at each position</li>
 </ol>
+<p>Intended to be used as the initial condition for optimization process; see
+<code>pepe.analysis.forceOptimize()</code> for more information.</p>
+<p>When significant noise is present in the images, this method will often way overestimate
+the magnitudes of forces (because it is based on the gradient squared). If the guesses
+are much too high, it can be better to just set all force magnitudes to a reasonable
+flat value, like <code>.1</code>.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>photelasticSingleChannel</code></strong> :&ensp;<code>np.uint8[H,W]</code></dt>
@@ -2239,12 +2297,28 @@ polariscope or darkfield (False) polariscope.</dd>
 boundaries are being included in the solver. If none are provided, relevant
 values are carried over from the kwargs for this method (<code>contactPadding</code>,
 <code>g2EdgePadding</code>, <code>contactMaskRadius</code>, <code>contactG2Threshold</code>).</dd>
+<dt><strong><code>g2Cal</code></strong> :&ensp;<code>float</code></dt>
+<dd>Gradient squared to force calibration value. For numerous calls of the
+function, it is recommended to calculate this value once externally,
+and pass it in. If left as None, will be recalculated internally.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>forceGuessArr</code></strong> :&ensp;<code>np.object[N,F(N)]</code></dt>
+<dd>Triangular array of force magnitude guesses for N particles with F(N) forces each
+(could be different number of forces per particle).</dd>
+<dt><strong><code>alphaGuessArr</code></strong> :&ensp;<code>np.object[N,F(N)]</code></dt>
+<dd>Triangular array of alpha angle guesses for N particles with F(N) forces each
+(could be different number of forces per particle).</dd>
+<dt><strong><code>betaGuessArr</code></strong> :&ensp;<code>np.object[N,F(N)]</code></dt>
+<dd>Triangular array of beta angle guesses for N particles with F(N) forces each
+(could be different number of forces per particle).</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={}):
+<pre><code class="python">def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={}, g2Cal=None):
     &#34;&#34;&#34;
     Calculate the approximate forces on each particle based on the photoelastic response.
     No optimization/gradient descent is done in this method; this should be used either where
@@ -2265,6 +2339,14 @@ values are carried over from the kwargs for this method (<code>contactPadding</c
     3. Determine if there are any boundary contacts (optional)
     4. Calculate the position of each (boundary or interparticle) force for each particle
     5. Use the average gradient from step 2 to estimate the magnitude of force at each position
+
+    Intended to be used as the initial condition for optimization process; see
+    `pepe.analysis.forceOptimize()` for more information.
+
+    When significant noise is present in the images, this method will often way overestimate
+    the magnitudes of forces (because it is based on the gradient squared). If the guesses
+    are much too high, it can be better to just set all force magnitudes to a reasonable
+    flat value, like `.1`.
 
     Parameters
     ----------
@@ -2323,6 +2405,27 @@ values are carried over from the kwargs for this method (<code>contactPadding</c
         boundaries are being included in the solver. If none are provided, relevant
         values are carried over from the kwargs for this method (`contactPadding`, 
         `g2EdgePadding`, `contactMaskRadius`, `contactG2Threshold`).
+
+    g2Cal : float
+        Gradient squared to force calibration value. For numerous calls of the
+        function, it is recommended to calculate this value once externally,
+        and pass it in. If left as None, will be recalculated internally.
+
+
+    Returns
+    -------
+
+    forceGuessArr : np.object[N,F(N)]
+        Triangular array of force magnitude guesses for N particles with F(N) forces each
+        (could be different number of forces per particle).
+
+    alphaGuessArr : np.object[N,F(N)]
+        Triangular array of alpha angle guesses for N particles with F(N) forces each
+        (could be different number of forces per particle).
+
+    betaGuessArr : np.object[N,F(N)]
+        Triangular array of beta angle guesses for N particles with F(N) forces each
+        (could be different number of forces per particle).
     &#34;&#34;&#34;
 
     # We are passed centers and radii
@@ -2398,7 +2501,8 @@ values are carried over from the kwargs for this method (<code>contactPadding</c
 
     # Find G2 calibration value
     # Mean of the radii should be fine, though TODO would be a good idea to have options here
-    g2Cal = g2ForceCalibration(fSigma, np.mean(radii), pxPerMeter, brightfield=brightfield)
+    if g2Cal is None:
+        g2Cal = g2ForceCalibration(fSigma, np.mean(radii), pxPerMeter, brightfield=brightfield)
 
     # Figure out how much of the particle we will be calculating the g2 over
     if g2EdgePadding &lt; 1. and g2EdgePadding &gt; 0:
@@ -2453,7 +2557,9 @@ values are carried over from the kwargs for this method (<code>contactPadding</c
 <span>def <span class="ident">singleParticleForceBalance</span></span>(<span>forceArr, alphaArr, betaArr)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Takes a set of forces acting on a single particle and ensures they obey
+<div class="desc"><p><strong>Does not currently work! Any calls to this function will just return the original
+arrays</strong></p>
+<p>Takes a set of forces acting on a single particle and ensures they obey
 force balance.</p>
 <p>The majority of this method is transpiled directly from Jonathan Kollmer's
 implementation:
@@ -2482,6 +2588,9 @@ not adjusted in the force balancing process</dd>
 <pre><code class="python">@numba.jit(nopython=True)
 def singleParticleForceBalance(forceArr, alphaArr, betaArr):
     &#34;&#34;&#34;
+    **Does not currently work! Any calls to this function will just return the original
+    arrays**
+
     Takes a set of forces acting on a single particle and ensures they obey
     force balance.
 
@@ -2510,6 +2619,10 @@ def singleParticleForceBalance(forceArr, alphaArr, betaArr):
     np.ndarray[N] : Balanced contact angles alpha
 
     &#34;&#34;&#34;
+
+    # TODO: Get this function working
+    print(&#34;Warning: force balance is not yet implemented, do not call the singleParticleForceBalance function!&#34;)
+    return forceArr, alphaArr
 
     # Number of contacts (coordination number, often denoted by z)
     numContacts = len(forceArr)

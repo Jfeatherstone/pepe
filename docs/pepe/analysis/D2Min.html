@@ -35,7 +35,6 @@ and change from bond-focused calculation to center-focused
 calculation (see code for more details).</p>
 <p>Intended for use within other projects, so CLI access has been
 removed.</p>
-<p>~ Jack Featherstone (jdfeathe@ncsu.edu)</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -56,8 +55,6 @@ calculation (see code for more details).
 
 Intended for use within other projects, so CLI access has been
 removed.
-
-~ Jack Featherstone (jdfeathe@ncsu.edu)
 &#34;&#34;&#34;
 
 import numpy as np
@@ -70,26 +67,26 @@ def calculateD2Min(initialCenters, finalCenters, refParticleIndex=0, interaction
     &#34;&#34;&#34;
     Calculate the d2min between an initial and final state of particles;
     a measure of how non-affine the transformation is, as originally described
-    in Falk &amp; Langer (1998).
+    in [1].
 
     
     Parameters
     ----------
 
-    initialCenters :  [N, d] numpy.ndarray or list
+    initialCenters : np.ndarray[N,d] or list
         List of initial center points of N particles in d dimensions.
 
-    finalCenters :  [N, d] numpy.ndarray or list
+    finalCenters :  np.ndarray[N,d] or list
         List of final center points of N particles in d dimensions. Must be
         in the same order as initialCenters.
 
-    refParticleIndex : int (default=0)
+    refParticleIndex : int
         The index of the particle to treat as the reference particle (r_0 in Falk &amp; Langer
         1998 eq. 2.11). If set to None, will calculate the D2min N times using each particle
         as the reference (and return types will have an extra first dimension N). Simiarly, can
         be a list of indices for which to calculate as the refernce indices.
 
-    interactionRadius : double (default=None)
+    interactionRadius : float
         The maximum distance between particles that can be considered neighbors. Recommended to
         be set to around 1.1 - 1.5 times the mean particle radius of the system.
 
@@ -97,14 +94,14 @@ def calculateD2Min(initialCenters, finalCenters, refParticleIndex=0, interaction
         for specifying a fixed number of neighbors. In the case that neither a radius or number of
         neighbors are specified, calculation will default to using all other particles as neighbors.
 
-    interactionNeighbors : int (default=None)
+    interactionNeighbors : int
         As opposed to using an interactionRadius to define neighbors, a fixed number of neighbors can
         be specified here. This number of neighbors will be found using a kd-tree for the reference point(s).
 
         In the case that neither a radius or number of neighbors are specified, calculation will default
         to using all other particles as neighbors.
 
-    normalize : bool (default=True)
+    normalize : bool
         Whether to divide the d2min by the number of neighbors used to calculate it (True) or not (False).
         For heterogeneous systems where the number of neighbors can vary significantly, recommend to set True.
         Will make little difference if a fixed number of neighbors (see interactionNeigbors) are used.
@@ -112,41 +109,37 @@ def calculateD2Min(initialCenters, finalCenters, refParticleIndex=0, interaction
     Returns
     -------
 
-    (d2min, epsilon)
-
-    d2min : double
+    d2min : float
         The minimum value of D2 for the transition from the initial to final state. Units
         are a squared distance dimensionally the same as the initial and final centers (likely
         a pixel^2 value if tracked from images). Changing units to particle diameters afterwards
         may be necessary.
 
-    epsilon : [d, d] numpy.ndarray
-        The uniform strain tensor that minimizes D2; equation 2.14 in Falk &amp; Langer (1998).
+    epsilon : numpy.ndarray[d,d]
+        The uniform strain tensor that minimizes D2; equation 2.14 in [1].
 
 
-    In the case that refParticleIndex=None, the return will instead be a tuple of numpy arrays
+    In the case that `refParticleIndex=None`, the return will instead be a tuple of numpy arrays
     containing the same information but for every particle:
 
-    (d2minArr, epsilonArr)
-
-    d2minArr : [N] numpy.ndarray
+    d2minArr : np.ndarray[N]
         The minimum value of D2 for the transition from the initial to final state for
         every possible configuration.
 
-    epsilonArr : [N, d, d] numpy.ndarray
+    epsilonArr : np.ndarray[N,d,d]
         The uniform strain tensor that minimizes D2 for every possible configuration
 
 
     Examples
     --------
 
-    See `test` folder in standalone repository.
+    See `test` folder in [standalone repository](https://github.com/Jfeatherstone/D2min).
 
-        
+ 
     References
     ----------    
 
-    Falk, M. L., &amp; Langer, J. S. (1998). Dynamics of viscoplastic deformation in amorphous solids. Physical Review E, 57(6), 7192–7205.
+    [1] Falk, M. L., &amp; Langer, J. S. (1998). Dynamics of viscoplastic deformation in amorphous solids. Physical Review E, 57(6), 7192–7205.
     [https://doi.org/10.1103/PhysRevE.57.7192](https://doi.org/10.1103/PhysRevE.57.7192)
 
     &#34;&#34;&#34;
@@ -258,7 +251,10 @@ def calculateD2Min(initialCenters, finalCenters, refParticleIndex=0, interaction
 
         
 def vonMisesStrain(uniformStrainTensor):
+    &#34;&#34;&#34;
+    WIP.
 
+    &#34;&#34;&#34;
     # The number of spatial dimensions
     dimension = np.shape(uniformStrainTensor)[0]
 
@@ -286,20 +282,20 @@ def vonMisesStrain(uniformStrainTensor):
 <dd>
 <div class="desc"><p>Calculate the d2min between an initial and final state of particles;
 a measure of how non-affine the transformation is, as originally described
-in Falk &amp; Langer (1998).</p>
+in [1].</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
-<dt><strong><code>initialCenters</code></strong> :&ensp;<code> [N, d] numpy.ndarray</code> or <code>list</code></dt>
+<dt><strong><code>initialCenters</code></strong> :&ensp;<code>np.ndarray[N,d]</code> or <code>list</code></dt>
 <dd>List of initial center points of N particles in d dimensions.</dd>
-<dt><strong><code>finalCenters</code></strong> :&ensp;<code> [N, d] numpy.ndarray</code> or <code>list</code></dt>
+<dt><strong><code>finalCenters</code></strong> :&ensp;<code> np.ndarray[N,d]</code> or <code>list</code></dt>
 <dd>List of final center points of N particles in d dimensions. Must be
 in the same order as initialCenters.</dd>
-<dt><strong><code>refParticleIndex</code></strong> :&ensp;<code>int (default=0)</code></dt>
+<dt><strong><code>refParticleIndex</code></strong> :&ensp;<code>int</code></dt>
 <dd>The index of the particle to treat as the reference particle (r_0 in Falk &amp; Langer
 1998 eq. 2.11). If set to None, will calculate the D2min N times using each particle
 as the reference (and return types will have an extra first dimension N). Simiarly, can
 be a list of indices for which to calculate as the refernce indices.</dd>
-<dt><strong><code>interactionRadius</code></strong> :&ensp;<code>double (default=None)</code></dt>
+<dt><strong><code>interactionRadius</code></strong> :&ensp;<code>float</code></dt>
 <dd>
 <p>The maximum distance between particles that can be considered neighbors. Recommended to
 be set to around 1.1 - 1.5 times the mean particle radius of the system.</p>
@@ -307,45 +303,40 @@ be set to around 1.1 - 1.5 times the mean particle radius of the system.</p>
 for specifying a fixed number of neighbors. In the case that neither a radius or number of
 neighbors are specified, calculation will default to using all other particles as neighbors.</p>
 </dd>
-<dt><strong><code>interactionNeighbors</code></strong> :&ensp;<code>int (default=None)</code></dt>
+<dt><strong><code>interactionNeighbors</code></strong> :&ensp;<code>int</code></dt>
 <dd>
 <p>As opposed to using an interactionRadius to define neighbors, a fixed number of neighbors can
 be specified here. This number of neighbors will be found using a kd-tree for the reference point(s).</p>
 <p>In the case that neither a radius or number of neighbors are specified, calculation will default
 to using all other particles as neighbors.</p>
 </dd>
-<dt><strong><code>normalize</code></strong> :&ensp;<code>bool (default=True)</code></dt>
+<dt><strong><code>normalize</code></strong> :&ensp;<code>bool</code></dt>
 <dd>Whether to divide the d2min by the number of neighbors used to calculate it (True) or not (False).
 For heterogeneous systems where the number of neighbors can vary significantly, recommend to set True.
 Will make little difference if a fixed number of neighbors (see interactionNeigbors) are used.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
-<p>(d2min, epsilon)</p>
 <dl>
-<dt><strong><code>d2min</code></strong> :&ensp;<code>double</code></dt>
+<dt><strong><code>d2min</code></strong> :&ensp;<code>float</code></dt>
 <dd>The minimum value of D2 for the transition from the initial to final state. Units
 are a squared distance dimensionally the same as the initial and final centers (likely
 a pixel^2 value if tracked from images). Changing units to particle diameters afterwards
 may be necessary.</dd>
-<dt><strong><code>epsilon</code></strong> :&ensp;<code>[d, d] numpy.ndarray</code></dt>
-<dd>The uniform strain tensor that minimizes D2; equation 2.14 in Falk &amp; Langer (1998).</dd>
-<dt><code>In the case that refParticleIndex=None, the return will instead be a tuple</code> of <code>numpy arrays</code></dt>
-<dd>&nbsp;</dd>
+<dt><strong><code>epsilon</code></strong> :&ensp;<code>numpy.ndarray[d,d]</code></dt>
+<dd>The uniform strain tensor that minimizes D2; equation 2.14 in [1].</dd>
+<dt>In the case that <code>refParticleIndex=None</code>, the return will instead be a tuple of numpy arrays</dt>
 <dt><code>containing the same information but for every particle:</code></dt>
 <dd>&nbsp;</dd>
-</dl>
-<p>(d2minArr, epsilonArr)</p>
-<dl>
-<dt><strong><code>d2minArr</code></strong> :&ensp;<code>[N] numpy.ndarray</code></dt>
+<dt><strong><code>d2minArr</code></strong> :&ensp;<code>np.ndarray[N]</code></dt>
 <dd>The minimum value of D2 for the transition from the initial to final state for
 every possible configuration.</dd>
-<dt><strong><code>epsilonArr</code></strong> :&ensp;<code>[N, d, d] numpy.ndarray</code></dt>
+<dt><strong><code>epsilonArr</code></strong> :&ensp;<code>np.ndarray[N,d,d]</code></dt>
 <dd>The uniform strain tensor that minimizes D2 for every possible configuration</dd>
 </dl>
 <h2 id="examples">Examples</h2>
-<p>See <code>test</code> folder in standalone repository.</p>
+<p>See <code>test</code> folder in <a href="https://github.com/Jfeatherstone/D2min">standalone repository</a>.</p>
 <h2 id="references">References</h2>
-<p>Falk, M. L., &amp; Langer, J. S. (1998). Dynamics of viscoplastic deformation in amorphous solids. Physical Review E, 57(6), 7192–7205.
+<p>[1] Falk, M. L., &amp; Langer, J. S. (1998). Dynamics of viscoplastic deformation in amorphous solids. Physical Review E, 57(6), 7192–7205.
 <a href="https://doi.org/10.1103/PhysRevE.57.7192">https://doi.org/10.1103/PhysRevE.57.7192</a></p></div>
 <details class="source">
 <summary>
@@ -355,26 +346,26 @@ every possible configuration.</dd>
     &#34;&#34;&#34;
     Calculate the d2min between an initial and final state of particles;
     a measure of how non-affine the transformation is, as originally described
-    in Falk &amp; Langer (1998).
+    in [1].
 
     
     Parameters
     ----------
 
-    initialCenters :  [N, d] numpy.ndarray or list
+    initialCenters : np.ndarray[N,d] or list
         List of initial center points of N particles in d dimensions.
 
-    finalCenters :  [N, d] numpy.ndarray or list
+    finalCenters :  np.ndarray[N,d] or list
         List of final center points of N particles in d dimensions. Must be
         in the same order as initialCenters.
 
-    refParticleIndex : int (default=0)
+    refParticleIndex : int
         The index of the particle to treat as the reference particle (r_0 in Falk &amp; Langer
         1998 eq. 2.11). If set to None, will calculate the D2min N times using each particle
         as the reference (and return types will have an extra first dimension N). Simiarly, can
         be a list of indices for which to calculate as the refernce indices.
 
-    interactionRadius : double (default=None)
+    interactionRadius : float
         The maximum distance between particles that can be considered neighbors. Recommended to
         be set to around 1.1 - 1.5 times the mean particle radius of the system.
 
@@ -382,14 +373,14 @@ every possible configuration.</dd>
         for specifying a fixed number of neighbors. In the case that neither a radius or number of
         neighbors are specified, calculation will default to using all other particles as neighbors.
 
-    interactionNeighbors : int (default=None)
+    interactionNeighbors : int
         As opposed to using an interactionRadius to define neighbors, a fixed number of neighbors can
         be specified here. This number of neighbors will be found using a kd-tree for the reference point(s).
 
         In the case that neither a radius or number of neighbors are specified, calculation will default
         to using all other particles as neighbors.
 
-    normalize : bool (default=True)
+    normalize : bool
         Whether to divide the d2min by the number of neighbors used to calculate it (True) or not (False).
         For heterogeneous systems where the number of neighbors can vary significantly, recommend to set True.
         Will make little difference if a fixed number of neighbors (see interactionNeigbors) are used.
@@ -397,41 +388,37 @@ every possible configuration.</dd>
     Returns
     -------
 
-    (d2min, epsilon)
-
-    d2min : double
+    d2min : float
         The minimum value of D2 for the transition from the initial to final state. Units
         are a squared distance dimensionally the same as the initial and final centers (likely
         a pixel^2 value if tracked from images). Changing units to particle diameters afterwards
         may be necessary.
 
-    epsilon : [d, d] numpy.ndarray
-        The uniform strain tensor that minimizes D2; equation 2.14 in Falk &amp; Langer (1998).
+    epsilon : numpy.ndarray[d,d]
+        The uniform strain tensor that minimizes D2; equation 2.14 in [1].
 
 
-    In the case that refParticleIndex=None, the return will instead be a tuple of numpy arrays
+    In the case that `refParticleIndex=None`, the return will instead be a tuple of numpy arrays
     containing the same information but for every particle:
 
-    (d2minArr, epsilonArr)
-
-    d2minArr : [N] numpy.ndarray
+    d2minArr : np.ndarray[N]
         The minimum value of D2 for the transition from the initial to final state for
         every possible configuration.
 
-    epsilonArr : [N, d, d] numpy.ndarray
+    epsilonArr : np.ndarray[N,d,d]
         The uniform strain tensor that minimizes D2 for every possible configuration
 
 
     Examples
     --------
 
-    See `test` folder in standalone repository.
+    See `test` folder in [standalone repository](https://github.com/Jfeatherstone/D2min).
 
-        
+ 
     References
     ----------    
 
-    Falk, M. L., &amp; Langer, J. S. (1998). Dynamics of viscoplastic deformation in amorphous solids. Physical Review E, 57(6), 7192–7205.
+    [1] Falk, M. L., &amp; Langer, J. S. (1998). Dynamics of viscoplastic deformation in amorphous solids. Physical Review E, 57(6), 7192–7205.
     [https://doi.org/10.1103/PhysRevE.57.7192](https://doi.org/10.1103/PhysRevE.57.7192)
 
     &#34;&#34;&#34;
@@ -546,13 +533,16 @@ every possible configuration.</dd>
 <span>def <span class="ident">vonMisesStrain</span></span>(<span>uniformStrainTensor)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>WIP.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def vonMisesStrain(uniformStrainTensor):
+    &#34;&#34;&#34;
+    WIP.
 
+    &#34;&#34;&#34;
     # The number of spatial dimensions
     dimension = np.shape(uniformStrainTensor)[0]
 

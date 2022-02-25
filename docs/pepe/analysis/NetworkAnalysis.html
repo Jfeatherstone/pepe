@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>pepe.analysis.NetworkAnalysis API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="Implementations of network analyses, like contact networks or adjacency matrices." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -23,25 +23,30 @@
 <h1 class="title">Module <code>pepe.analysis.NetworkAnalysis</code></h1>
 </header>
 <section id="section-intro">
+<p>Implementations of network analyses, like contact networks or adjacency matrices.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import numpy as np
+<pre><code class="python">&#34;&#34;&#34;
+Implementations of network analyses, like contact networks or adjacency matrices.
+&#34;&#34;&#34;
+
+import numpy as np
 
 from sklearn.neighbors import KDTree 
 
 from pepe.preprocess import circularMask
 from pepe.analysis import gSquared
 
-def adjacencyMatrix(centers, radii, contactPadding=5, neighborEvaluations=4):
+def adjacencyMatrix(centers, radii, contactPadding=5, neighborEvaluations=6):
     &#34;&#34;&#34;
     Calculate the (unweighted) adjacency matrix, aka neighbor matrix,
     of a set of particles (centers and radii).
 
-    For finding centers and radii, see pepe.tracking.
+    For finding centers and radii, see `pepe.tracking`.
 
-    Optimized for large numbers of particles by using a kd tree to only
+    Optimized for large numbers of particles by using a kd-tree to only
     evaluate potential contacts for nearby particles.
 
     Parameters
@@ -60,12 +65,14 @@ def adjacencyMatrix(centers, radii, contactPadding=5, neighborEvaluations=4):
     neightborEvaluations : int
         How many of the closest points to find via the kd tree and test
         as potential contacts. For homogeneous circles, or approximately
-        homogenous (&lt; 2:1 size ratio), 4 should be plenty.
+        homogenous (&lt; 2:1 size ratio), 6 should be plenty.
+
 
     Returns
     -------
 
-    np.ndarray[N,N] : Unweighted adjacency matrix
+    adjMat : np.ndarray[N,N]
+        Unweighted adjacency matrix
     &#34;&#34;&#34;
 
     adjMatrix = np.zeros([len(centers), len(centers)])
@@ -89,14 +96,14 @@ def adjacencyMatrix(centers, radii, contactPadding=5, neighborEvaluations=4):
     return adjMatrix
 
 
-def weightedAdjacencyMatrix(photoelasticSingleChannel, centers, radii, contactPadding=5, g2MaskPadding=1, contactThreshold=.1, neighborEvaluations=4):
+def weightedAdjacencyMatrix(photoelasticSingleChannel, centers, radii, contactPadding=5, g2MaskPadding=1, contactThreshold=.1, neighborEvaluations=6):
     &#34;&#34;&#34;
     Calculate a weighted adjacency matrix of a system of particles
     based on the average G^2 of each particle.
 
-    For finding centers and radii, see pepe.tracking.
+    For finding centers and radii, see `pepe.tracking`.
 
-    For unweighted adjacency matrix, see pepe.analysis.adjacencyMatrix.
+    For unweighted adjacency matrix, see `pepe.analysis.adjacencyMatrix()`.
 
     Parameters
     ----------
@@ -127,12 +134,14 @@ def weightedAdjacencyMatrix(photoelasticSingleChannel, centers, radii, contactPa
     neightborEvaluations : int
         How many of the closest points to find via the kd tree and test
         as potential contacts. For homogeneous circles, or approximately
-        homogenous (&lt; 2:1 size ratio), 4 should be plenty.
+        homogenous (&lt; 2:1 size ratio), 6 should be plenty.
+
 
     Returns
     -------
 
-    np.ndarray[N,N] : Weighted adjacency matrix
+    adjMat : np.ndarray[N,N]
+        Weighted adjacency matrix
     &#34;&#34;&#34;
 
     # First, we calculate the unweighted network
@@ -173,13 +182,13 @@ def weightedAdjacencyMatrix(photoelasticSingleChannel, centers, radii, contactPa
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="pepe.analysis.NetworkAnalysis.adjacencyMatrix"><code class="name flex">
-<span>def <span class="ident">adjacencyMatrix</span></span>(<span>centers, radii, contactPadding=5, neighborEvaluations=4)</span>
+<span>def <span class="ident">adjacencyMatrix</span></span>(<span>centers, radii, contactPadding=5, neighborEvaluations=6)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Calculate the (unweighted) adjacency matrix, aka neighbor matrix,
 of a set of particles (centers and radii).</p>
-<p>For finding centers and radii, see pepe.tracking.</p>
-<p>Optimized for large numbers of particles by using a kd tree to only
+<p>For finding centers and radii, see <code><a title="pepe.tracking" href="../tracking/index.html">pepe.tracking</a></code>.</p>
+<p>Optimized for large numbers of particles by using a kd-tree to only
 evaluate potential contacts for nearby particles.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
@@ -193,25 +202,25 @@ two particles will still be considered in contact.</dd>
 <dt><strong><code>neightborEvaluations</code></strong> :&ensp;<code>int</code></dt>
 <dd>How many of the closest points to find via the kd tree and test
 as potential contacts. For homogeneous circles, or approximately
-homogenous (&lt; 2:1 size ratio), 4 should be plenty.</dd>
+homogenous (&lt; 2:1 size ratio), 6 should be plenty.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code>np.ndarray[N,N] : Unweighted adjacency matrix</code></dt>
-<dd>&nbsp;</dd>
+<dt><strong><code>adjMat</code></strong> :&ensp;<code>np.ndarray[N,N]</code></dt>
+<dd>Unweighted adjacency matrix</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def adjacencyMatrix(centers, radii, contactPadding=5, neighborEvaluations=4):
+<pre><code class="python">def adjacencyMatrix(centers, radii, contactPadding=5, neighborEvaluations=6):
     &#34;&#34;&#34;
     Calculate the (unweighted) adjacency matrix, aka neighbor matrix,
     of a set of particles (centers and radii).
 
-    For finding centers and radii, see pepe.tracking.
+    For finding centers and radii, see `pepe.tracking`.
 
-    Optimized for large numbers of particles by using a kd tree to only
+    Optimized for large numbers of particles by using a kd-tree to only
     evaluate potential contacts for nearby particles.
 
     Parameters
@@ -230,12 +239,14 @@ homogenous (&lt; 2:1 size ratio), 4 should be plenty.</dd>
     neightborEvaluations : int
         How many of the closest points to find via the kd tree and test
         as potential contacts. For homogeneous circles, or approximately
-        homogenous (&lt; 2:1 size ratio), 4 should be plenty.
+        homogenous (&lt; 2:1 size ratio), 6 should be plenty.
+
 
     Returns
     -------
 
-    np.ndarray[N,N] : Unweighted adjacency matrix
+    adjMat : np.ndarray[N,N]
+        Unweighted adjacency matrix
     &#34;&#34;&#34;
 
     adjMatrix = np.zeros([len(centers), len(centers)])
@@ -260,13 +271,13 @@ homogenous (&lt; 2:1 size ratio), 4 should be plenty.</dd>
 </details>
 </dd>
 <dt id="pepe.analysis.NetworkAnalysis.weightedAdjacencyMatrix"><code class="name flex">
-<span>def <span class="ident">weightedAdjacencyMatrix</span></span>(<span>photoelasticSingleChannel, centers, radii, contactPadding=5, g2MaskPadding=1, contactThreshold=0.1, neighborEvaluations=4)</span>
+<span>def <span class="ident">weightedAdjacencyMatrix</span></span>(<span>photoelasticSingleChannel, centers, radii, contactPadding=5, g2MaskPadding=1, contactThreshold=0.1, neighborEvaluations=6)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Calculate a weighted adjacency matrix of a system of particles
 based on the average G^2 of each particle.</p>
-<p>For finding centers and radii, see pepe.tracking.</p>
-<p>For unweighted adjacency matrix, see pepe.analysis.adjacencyMatrix.</p>
+<p>For finding centers and radii, see <code><a title="pepe.tracking" href="../tracking/index.html">pepe.tracking</a></code>.</p>
+<p>For unweighted adjacency matrix, see <code>pepe.analysis.adjacencyMatrix()</code>.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>photelasticSingleChannel</code></strong> :&ensp;<code>np.uint8[H,W]</code></dt>
@@ -289,25 +300,25 @@ any real force.</dd>
 <dt><strong><code>neightborEvaluations</code></strong> :&ensp;<code>int</code></dt>
 <dd>How many of the closest points to find via the kd tree and test
 as potential contacts. For homogeneous circles, or approximately
-homogenous (&lt; 2:1 size ratio), 4 should be plenty.</dd>
+homogenous (&lt; 2:1 size ratio), 6 should be plenty.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><code>np.ndarray[N,N] : Weighted adjacency matrix</code></dt>
-<dd>&nbsp;</dd>
+<dt><strong><code>adjMat</code></strong> :&ensp;<code>np.ndarray[N,N]</code></dt>
+<dd>Weighted adjacency matrix</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def weightedAdjacencyMatrix(photoelasticSingleChannel, centers, radii, contactPadding=5, g2MaskPadding=1, contactThreshold=.1, neighborEvaluations=4):
+<pre><code class="python">def weightedAdjacencyMatrix(photoelasticSingleChannel, centers, radii, contactPadding=5, g2MaskPadding=1, contactThreshold=.1, neighborEvaluations=6):
     &#34;&#34;&#34;
     Calculate a weighted adjacency matrix of a system of particles
     based on the average G^2 of each particle.
 
-    For finding centers and radii, see pepe.tracking.
+    For finding centers and radii, see `pepe.tracking`.
 
-    For unweighted adjacency matrix, see pepe.analysis.adjacencyMatrix.
+    For unweighted adjacency matrix, see `pepe.analysis.adjacencyMatrix()`.
 
     Parameters
     ----------
@@ -338,12 +349,14 @@ homogenous (&lt; 2:1 size ratio), 4 should be plenty.</dd>
     neightborEvaluations : int
         How many of the closest points to find via the kd tree and test
         as potential contacts. For homogeneous circles, or approximately
-        homogenous (&lt; 2:1 size ratio), 4 should be plenty.
+        homogenous (&lt; 2:1 size ratio), 6 should be plenty.
+
 
     Returns
     -------
 
-    np.ndarray[N,N] : Weighted adjacency matrix
+    adjMat : np.ndarray[N,N]
+        Weighted adjacency matrix
     &#34;&#34;&#34;
 
     # First, we calculate the unweighted network

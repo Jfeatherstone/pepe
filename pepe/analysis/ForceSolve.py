@@ -1,3 +1,7 @@
+"""
+Methods to solve for vector contact forces from a photoelastic image.
+"""
+
 import numpy as np
 
 from pepe.preprocess import circularMask, rectMask, ellipticalMask, mergeMasks
@@ -33,6 +37,14 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     3. Determine if there are any boundary contacts (optional)
     4. Calculate the position of each (boundary or interparticle) force for each particle
     5. Use the average gradient from step 2 to estimate the magnitude of force at each position
+
+    Intended to be used as the initial condition for optimization process; see
+    `pepe.analysis.forceOptimize()` for more information.
+
+    When significant noise is present in the images, this method will often way overestimate
+    the magnitudes of forces (because it is based on the gradient squared). If the guesses
+    are much too high, it can be better to just set all force magnitudes to a reasonable
+    flat value, like `.1`.
 
     Parameters
     ----------
@@ -96,6 +108,22 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
         Gradient squared to force calibration value. For numerous calls of the
         function, it is recommended to calculate this value once externally,
         and pass it in. If left as None, will be recalculated internally.
+
+
+    Returns
+    -------
+
+    forceGuessArr : np.object[N,F(N)]
+        Triangular array of force magnitude guesses for N particles with F(N) forces each
+        (could be different number of forces per particle).
+
+    alphaGuessArr : np.object[N,F(N)]
+        Triangular array of alpha angle guesses for N particles with F(N) forces each
+        (could be different number of forces per particle).
+
+    betaGuessArr : np.object[N,F(N)]
+        Triangular array of beta angle guesses for N particles with F(N) forces each
+        (could be different number of forces per particle).
     """
 
     # We are passed centers and radii

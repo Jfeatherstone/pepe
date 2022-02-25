@@ -1,4 +1,33 @@
-import numpy as np
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>pepe.auto.ForceSolve API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS_CHTML" integrity="sha256-kZafAc6mZvK3W3v1pHOcUix30OHQN6pU/NO2oFkqZVw=" crossorigin></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>pepe.auto.ForceSolve</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import numpy as np
 import os
 import cv2
 import time
@@ -20,8 +49,8 @@ from pepe.utils import genRandomColors, preserveOrderArgsort, rectangularizeForc
 # passed to the function, and which were left as default values. See beginning
 # of method code for more information/motivation.
 @explicitKwargs()
-def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True):
-    """
+def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, peBlurKernel=3, imageExtension=&#39;bmp&#39;, requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, showProgressBar=True, circleDetectionMethod=&#39;convolution&#39;, circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder=&#39;./&#39;, inputSettingsFile=None, pickleArrays=True):
+    &#34;&#34;&#34;
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be returned and potentially written to various files.
     See `Returns` section for more information
@@ -69,12 +98,12 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         a darkfield polariscope (`False`).
 
     contactPadding : int
-        Maximum distance (in pixels) between a particle's edge and the wall or the edges of two
+        Maximum distance (in pixels) between a particle&#39;s edge and the wall or the edges of two
         particles that will still be considered a potential force-bearing contact.
 
     g2MaskPadding : int or float
         Number of pixels to ignore at the edge of each particle when calculating the average G^2.
-        If float value < 1 is passed, gradient mask radius will be taken as that percent of the full
+        If float value &lt; 1 is passed, gradient mask radius will be taken as that percent of the full
         particle radius. A value of 0 means no padding is included.
 
     contactMaskRadius : float
@@ -114,7 +143,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
     imageExtension : str
         The extension of the image files that will be read in from `imageDirectory`. Should not include
-        the '.' before the extension.
+        the &#39;.&#39; before the extension.
 
     requireForceBalance : bool
         Whether to impose particle-wise force balance at each step (`True`) or to take the results of
@@ -134,7 +163,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         Whether to show a progress bar throughout the analysis (`True`) or not (`False`). Uses
         `progressbar2` library.
 
-    circleDetectionMethod : ['convolution' or 'hough']
+    circleDetectionMethod : [&#39;convolution&#39; or &#39;hough&#39;]
         Whether to use the convolution or hough circle detection method to identify particles.
 
         See `pepe.tracking.convCircle()` and `pepe.tracking.houghCircle()` for more information.
@@ -176,7 +205,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
     outputRootFolder : str
         The location where the output folder (potentially containg the movie, pickle files, readme, etc.)
-        will be created. Output folder itself will be named after the `imageDirectory`, with '_Synthetic'
+        will be created. Output folder itself will be named after the `imageDirectory`, with &#39;_Synthetic&#39;
         appended to the end.
 
     pickleArrays : bool
@@ -214,9 +243,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     
     Depending on kwarg values, several quantities may be written into the output folder,
     which will be located in `outputRootFolder` and named according to `imageDirectory`,
-    with '_Synthetic' appended.
+    with &#39;_Synthetic&#39; appended.
 
-    """
+    &#34;&#34;&#34;
    
     overallStartTime = time.perf_counter()
 
@@ -231,45 +260,45 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # So we assign the elements of our settings dict in opposite order
 
     # 3. All of the default values
-    settings = {"imageDirectory": os.path.abspath(imageDirectory) + '/', # Convert to absolute path
-                "imageExtension": imageExtension,
-                "imageEndIndex": imageEndIndex,
-                "imageStartIndex": imageStartIndex,
-                "showProgressBar": showProgressBar,
-                "lightCorrectionImage": lightCorrectionImage,
-                "lightCorrectionVerticalMask": lightCorrectionVerticalMask,
-                "lightCorrectionHorizontalMask": lightCorrectionHorizontalMask,
-                "g2CalibrationImage": g2CalibrationImage,
-                "g2CalibrationCutoffFactor": g2CalibrationCutoffFactor,
-                "maskImage": maskImage,
-                "circleDetectionMethod": circleDetectionMethod,
-                "guessRadius": guessRadius,
-                "fSigma": fSigma,
-                "pxPerMeter": pxPerMeter,
-                "brightfield": brightfield,
-                "contactPadding": contactPadding,
-                "g2MaskPadding": g2MaskPadding,
-                "contactMaskRadius": contactMaskRadius,
-                "peBlurKernel": peBlurKernel,
-                "requireForceBalance": requireForceBalance,
-                "circleTrackingChannel": circleTrackingChannel,
-                "photoelasticChannel": photoelasticChannel,
-                "maxBetaDisplacement": maxBetaDisplacement,
-                "forceNoiseWidth": forceNoiseWidth,
-                "saveMovie": saveMovie,
-                "pickleArrays": pickleArrays,
-                "outputRootFolder": outputRootFolder}
+    settings = {&#34;imageDirectory&#34;: os.path.abspath(imageDirectory) + &#39;/&#39;, # Convert to absolute path
+                &#34;imageExtension&#34;: imageExtension,
+                &#34;imageEndIndex&#34;: imageEndIndex,
+                &#34;imageStartIndex&#34;: imageStartIndex,
+                &#34;showProgressBar&#34;: showProgressBar,
+                &#34;lightCorrectionImage&#34;: lightCorrectionImage,
+                &#34;lightCorrectionVerticalMask&#34;: lightCorrectionVerticalMask,
+                &#34;lightCorrectionHorizontalMask&#34;: lightCorrectionHorizontalMask,
+                &#34;g2CalibrationImage&#34;: g2CalibrationImage,
+                &#34;g2CalibrationCutoffFactor&#34;: g2CalibrationCutoffFactor,
+                &#34;maskImage&#34;: maskImage,
+                &#34;circleDetectionMethod&#34;: circleDetectionMethod,
+                &#34;guessRadius&#34;: guessRadius,
+                &#34;fSigma&#34;: fSigma,
+                &#34;pxPerMeter&#34;: pxPerMeter,
+                &#34;brightfield&#34;: brightfield,
+                &#34;contactPadding&#34;: contactPadding,
+                &#34;g2MaskPadding&#34;: g2MaskPadding,
+                &#34;contactMaskRadius&#34;: contactMaskRadius,
+                &#34;peBlurKernel&#34;: peBlurKernel,
+                &#34;requireForceBalance&#34;: requireForceBalance,
+                &#34;circleTrackingChannel&#34;: circleTrackingChannel,
+                &#34;photoelasticChannel&#34;: photoelasticChannel,
+                &#34;maxBetaDisplacement&#34;: maxBetaDisplacement,
+                &#34;forceNoiseWidth&#34;: forceNoiseWidth,
+                &#34;saveMovie&#34;: saveMovie,
+                &#34;pickleArrays&#34;: pickleArrays,
+                &#34;outputRootFolder&#34;: outputRootFolder}
 
     # 2. Anything read in from a settings file
     # Note that it works to our advantage that we already have values for most entries,
-    # since the settings file doesn't include type information, so we need the old
+    # since the settings file doesn&#39;t include type information, so we need the old
     # values to cast properly. 1. is actually contained in here as well, because
     # we can just check to see if that variable was explicitly passed before overwriting it.
 
     # 1. The kwargs that are explicitly passed
-    # This one is a little tricky, because there isn't a super great way by default
+    # This one is a little tricky, because there isn&#39;t a super great way by default
     # to differentiate whether a kwarg is explicitly passed or is its default value
-    # (without just keeping a list of default values). I also don't want to
+    # (without just keeping a list of default values). I also don&#39;t want to
     # replace the entire function signature with (*args, **kwargs) because then the
     # documentation would not be as good (I think). So the solution here is to define
     # a decorator that has the (*args, **kwargs) signature, and to create an attribute
@@ -277,59 +306,59 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # decorator. See `pepe.utils.explicitKwargs()` for more info.
     if inputSettingsFile is not None:
         if os.exists(inputSettingsFile):
-            fileObj = open(inputSettingsFile, 'r')
+            fileObj = open(inputSettingsFile, &#39;r&#39;)
             for line in fileObj:
                 # Check each line and see if it looks like a dictionary value
-                split = line.split('=')
+                split = line.split(&#39;=&#39;)
                 if len(split) == 2 and split[0] in settings.keys() and not split[0] in forceSolve.explicit_kwargs:
                     # Cast to the type of the value already in the dict
                     settings[split[0].strip()] = type(settings[split[0].strip()])(split[1].strip())
         else:
-            print(f'Warning: provided settings file does not exist! Attempting to run regardless...')
+            print(f&#39;Warning: provided settings file does not exist! Attempting to run regardless...&#39;)
 
     # While the following variables all have a default value of 0, they cannot actually
     # be left as this value. The reason they have a default value is so that if these
-    # values are indicated by a settings file, we don't want to have to enter them again.
+    # values are indicated by a settings file, we don&#39;t want to have to enter them again.
     # So here, we make sure we have values for them all, either explicitly passed or read in.
-    requiredVars = ["guessRadius", "fSigma", "pxPerMeter"]
+    requiredVars = [&#34;guessRadius&#34;, &#34;fSigma&#34;, &#34;pxPerMeter&#34;]
     for r in requiredVars:
-        assert settings[r] != 0, f'Error: {r} value not supplied explicitly or implicitly!'
+        assert settings[r] != 0, f&#39;Error: {r} value not supplied explicitly or implicitly!&#39;
 
 
     # TODO: Make this more robust
     centerColors = genRandomColors(10)
 
     # Find all images in the directory
-    imageFiles = os.listdir(settings["imageDirectory"])
+    imageFiles = os.listdir(settings[&#34;imageDirectory&#34;])
 
     # This goes before the sorting/extension filtering so we can get more specific
     # error messages (and we have another one of these below)
-    if len(imageFiles) < 1:
-        print(f'Error: directory {imageDirectory} contains no files!')
+    if len(imageFiles) &lt; 1:
+        print(f&#39;Error: directory {imageDirectory} contains no files!&#39;)
         return None
 
-    imageFiles = np.sort([img for img in imageFiles if img[-len(settings["imageExtension"]):] == settings["imageExtension"]])
+    imageFiles = np.sort([img for img in imageFiles if img[-len(settings[&#34;imageExtension&#34;]):] == settings[&#34;imageExtension&#34;]])
 
-    # We have to do the end index first, so it doesn't mess up the start one
-    if settings["imageEndIndex"] is not None:
-        imageFiles = imageFiles[:min(settings["imageEndIndex"], len(imageFiles))]
+    # We have to do the end index first, so it doesn&#39;t mess up the start one
+    if settings[&#34;imageEndIndex&#34;] is not None:
+        imageFiles = imageFiles[:min(settings[&#34;imageEndIndex&#34;], len(imageFiles))]
 
-    if settings["imageStartIndex"] is not None:
-        imageFiles = imageFiles[max(settings["imageStartIndex"], 0):]
+    if settings[&#34;imageStartIndex&#34;] is not None:
+        imageFiles = imageFiles[max(settings[&#34;imageStartIndex&#34;], 0):]
 
     # Make sure we still have some proper images
-    if len(imageFiles) < 1:
-        print(f'Error: directory \'{settings["imageDirectory"]}\' contains no files with extension \'{settings["imageExtension"]}\'!')
+    if len(imageFiles) &lt; 1:
+        print(f&#39;Error: directory \&#39;{settings[&#34;imageDirectory&#34;]}\&#39; contains no files with extension \&#39;{settings[&#34;imageExtension&#34;]}\&#39;!&#39;)
         return None
 
-    if settings["showProgressBar"]:
+    if settings[&#34;showProgressBar&#34;]:
         bar = progressbar.ProgressBar(max_value=len(imageFiles))
 
     # This will calculation the light correction across the images 
-    if settings["lightCorrectionImage"] is not None:
-        cImageProper = checkImageType(settings["lightCorrectionImage"])
-        vMask = checkImageType(settings["lightCorrectionVerticalMask"])
-        hMask = checkImageType(settings["lightCorrectionHorizontalMask"])
+    if settings[&#34;lightCorrectionImage&#34;] is not None:
+        cImageProper = checkImageType(settings[&#34;lightCorrectionImage&#34;])
+        vMask = checkImageType(settings[&#34;lightCorrectionVerticalMask&#34;])
+        hMask = checkImageType(settings[&#34;lightCorrectionHorizontalMask&#34;])
 
         if vMask.ndim == 3:
             vMask = vMask[:,:,0]
@@ -337,47 +366,47 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             hMask = hMask[:,:,0]
         lightCorrection = lightCorrectionDiff(cImageProper, vMask, hMask)
     else:
-        # It probably isn't great hygiene to have this variableflip between a single
+        # It probably isn&#39;t great hygiene to have this variableflip between a single
         # value and an array, but you can always add a scalar to a numpy array, so
-        # this is the easiest way (since we haven't loaded any images yet)
+        # this is the easiest way (since we haven&#39;t loaded any images yet)
         lightCorrection = 0
 
     # Load up the mask image, which will be used to remove parts of the images
-    # that we don't care about, and also potentially indicate which particles
+    # that we don&#39;t care about, and also potentially indicate which particles
     # are close to the boundary.
-    if settings["maskImage"] is not None:
-        maskArr = checkImageType(settings["maskImage"])
+    if settings[&#34;maskImage&#34;] is not None:
+        maskArr = checkImageType(settings[&#34;maskImage&#34;])
         ignoreBoundary = False
 
     else:
         # Same deal as above: scalar multiplication functions exactly how we want
-        # in the case that we don't have a mask, so it's just easier to do this.
+        # in the case that we don&#39;t have a mask, so it&#39;s just easier to do this.
         maskArr = 1
         ignoreBoundary = True
 
     # Which method we will be using to detect circles
-    if settings["circleDetectionMethod"] == 'convolution':
+    if settings[&#34;circleDetectionMethod&#34;] == &#39;convolution&#39;:
         circFunc = convCircle
-    elif settings["circleDetectionMethod"] == 'hough':
+    elif settings[&#34;circleDetectionMethod&#34;] == &#39;hough&#39;:
         circFunc = houghCircle
     else:
-        print(f'Error: circle detection option \'{settings["circleDetectionMethod"]}\' not recognized!')
+        print(f&#39;Error: circle detection option \&#39;{settings[&#34;circleDetectionMethod&#34;]}\&#39; not recognized!&#39;)
         return None
 
     checkMinG2 = False
-    if settings["g2CalibrationImage"] is not None:
-        g2CalImage = checkImageType(settings["g2CalibrationImage"])
+    if settings[&#34;g2CalibrationImage&#34;] is not None:
+        g2CalImage = checkImageType(settings[&#34;g2CalibrationImage&#34;])
 
-        g2CalPEImage = cv2.blur((g2CalImage[:,:,settings["photoelasticChannel"]] + lightCorrection).astype(np.float64) / 255, (settings["peBlurKernel"],settings["peBlurKernel"]))
+        g2CalPEImage = cv2.blur((g2CalImage[:,:,settings[&#34;photoelasticChannel&#34;]] + lightCorrection).astype(np.float64) / 255, (settings[&#34;peBlurKernel&#34;],settings[&#34;peBlurKernel&#34;]))
         # Locate particles
-        centers, radii = circFunc(g2CalImage[:,:,settings["circleTrackingChannel"]] * maskArr[:,:,0], settings["guessRadius"], **circleTrackingKwargs)
+        centers, radii = circFunc(g2CalImage[:,:,settings[&#34;circleTrackingChannel&#34;]] * maskArr[:,:,0], settings[&#34;guessRadius&#34;], **circleTrackingKwargs)
         # There should only be 1 particle in the calibration image
-        if len(centers) < 0:
-            print(f'Warning: Gradient-squared calibration image does not contain any particles! Ignoring...')
+        if len(centers) &lt; 0:
+            print(f&#39;Warning: Gradient-squared calibration image does not contain any particles! Ignoring...&#39;)
         else:
             particleMask = circularMask(g2CalPEImage.shape, centers[0], radii[0])[:,:,0]
             gSqr = gSquared(g2CalPEImage)
-            minParticleG2 = np.sum(gSqr * particleMask) / np.sum(particleMask) * settings["g2CalibrationCutoffFactor"]
+            minParticleG2 = np.sum(gSqr * particleMask) / np.sum(particleMask) * settings[&#34;g2CalibrationCutoffFactor&#34;]
             checkMinG2 = True
 
     # The arrays that we will be building for each timestep. It is better to just
@@ -406,16 +435,16 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # The big loop that iterates over every image
     for i in range(len(imageFiles)):
 
-        image = checkImageType(settings["imageDirectory"] + imageFiles[i])
+        image = checkImageType(settings[&#34;imageDirectory&#34;] + imageFiles[i])
         # Convert to floats on the domain [0,1], so we can compare to the output of 
         # genSyntheticResponse()
-        peImage = cv2.blur((image[:,:,settings["photoelasticChannel"]] + lightCorrection).astype(np.float64) / 255, (settings["peBlurKernel"],settings["peBlurKernel"]))
+        peImage = cv2.blur((image[:,:,settings[&#34;photoelasticChannel&#34;]] + lightCorrection).astype(np.float64) / 255, (settings[&#34;peBlurKernel&#34;],settings[&#34;peBlurKernel&#34;]))
 
         # -------------
         # Track circles
         # -------------
         start = time.perf_counter()
-        centers, radii = circFunc(image[:,:,settings["circleTrackingChannel"]] * maskArr[:,:,0], settings["guessRadius"], **circleTrackingKwargs)
+        centers, radii = circFunc(image[:,:,settings[&#34;circleTrackingChannel&#34;]] * maskArr[:,:,0], settings[&#34;guessRadius&#34;], **circleTrackingKwargs)
 
         # We do some indexing using the centers/radii, so it is helpful
         # to have them as an integer type
@@ -426,7 +455,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         # that they are (to whatever extent possible) in the same order
         # as the previous frame. This involves finding the closest neighbor
         # from the previous frame.
-        if len(centersArr) > 0:
+        if len(centersArr) &gt; 0:
             centerOrder = preserveOrderArgsort(centersArr[-1], centers, padMissingValues=False)
             centers = centers[centerOrder]
             radii = radii[centerOrder]
@@ -436,13 +465,13 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         # ----------------------
         # Generate initial guess
         # ----------------------
-        # We rerun the initial guess mostly when we can't carry over the values from
+        # We rerun the initial guess mostly when we can&#39;t carry over the values from
         # the previous step
         if len(centersArr) == 0:
             forceGuessArr, alphaGuessArr, betaGuessArr = initialForceSolve(peImage,
-                                                        centers, radii, settings["fSigma"], settings["pxPerMeter"],
-                                                        settings["contactPadding"], settings["g2MaskPadding"],
-                                                        contactMaskRadius=settings["contactMaskRadius"],
+                                                        centers, radii, settings[&#34;fSigma&#34;], settings[&#34;pxPerMeter&#34;],
+                                                        settings[&#34;contactPadding&#34;], settings[&#34;g2MaskPadding&#34;],
+                                                        contactMaskRadius=settings[&#34;contactMaskRadius&#34;],
                                                         boundaryMask=maskArr, ignoreBoundary=ignoreBoundary, g2Cal=g2Cal)
 
         else:
@@ -450,17 +479,17 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             # If we have added/lost particles, we want to carry over the previous values where
             # possible, and otherwise take the results of initialForceSolve
             forceGuessArr, alphaGuessArr, betaGuessArr = initialForceSolve(peImage,
-                                                        centers, radii, settings["fSigma"], settings["pxPerMeter"],
-                                                        settings["contactPadding"], settings["g2MaskPadding"],
-                                                        contactMaskRadius=settings["contactMaskRadius"],
+                                                        centers, radii, settings[&#34;fSigma&#34;], settings[&#34;pxPerMeter&#34;],
+                                                        settings[&#34;contactPadding&#34;], settings[&#34;g2MaskPadding&#34;],
+                                                        contactMaskRadius=settings[&#34;contactMaskRadius&#34;],
                                                         boundaryMask=maskArr, ignoreBoundary=ignoreBoundary, g2Cal=g2Cal)
 
             # This variable will certainly exist (even though it was defined in an if statement
             for j in range(len(centers)):
-                if len(betaArr[-1][j]) > 0:
+                if len(betaArr[-1][j]) &gt; 0:
                     # Centers should already be in the same order, so now we just have to order
                     # the forces in case one was added/removed
-                    forceOrder = preserveOrderArgsort(betaGuessArr[j], betaArr[-1][j], padMissingValues=True, maxDistance=settings["maxBetaDisplacement"])
+                    forceOrder = preserveOrderArgsort(betaGuessArr[j], betaArr[-1][j], padMissingValues=True, maxDistance=settings[&#34;maxBetaDisplacement&#34;])
                     for k in range(len(forceGuessArr[j])):
                         if forceOrder[k] is not None:
                             forceGuessArr[j][k] = forceArr[-1][j][forceOrder[k]]
@@ -468,15 +497,15 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
 
             # In this case, we want to add a small randomly generated contribution
-            # so that the algorithm doesn't get stuck in some incorrect loop and so that it
+            # so that the algorithm doesn&#39;t get stuck in some incorrect loop and so that it
             # explores a little more of the parameter space to find a nice minimum at each step
-            forceGuessArr = [np.abs(np.array(f) + np.random.normal(0, settings["forceNoiseWidth"], size=len(f))) for f in forceGuessArr]
+            forceGuessArr = [np.abs(np.array(f) + np.random.normal(0, settings[&#34;forceNoiseWidth&#34;], size=len(f))) for f in forceGuessArr]
 
 
         initialGuessTimes[i] = time.perf_counter() - trackingTimes[i] - start
 
         # -------------------------------
-        # Optimize each particle's forces
+        # Optimize each particle&#39;s forces
         # -------------------------------
         optimizedForceArr = []
         optimizedBetaArr = []
@@ -490,19 +519,19 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             for j in range(len(centers)):
                 cMask = circularMask(peImage.shape, centers[j], radii[j])[:,:,0]
                 avgG2 = np.sum(gSqr * cMask) / np.sum(cMask)
-                skipParticles[j] = avgG2 < minParticleG2
+                skipParticles[j] = avgG2 &lt; minParticleG2
 
         for j in range(len(centers)):
             if not skipParticles[j]:
                 try:
                     optForceArr, optBetaArr, optAlphaArr, res = forceOptimize(forceGuessArr[j], betaGuessArr[j], alphaGuessArr[j], radii[j], centers[j], peImage,
-                                                                              settings["fSigma"], settings["pxPerMeter"], settings["brightfield"], **optimizationKwargs)
+                                                                              settings[&#34;fSigma&#34;], settings[&#34;pxPerMeter&#34;], settings[&#34;brightfield&#34;], **optimizationKwargs)
                     optimizedForceArr.append(optForceArr)
                     optimizedBetaArr.append(optBetaArr)
                     optimizedAlphaArr.append(optAlphaArr)
                 except Exception as ex:
                     print(ex)
-                    errorMsgs.append(f'File {imageFiles[i]}: ' + str(ex) + '\n')
+                    errorMsgs.append(f&#39;File {imageFiles[i]}: &#39; + str(ex) + &#39;\n&#39;)
                     failed[j] = True
                     totalFailedParticles += 1
                     # Append empty lists (ie say there are no forces) 
@@ -537,8 +566,8 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 estimatedPhotoelasticChannel += genSyntheticResponse(np.array(forceGuessArr[j]),
                                                                      np.array(alphaGuessArr[j]),
                                                                      np.array(betaGuessArr[j]),
-                                                                     settings["fSigma"], radii[j],
-                                                                     settings["pxPerMeter"], settings["brightfield"], imageSize=peImage.shape,
+                                                                     settings[&#34;fSigma&#34;], radii[j],
+                                                                     settings[&#34;pxPerMeter&#34;], settings[&#34;brightfield&#34;], imageSize=peImage.shape,
                                                                      center=centers[j])
             
             
@@ -548,21 +577,21 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 optimizedPhotoelasticChannel += genSyntheticResponse(np.array(optimizedForceArr[j]),
                                                                      np.array(optimizedAlphaArr[j]),
                                                                      np.array(optimizedBetaArr[j]),
-                                                                     settings["fSigma"], radii[j],
-                                                                     settings["pxPerMeter"], settings["brightfield"], imageSize=peImage.shape,
+                                                                     settings[&#34;fSigma&#34;], radii[j],
+                                                                     settings[&#34;pxPerMeter&#34;], settings[&#34;brightfield&#34;], imageSize=peImage.shape,
                                                                      center=centers[j])
             
 
             imgArr = np.zeros((*optimizedPhotoelasticChannel.shape, 3))
             
             img = Image.fromarray(optimizedPhotoelasticChannel*255)
-            img = img.convert('RGB')
+            img = img.convert(&#39;RGB&#39;)
             drawObj = ImageDraw.Draw(img)
             for j in range(len(centers)):
                 leftUpPoint = (centers[j][1]-radii[j], centers[j][0]-radii[j])
                 rightDownPoint = (centers[j][1]+radii[j], centers[j][0]+radii[j])
                 twoPointList = [leftUpPoint, rightDownPoint]
-                color =  '#FF0000' if failed[j] else '#00AAAA'
+                color =  &#39;#FF0000&#39; if failed[j] else &#39;#00AAAA&#39;
                 drawObj.ellipse(twoPointList, outline=color, fill=None, width=3)
 
         if debug:
@@ -571,29 +600,29 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             fig, ax = plt.subplots(1, 3, figsize=(12,4))
             
             ax[0].imshow(maskArr * image)
-            ax[0].set_title('Tracked Particles')
+            ax[0].set_title(&#39;Tracked Particles&#39;)
             for j in range(len(centers)):
-                c = plt.Circle(centers[j][::-1], radii[j], label='Detected particles', color='teal', fill=False, linewidth=1)
+                c = plt.Circle(centers[j][::-1], radii[j], label=&#39;Detected particles&#39;, color=&#39;teal&#39;, fill=False, linewidth=1)
                 ax[0].add_artist(c)
                 # Now add contacts
                 for k in range(len(betaGuessArr[j])):
                     contactPoint = centers[j] + radii[j] * np.array([np.cos(betaGuessArr[j][k]), np.sin(betaGuessArr[j][k])])
-                    cc = plt.Circle(contactPoint[::-1], 12, color='red', fill=False, linewidth=1)
+                    cc = plt.Circle(contactPoint[::-1], 12, color=&#39;red&#39;, fill=False, linewidth=1)
                     ax[1].add_artist(cc)
                     
                 # Now plot past center positions
                 for k in range(len(centersArr)):
-                    if len(centersArr[k]) >= j:
+                    if len(centersArr[k]) &gt;= j:
                         cc = plt.Circle(centersArr[k][j][::-1], 5, color=centerColors[j], fill=True)
                         ax[0].add_artist(cc)
                     
 
             ax[1].imshow(estimatedPhotoelasticChannel)
-            ax[1].set_title('Initial Guess for Optimizer\n(known forces)')
+            ax[1].set_title(&#39;Initial Guess for Optimizer\n(known forces)&#39;)
             
             
             ax[2].imshow(img)
-            ax[2].set_title('Optimized Forces\n(known forces)')
+            ax[2].set_title(&#39;Optimized Forces\n(known forces)&#39;)
             
             fig.suptitle(imageFiles[i])
             fig.tight_layout()
@@ -605,11 +634,11 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         miscTimes[i] = time.perf_counter() - optimizationTimes[i] - initialGuessTimes[i] - trackingTimes[i] - start 
 
         if debug: 
-            print(f'Took {time.perf_counter() - start:.5}s to solve frame:')
-            print(f'{5*" "}Tracking:         {trackingTimes[i]:.3}s')
-            print(f'{5*" "}Initial guess:    {initialGuessTimes[i]:.3}s')
-            print(f'{5*" "}Optimization:     {optimizationTimes[i]:.3}s')
-            print(f'{5*" "}Misc. processes:  {miscTimes[i]:.3}s')
+            print(f&#39;Took {time.perf_counter() - start:.5}s to solve frame:&#39;)
+            print(f&#39;{5*&#34; &#34;}Tracking:         {trackingTimes[i]:.3}s&#39;)
+            print(f&#39;{5*&#34; &#34;}Initial guess:    {initialGuessTimes[i]:.3}s&#39;)
+            print(f&#39;{5*&#34; &#34;}Optimization:     {optimizationTimes[i]:.3}s&#39;)
+            print(f&#39;{5*&#34; &#34;}Misc. processes:  {miscTimes[i]:.3}s&#39;)
 
         if showProgressBar:
             bar.update(i)
@@ -619,73 +648,103 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         bar.update(len(imageFiles))
     # Reuse the name of the folder the images come from as a part of
     # the output folder name
-    # [-2] element for something of form 'path/to/final/folder/' will be 'folder'
+    # [-2] element for something of form &#39;path/to/final/folder/&#39; will be &#39;folder&#39;
     # If we are missing the final /, you have to take just the [-1] element
-    if imageDirectory[-1] == '/':
-        outputFolderPath = outputRootFolder + imageDirectory.split('/')[-2] + '_Synthetic/'
+    if imageDirectory[-1] == &#39;/&#39;:
+        outputFolderPath = outputRootFolder + imageDirectory.split(&#39;/&#39;)[-2] + &#39;_Synthetic/&#39;
     else:
-        outputFolderPath = outputRootFolder + imageDirectory.split('/')[-1] + '_Synthetic/'
+        outputFolderPath = outputRootFolder + imageDirectory.split(&#39;/&#39;)[-1] + &#39;_Synthetic/&#39;
 
     if not os.path.exists(outputFolderPath):
         os.mkdir(outputFolderPath)
 
     if saveMovie:
-        imageArr[0].save(outputFolderPath + 'Synthetic.gif', save_all=True, append_images=imageArr[1:], duration=30, optimize=False, loop=1)
+        imageArr[0].save(outputFolderPath + &#39;Synthetic.gif&#39;, save_all=True, append_images=imageArr[1:], duration=30, optimize=False, loop=1)
 
     # Write a readme file that contains all of the parameters that the solving used
-    lines = ['#####################\n',
-             '#    README FILE    #\n',
-             '#####################\n']
+    lines = [&#39;#####################\n&#39;,
+             &#39;#    README FILE    #\n&#39;,
+             &#39;#####################\n&#39;]
 
-    lines += [f'Generated: {time.ctime()}\n\n']
-    lines += ['Note: this file was autogenerated by the `pepe.auto.forceSolve()` function\n',
-              '      and it is not recommended to be manually edited. To reuse the settings\n',
-              '      and parameters that were used here, the path of this file\n',
-             f'      (\'{outputFolderPath}readme.txt\') \n',
-              '      can be passed via the \'settingsFile\' keyword argument of `pepe.auto.forceSolve()`.\n',
-              '      In this case, explictly passed arguments will override the values in the settings file.\n\n']
+    lines += [f&#39;Generated: {time.ctime()}\n\n&#39;]
+    lines += [&#39;Note: this file was autogenerated by the `pepe.auto.forceSolve()` function\n&#39;,
+              &#39;      and it is not recommended to be manually edited. To reuse the settings\n&#39;,
+              &#39;      and parameters that were used here, the path of this file\n&#39;,
+             f&#39;      (\&#39;{outputFolderPath}readme.txt\&#39;) \n&#39;,
+              &#39;      can be passed via the \&#39;settingsFile\&#39; keyword argument of `pepe.auto.forceSolve()`.\n&#39;,
+              &#39;      In this case, explictly passed arguments will override the values in the settings file.\n\n&#39;]
 
-    lines += ['## Runtime Information\n',
-              f'Total runtime: {time.perf_counter() - overallStartTime:.6}s\n',
-              f'Mean tracking time: {np.mean(trackingTimes):.4}s\n',
-              f'Mean guess generation time: {np.mean(initialGuessTimes):.4}s\n',
-              f'Mean optimization time: {np.mean(optimizationTimes):.4}s\n',
-              f'Mean misc. time: {np.mean(miscTimes):.4}s\n',
-              f'Number of failed particles: {totalFailedParticles}\n\n']
+    lines += [&#39;## Runtime Information\n&#39;,
+              f&#39;Total runtime: {time.perf_counter() - overallStartTime:.6}s\n&#39;,
+              f&#39;Mean tracking time: {np.mean(trackingTimes):.4}s\n&#39;,
+              f&#39;Mean guess generation time: {np.mean(initialGuessTimes):.4}s\n&#39;,
+              f&#39;Mean optimization time: {np.mean(optimizationTimes):.4}s\n&#39;,
+              f&#39;Mean misc. time: {np.mean(miscTimes):.4}s\n&#39;,
+              f&#39;Number of failed particles: {totalFailedParticles}\n\n&#39;]
 
     settings.update(circleTrackingKwargs)
     settings.update(optimizationKwargs)
 
-    lines += ['## Settings\n']
+    lines += [&#39;## Settings\n&#39;]
     for k,v in settings.items():
-        lines += [f'{k}: {v}\n']
+        lines += [f&#39;{k}: {v}\n&#39;]
    
-    lines += ['## Errors\n']
-    if len(errorMsgs) > 0:
+    lines += [&#39;## Errors\n&#39;]
+    if len(errorMsgs) &gt; 0:
         lines += errorMsgs
     else:
-        lines += ['None :)']
+        lines += [&#39;None :)&#39;]
 
-    with open(outputFolderPath + 'readme.txt', 'w') as readmeFile:
+    with open(outputFolderPath + &#39;readme.txt&#39;, &#39;w&#39;) as readmeFile:
         readmeFile.writelines(lines)
 
     # Restructure the arrays to make them more friendly, and to track forces/particles across timesteps
     rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr = rectangularizeForceArrays(forceArr, alphaArr, betaArr, centersArr, radiiArr)
 
-    if settings["pickleArrays"]:
-        with open(outputFolderPath + 'forces.pickle', 'wb') as f:
+    if settings[&#34;pickleArrays&#34;]:
+        with open(outputFolderPath + &#39;forces.pickle&#39;, &#39;wb&#39;) as f:
             pickle.dump(rectForceArr, f)
 
-        with open(outputFolderPath + 'betas.pickle', 'wb') as f:
+        with open(outputFolderPath + &#39;betas.pickle&#39;, &#39;wb&#39;) as f:
             pickle.dump(rectAlphaArr, f)
 
-        with open(outputFolderPath + 'alphas.pickle', 'wb') as f:
+        with open(outputFolderPath + &#39;alphas.pickle&#39;, &#39;wb&#39;) as f:
             pickle.dump(rectBetaArr, f)
 
-        with open(outputFolderPath + 'centers.pickle', 'wb') as f:
+        with open(outputFolderPath + &#39;centers.pickle&#39;, &#39;wb&#39;) as f:
             pickle.dump(rectCenterArr, f)
 
-        with open(outputFolderPath + 'radii.pickle', 'wb') as f:
+        with open(outputFolderPath + &#39;radii.pickle&#39;, &#39;wb&#39;) as f:
             pickle.dump(rectRadiusArr, f)
 
-    return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr
+    return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="pepe.auto" href="index.html">pepe.auto</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>
