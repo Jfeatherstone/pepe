@@ -1,10 +1,10 @@
-# **P**hoto**e**lastic **P**ython **E**nvironment
+# <ins>P</ins>hoto<ins>e</ins>lastic <ins>P</ins>ython <ins>E</ins>nvironment
 
 This is a collection of tools for working with photoelastic particle images, including common analysis methods like particle tracking and community analysis.
 
 ## Features
 
-- Common analysis techniques (G<sup>2</sup>, D2min, etc.)
+- Common analysis techniques (G<sup>2</sup>, D<sup>2</sup>min, etc.)
 - Particle tracking
 - Masking and other preprocessing tools
 - Synthetic photoelastic response generation
@@ -32,6 +32,10 @@ Available [here](http://jfeatherstone.github.io/pepe/pepe).
 
 ## Requirements
 
+Python 3.7 is the recommended version to use, with the following packages:
+
+- [numpy](https://numpy.org/)
+- [matplotlib](https://matplotlib.org/)
 - [lmfit](https://lmfit.github.io/lmfit-py/index.html)
 - [scikit-learn](https://scikit-learn.org/stable/)
 - [OpenCV](https://opencv.org/)
@@ -40,14 +44,15 @@ Available [here](http://jfeatherstone.github.io/pepe/pepe).
 
 These can all be installed (alongside their dependencies) via `pip`:
 ```
-pip intsall python-opencv scikit-learn lmfit Pillow numba
+pip install numpy matplotlib python-opencv scikit-learn lmfit Pillow numba
 ```
 
 Some of the test notebooks may also make use of the Matlab API to compare against Jonathan Kollmer's implementation [1a], but this is not required to use any functions in the library itself. Installing the Matlab API requires a local installation of Matlab proper; see [here](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html) for more information.
 
 ## Usage
 
-The [wiki](https://github.com/Jfeatherstone/pepe/wiki) and [documentation](http://jfeatherstone.github.io/pepe/pepe) contain information about how to use the toolbox.
+The [wiki](https://github.com/Jfeatherstone/pepe/wiki) and [documentation](http://jfeatherstone.github.io/pepe/pepe) contain information about how to use the toolbox. All test notebooks can be
+found in the repo's [`tests`](https://github.com/Jfeatherstone/pepe/tree/master/tests) directory.
 
 ## Further Reading and References
 
