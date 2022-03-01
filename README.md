@@ -8,11 +8,27 @@ This is a collection of tools for working with photoelastic particle images, inc
 - Particle tracking
 - Masking and other preprocessing tools
 - Synthetic photoelastic response generation
-- Force solving (a la PeGS)
+- Force solving (a la PeGS [1a, 1b])
+
+## Installation
+
+The package is available via PyPI
+
+```
+pip install pepe
+```
+
+or by cloning from the git repo:
+
+```
+git clone https://github.com/Jfeatherstone/pepe
+cd pepe
+pip install .
+```
 
 ## Documentation
 
-[Here](http://jfeatherstone.xyz/pepe/pepe)
+Available [here](http://jfeatherstone.github.io/pepe/pepe).
 
 ## Requirements
 
@@ -20,17 +36,18 @@ This is a collection of tools for working with photoelastic particle images, inc
 - [scikit-learn](https://scikit-learn.org/stable/)
 - [OpenCV](https://opencv.org/)
 - [Pillow](https://pillow.readthedocs.io/en/stable/)
+- [Numba](https://numba.pydata.org/)
 
 These can all be installed (alongside their dependencies) via `pip`:
 ```
-pip intsall python-opencv scikit-learn lmfit Pillow
+pip intsall python-opencv scikit-learn lmfit Pillow numba
 ```
 
-Some of the test notebooks may also make use of the Matlab API to compare against Jonathan Kollmer's implementation, but this is not required to use any functions in the library itself. Installing the Matlab API requires a local installation of Matlab proper; see [here](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html) for more information.
+Some of the test notebooks may also make use of the Matlab API to compare against Jonathan Kollmer's implementation [1a], but this is not required to use any functions in the library itself. Installing the Matlab API requires a local installation of Matlab proper; see [here](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html) for more information.
 
 ## Usage
 
-Wiki is WIP
+The [wiki](https://github.com/Jfeatherstone/pepe/wiki) and [documentation](http://jfeatherstone.github.io/pepe/pepe) contain information about how to use the toolbox.
 
 ## Further Reading and References
 
