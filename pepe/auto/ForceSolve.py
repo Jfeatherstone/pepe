@@ -668,24 +668,24 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
               '      and parameters that were used here, the path of this file\n',
              f'      (\'{outputFolderPath}readme.txt\') \n',
               '      can be passed via the \'settingsFile\' keyword argument of `pepe.auto.forceSolve()`.\n',
-              '      In this case, explictly passed arguments will override the values in the settings file.\n\n']
+              '      In this case, explictly passed arguments will override the values in the settings file.\n']
 
-    lines += ['## Runtime Information\n',
+    lines += ['\n## Runtime Information\n',
               f'Total runtime: {time.perf_counter() - overallStartTime:.6}s\n',
               f'Mean tracking time: {np.mean(trackingTimes):.4}s\n',
               f'Mean guess generation time: {np.mean(initialGuessTimes):.4}s\n',
               f'Mean optimization time: {np.mean(optimizationTimes):.4}s\n',
               f'Mean misc. time: {np.mean(miscTimes):.4}s\n',
-              f'Number of failed particles: {totalFailedParticles}\n\n']
+              f'Number of failed particles: {totalFailedParticles}\n']
 
     settings.update(circleTrackingKwargs)
     settings.update(optimizationKwargs)
 
-    lines += ['## Settings\n']
+    lines += ['\n## Settings\n']
     for k,v in settings.items():
         lines += [f'{k}: {v}\n']
    
-    lines += ['## Errors\n']
+    lines += ['\n## Errors\n']
     if len(errorMsgs) > 0:
         lines += errorMsgs
     else:
