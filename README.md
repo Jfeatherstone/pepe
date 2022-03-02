@@ -12,13 +12,7 @@ This is a collection of tools for working with photoelastic particle images, inc
 
 ## Installation
 
-The package is available via PyPI
-
-```
-pip install pepe
-```
-
-or by cloning from the git repo:
+The package is available by cloning from the git repo:
 
 ```
 git clone https://github.com/Jfeatherstone/pepe

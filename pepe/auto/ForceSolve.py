@@ -4,6 +4,7 @@ import cv2
 import time
 import progressbar
 import pickle
+import inspect
 
 import matplotlib.pyplot as plt
 
@@ -14,13 +15,14 @@ from pepe.preprocess import checkImageType, lightCorrectionDiff, circularMask
 from pepe.analysis import initialForceSolve, forceOptimize, gSquared, g2ForceCalibration, singleParticleForceBalance
 from pepe.tracking import houghCircle, convCircle
 from pepe.simulate import genSyntheticResponse
-from pepe.utils import genRandomColors, preserveOrderArgsort, rectangularizeForceArrays, explicitKwargs
+from pepe.utils import preserveOrderArgsort, rectangularizeForceArrays, explicitKwargs
+from pepe.visualize import genRandomColors
 
 # Decorator that allows us to identify which keyword arguments were explicitly
 # passed to the function, and which were left as default values. See beginning
 # of method code for more information/motivation.
 @explicitKwargs()
-def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True):
+def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True):
     """
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be returned and potentially written to various files.
@@ -235,6 +237,8 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 "imageExtension": imageExtension,
                 "imageEndIndex": imageEndIndex,
                 "imageStartIndex": imageStartIndex,
+                "carryOverAlpha": carryOverAlpha,
+                "carryOverForce": carryOverForce,
                 "showProgressBar": showProgressBar,
                 "lightCorrectionImage": lightCorrectionImage,
                 "lightCorrectionVerticalMask": lightCorrectionVerticalMask,
@@ -280,7 +284,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             fileObj = open(inputSettingsFile, 'r')
             for line in fileObj:
                 # Check each line and see if it looks like a dictionary value
-                split = line.split('=')
+                split = line.split(':')
                 if len(split) == 2 and split[0] in settings.keys() and not split[0] in forceSolve.explicit_kwargs:
                     # Cast to the type of the value already in the dict
                     settings[split[0].strip()] = type(settings[split[0].strip()])(split[1].strip())
@@ -295,6 +299,16 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     for r in requiredVars:
         assert settings[r] != 0, f'Error: {r} value not supplied explicitly or implicitly!'
 
+    # Now carry over the kwargs that are sent to the optimization procedure into that
+    # dictionary. We can find the names of arguments by using the `inspect` library
+    possibleOptimKwargs = list(inspect.signature(forceOptimize))
+    for pkw in possibleOptimKwargs:
+        if pkw in settings.keys():
+            optimizationKwargs[pkw] = settings[pkw]
+
+    # We want to do the same thing for the circle tracking function, but we don't
+    # yet know which circle tracking function we are using yet, so we'll carry
+    # that over a bit later.
 
     # TODO: Make this more robust
     centerColors = genRandomColors(10)
@@ -364,6 +378,14 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         print(f'Error: circle detection option \'{settings["circleDetectionMethod"]}\' not recognized!')
         return None
 
+    # Now that we have a circle tracking function, we can carry over any possible kwargs
+    possibleCircleKwargs = list(inspect.signature(circFunc))
+    for pkw in possibleCircleKwargs:
+        if pkw in settings.keys():
+            circleTrackingKwargs[pkw] = settings[pkw]
+
+    # Calculate the lowest g2 value that we care about, so we can throw everything
+    # that is below that away when solving (optional)
     checkMinG2 = False
     if settings["g2CalibrationImage"] is not None:
         g2CalImage = checkImageType(settings["g2CalibrationImage"])
@@ -379,6 +401,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             gSqr = gSquared(g2CalPEImage)
             minParticleG2 = np.sum(gSqr * particleMask) / np.sum(particleMask) * settings["g2CalibrationCutoffFactor"]
             checkMinG2 = True
+
 
     # The arrays that we will be building for each timestep. It is better to just
     # use an untyped list since the arrays are all triangular and whatnot.
@@ -463,8 +486,10 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                     forceOrder = preserveOrderArgsort(betaGuessArr[j], betaArr[-1][j], padMissingValues=True, maxDistance=settings["maxBetaDisplacement"])
                     for k in range(len(forceGuessArr[j])):
                         if forceOrder[k] is not None:
-                            forceGuessArr[j][k] = forceArr[-1][j][forceOrder[k]]
-                            alphaGuessArr[j][k] = alphaArr[-1][j][forceOrder[k]]
+                            if settings["carryOverForce"]:
+                                forceGuessArr[j][k] = forceArr[-1][j][forceOrder[k]]
+                            if settings["carryOverAlpha"]:
+                                alphaGuessArr[j][k] = alphaArr[-1][j][forceOrder[k]]
 
 
             # In this case, we want to add a small randomly generated contribution
@@ -676,10 +701,10 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         with open(outputFolderPath + 'forces.pickle', 'wb') as f:
             pickle.dump(rectForceArr, f)
 
-        with open(outputFolderPath + 'betas.pickle', 'wb') as f:
+        with open(outputFolderPath + 'alphas.pickle', 'wb') as f:
             pickle.dump(rectAlphaArr, f)
 
-        with open(outputFolderPath + 'alphas.pickle', 'wb') as f:
+        with open(outputFolderPath + 'betas.pickle', 'wb') as f:
             pickle.dump(rectBetaArr, f)
 
         with open(outputFolderPath + 'centers.pickle', 'wb') as f:
