@@ -57,7 +57,7 @@ def visContacts(center, radius, betaArr, alphaArr=None, forceArr=None, ax=None, 
     if forceArr is None:
         weighting = np.zeros(len(betaArr)) + radius/4
     else:
-        weighting = np.array(forceArr) / np.max(forceArr) * radius / 4
+        weighting = np.array(forceArr) * radius/4
 
     if alphaArr is None:
         for i in range(len(betaArr)):

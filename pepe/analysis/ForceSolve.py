@@ -251,7 +251,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, localizeAlphaOptimzation=True, debug=False):
     """
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -380,11 +380,11 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     else:
         maxEvalsList = maxEvals
 
-    # The difference minimizations can use different methods
+    # The different minimizations can use different methods
     if type(method) is not list:
         methodList = [method for i in range(numFits)]
     else:
-        maxEvalsList = method
+        methodList = method
     
     # Same deal for all of the tolerances (we don't do bound intervals, since tolerances
     # are the recommended way to handle parameters bounds)
@@ -417,13 +417,13 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     # lmfit has a nice setup in that you can denote whether a variable can be
     # changed or not, which means we don't actually have to change which variables
     # are passed to the function.
-    def objectiveFunction(params, trueImage, z, radius, center):
+    def objectiveFunction(params, trueImage, z, radius, center, mask):
         forceArr = np.array([params[f"f{j}"] for j in range(z)])
         betaArr = np.array([params[f"b{j}"] for j in range(z)])
         alphaArr = np.array([params[f"a{j}"] for j in range(z)])
 
         synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter, brightfield, imageSize=trueImage.shape, center=center)
-        residuals.append(np.sum(np.abs(synImage - trueImage)))
+        residuals.append(np.sum(np.abs(synImage - trueImage) * mask))
         return np.sum(np.abs(synImage - trueImage))
 
 
@@ -470,9 +470,32 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
                 params.add(f'a{j}', value=alphaArr[j], vary='a' in parametersToFitList[i], min=alphaBounds[0], max=alphaBounds[1])
 
 
+        # If alpha is the only parameter being adjusted, it can help to look only in a
+        # localized region around each contact, since changing alpha has such a subtle
+        # effect on the overall pattern.
+        if localizeAlphaOptimization and 'a' in parametersToFitList[i] and not 'b' in parametersToFitList[i] and not 'f' in parametersToFitList[i]:
+            # The *10 is to make sure that all points end up inside of the particle
+            # eg. if you have two close contacts, and just look for places >= 2, we could
+            # get a region that satisfies that condition, but isn't actually in the particle
+            localizedMask = np.copy(particleMask) * 10
+
+            for j in range(len(betaArr)):
+                contactPoint = center + radius * np.array([np.cos(betaArr[j]), np.sin(betaArr[j])])
+                
+                # Create a mask just over the small area inside of the particle
+                localizedMask += circularMask(realImage.shape, contactPoint, newBetaContactMaskRadius)[:,:,0]
+
+            # >= 10 + 1 such that the points must be inside the
+            # The value 10 is mostly arbitrary, but makes it very unlikely
+            # that 10 separate contacts would overlap.
+            localizedMask = localizedMask >= 11 
+        else:
+            # Otherwise we just multiply by 1, which doesn't affect our optimization at all
+            localizedMask = 1
+
         # Now do the optimization
         result = minimize(objectiveFunction, params,
-                         args=(maskedImage, z, radius, center),
+                         args=(maskedImage, z, radius, center, localizedMask),
                          method=methodList[i], max_nfev=maxEvalsList[i])
 
         # Copy over the new values of the forces, alphas, and betas
@@ -534,9 +557,11 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
 
             # If we have added a force, we should run the optimization again, and see if it improves
             if len(forceArr) > z:
-                print(f'Added {len(forceArr) - z} force(s).')
+                if debug:
+                    print(f'Added {len(forceArr) - z} force(s).')
                 # We also want to make sure we're allowed to vary beta on the next iteration
-                parametersToFitList[i] += ['b'] # (It's okay that it might be in there twice)
+                if 'b' not in parametersToFitList[i]:
+                    parametersToFitList[i] += ['b']
                 # This skips the i += 1 at the end of the loop, and makes the optimization run again
                 continue
 
@@ -550,7 +575,8 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
             alphaArr = alphaArr[forceArr > minForceThreshold]
             # This one has to be done last for the other indexing to work
             forceArr = forceArr[forceArr > minForceThreshold]
-            print(f'Removed {z - len(forceArr)} force(s).')
+            if debug:
+                print(f'Removed {z - len(forceArr)} force(s).')
        
         # Iterate (since we have a while not a for)
         i += 1
