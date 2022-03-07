@@ -67,9 +67,50 @@ def visContacts(center, radius, betaArr, alphaArr=None, forceArr=None, ax=None, 
             #ax.add_artist(c)
     else:
         for i in range(len(betaArr)):
-            contactPoint = npCenter + radius * np.array([np.cos(betaArr[i]), np.sin(betaArr[i])])
-            point1 = contactPoint + weighting[i] * np.array([np.cos(betaArr[i] + alphaArr[i]), np.sin(betaArr[i] + alphaArr[i])])
-            point2 = contactPoint - weighting[i] * np.array([np.cos(betaArr[i] + alphaArr[i]), np.sin(betaArr[i] + alphaArr[i])])
-            ax.plot([point1[1], point2[1]], [point1[0], point2[0]], linewidth=5, c=colors[i])
+            if not np.isnan(alphaArr[i]):
+                contactPoint = npCenter + radius * np.array([np.cos(betaArr[i]), np.sin(betaArr[i])])
+                point1 = contactPoint + weighting[i] * np.array([np.cos(betaArr[i] + alphaArr[i]), np.sin(betaArr[i] + alphaArr[i])])
+                point2 = contactPoint - weighting[i] * np.array([np.cos(betaArr[i] + alphaArr[i]), np.sin(betaArr[i] + alphaArr[i])])
+                ax.plot([point1[1], point2[1]], [point1[0], point2[0]], linewidth=5, c=colors[i])
 
     return ax
+
+
+def fullVisContacts(outputDir, centerArr, radiusArr, betaArr, alphaArr=None, forceArr=None, forceColors=None, circleColors=None, startIndex=0, imageSize=(1024, 1280), fps=25):
+
+    if forceColors is None:
+        forceColorArr = [genRandomColors(len(b), int(time.perf_counter()*1e6) % 1024) for b in betaArr]
+    else:
+        forceColorArr = forceColors
+
+    if len(betaArr) == 0:
+        return False
+
+    # The list comprehension is to make sure that we index a particle that actually has forces acting
+    # on it.
+    tSteps = len([b for b in betaArr if len(b) > 0][0])
+    # To save the image of each plot so we can create a gif at the end
+    images = [None for i in range(tSteps)]
+
+    for i in range(tSteps):
+        clear_output(wait=True)
+        fig, ax = plt.subplots()
+        
+        visCircles([centerArr[p][i] for p in range(len(centerArr))], [radiusArr[p][i] for p in range(len(radiusArr))], ax=ax)
+
+        for particleIndex in range(len(betaArr)):
+            visContacts(centerArr[particleIndex][i], radiusArr[particleIndex][i],
+                        betaArr[particleIndex][:,i], ax=ax, forceColors=forceColors[particleIndex])#, alphaArr=alphaArr[particleIndex][:,i])
+            
+        ax.set_xlim([0, imageSize[1]])
+        ax.set_ylim([0, imageSize[0]])
+        ax.set_aspect('equal')
+        ax.set_title(f'Frame {startIndex + i}')
+        
+        canvas = plt.get_current_fig_manager().canvas
+        canvas.draw()
+        images[i] = Image.frombytes('RGB', canvas.get_width_height(), 
+                     canvas.tostring_rgb())
+        plt.show()
+
+    images[0].save(outputDir + 'contact_tracking.gif', save_all=True, append_images=images[1:], duration=fps, optimize=True, loop=True)
