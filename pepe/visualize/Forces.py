@@ -5,12 +5,16 @@ from pepe.visualize import visCircles, genRandomDistancedColors
 
 
 def visForces(forceArr, alphaArr, betaArr, fps=None):
+
+    fig, ax = plt.subplots(1, 3, figsize=(12,3))
+    
+    if len(forceArr) == 0:
+        return fig, ax
+
     tArr = np.arange(len(forceArr[0]))
    
     if fps is None:
         fps = 1
-
-    fig, ax = plt.subplots(1, 3, figsize=(12,3))
 
     for i in range(len(tArr)):
         ax[0].plot(tArr/fps, forceArr[i])
@@ -46,6 +50,9 @@ def visContacts(center, radius, betaArr, alphaArr=None, forceArr=None, ax=None, 
     
     if drawCircle:
         visCircles([npCenter], [radius], ax, setBounds=setBounds, colors=circleColor)
+
+    if len(betaArr) == 0:
+        return ax
 
     if forceArr is None:
         weighting = np.zeros(len(betaArr)) + radius/4
