@@ -13,3 +13,4 @@ pepe.egg-info/
 *.gif
 *.ttf
 *.otf
+*.pyc
