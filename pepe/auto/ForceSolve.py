@@ -301,7 +301,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
     # Now carry over the kwargs that are sent to the optimization procedure into that
     # dictionary. We can find the names of arguments by using the `inspect` library
-    possibleOptimKwargs = list(inspect.signature(forceOptimize))
+    possibleOptimKwargs = list(inspect.signature(forceOptimize).parameters.keys())
     for pkw in possibleOptimKwargs:
         if pkw in settings.keys():
             optimizationKwargs[pkw] = settings[pkw]
@@ -379,7 +379,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         return None
 
     # Now that we have a circle tracking function, we can carry over any possible kwargs
-    possibleCircleKwargs = list(inspect.signature(circFunc))
+    possibleCircleKwargs = list(inspect.signature(circFunc).parameters.keys())
     for pkw in possibleCircleKwargs:
         if pkw in settings.keys():
             circleTrackingKwargs[pkw] = settings[pkw]
@@ -520,8 +520,11 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         for j in range(len(centers)):
             if not skipParticles[j]:
                 try:
+                    # We don't need to pass fSigma, pxPerMeter, or brightfield to the method
+                    # because they will get added to optimizationKwargs automatically.
                     optForceArr, optBetaArr, optAlphaArr, res = forceOptimize(forceGuessArr[j], betaGuessArr[j], alphaGuessArr[j], radii[j], centers[j], peImage,
-                                                                              settings["fSigma"], settings["pxPerMeter"], settings["brightfield"], **optimizationKwargs)
+                                                                              #settings["fSigma"], settings["pxPerMeter"], settings["brightfield"],
+                                                                              **optimizationKwargs)
                     optimizedForceArr.append(optForceArr)
                     optimizedBetaArr.append(optBetaArr)
                     optimizedAlphaArr.append(optAlphaArr)
