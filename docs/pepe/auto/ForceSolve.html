@@ -33,6 +33,7 @@ import cv2
 import time
 import progressbar
 import pickle
+import inspect
 
 import matplotlib.pyplot as plt
 
@@ -43,13 +44,14 @@ from pepe.preprocess import checkImageType, lightCorrectionDiff, circularMask
 from pepe.analysis import initialForceSolve, forceOptimize, gSquared, g2ForceCalibration, singleParticleForceBalance
 from pepe.tracking import houghCircle, convCircle
 from pepe.simulate import genSyntheticResponse
-from pepe.utils import genRandomColors, preserveOrderArgsort, rectangularizeForceArrays, explicitKwargs
+from pepe.utils import preserveOrderArgsort, rectangularizeForceArrays, explicitKwargs
+from pepe.visualize import genRandomColors
 
 # Decorator that allows us to identify which keyword arguments were explicitly
 # passed to the function, and which were left as default values. See beginning
 # of method code for more information/motivation.
 @explicitKwargs()
-def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, peBlurKernel=3, imageExtension=&#39;bmp&#39;, requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, showProgressBar=True, circleDetectionMethod=&#39;convolution&#39;, circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder=&#39;./&#39;, inputSettingsFile=None, pickleArrays=True):
+def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, peBlurKernel=3, imageExtension=&#39;bmp&#39;, requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod=&#39;convolution&#39;, circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder=&#39;./&#39;, inputSettingsFile=None, pickleArrays=True):
     &#34;&#34;&#34;
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be returned and potentially written to various files.
@@ -264,6 +266,8 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 &#34;imageExtension&#34;: imageExtension,
                 &#34;imageEndIndex&#34;: imageEndIndex,
                 &#34;imageStartIndex&#34;: imageStartIndex,
+                &#34;carryOverAlpha&#34;: carryOverAlpha,
+                &#34;carryOverForce&#34;: carryOverForce,
                 &#34;showProgressBar&#34;: showProgressBar,
                 &#34;lightCorrectionImage&#34;: lightCorrectionImage,
                 &#34;lightCorrectionVerticalMask&#34;: lightCorrectionVerticalMask,
@@ -309,7 +313,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             fileObj = open(inputSettingsFile, &#39;r&#39;)
             for line in fileObj:
                 # Check each line and see if it looks like a dictionary value
-                split = line.split(&#39;=&#39;)
+                split = line.split(&#39;:&#39;)
                 if len(split) == 2 and split[0] in settings.keys() and not split[0] in forceSolve.explicit_kwargs:
                     # Cast to the type of the value already in the dict
                     settings[split[0].strip()] = type(settings[split[0].strip()])(split[1].strip())
@@ -324,6 +328,16 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     for r in requiredVars:
         assert settings[r] != 0, f&#39;Error: {r} value not supplied explicitly or implicitly!&#39;
 
+    # Now carry over the kwargs that are sent to the optimization procedure into that
+    # dictionary. We can find the names of arguments by using the `inspect` library
+    possibleOptimKwargs = list(inspect.signature(forceOptimize).parameters.keys())
+    for pkw in possibleOptimKwargs:
+        if pkw in settings.keys():
+            optimizationKwargs[pkw] = settings[pkw]
+
+    # We want to do the same thing for the circle tracking function, but we don&#39;t
+    # yet know which circle tracking function we are using yet, so we&#39;ll carry
+    # that over a bit later.
 
     # TODO: Make this more robust
     centerColors = genRandomColors(10)
@@ -393,6 +407,14 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         print(f&#39;Error: circle detection option \&#39;{settings[&#34;circleDetectionMethod&#34;]}\&#39; not recognized!&#39;)
         return None
 
+    # Now that we have a circle tracking function, we can carry over any possible kwargs
+    possibleCircleKwargs = list(inspect.signature(circFunc).parameters.keys())
+    for pkw in possibleCircleKwargs:
+        if pkw in settings.keys():
+            circleTrackingKwargs[pkw] = settings[pkw]
+
+    # Calculate the lowest g2 value that we care about, so we can throw everything
+    # that is below that away when solving (optional)
     checkMinG2 = False
     if settings[&#34;g2CalibrationImage&#34;] is not None:
         g2CalImage = checkImageType(settings[&#34;g2CalibrationImage&#34;])
@@ -408,6 +430,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             gSqr = gSquared(g2CalPEImage)
             minParticleG2 = np.sum(gSqr * particleMask) / np.sum(particleMask) * settings[&#34;g2CalibrationCutoffFactor&#34;]
             checkMinG2 = True
+
 
     # The arrays that we will be building for each timestep. It is better to just
     # use an untyped list since the arrays are all triangular and whatnot.
@@ -485,15 +508,17 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                                                         boundaryMask=maskArr, ignoreBoundary=ignoreBoundary, g2Cal=g2Cal)
 
             # This variable will certainly exist (even though it was defined in an if statement
-            for j in range(len(centers)):
+            for j in range(len(betaArr[-1])):
                 if len(betaArr[-1][j]) &gt; 0:
                     # Centers should already be in the same order, so now we just have to order
                     # the forces in case one was added/removed
                     forceOrder = preserveOrderArgsort(betaGuessArr[j], betaArr[-1][j], padMissingValues=True, maxDistance=settings[&#34;maxBetaDisplacement&#34;])
                     for k in range(len(forceGuessArr[j])):
                         if forceOrder[k] is not None:
-                            forceGuessArr[j][k] = forceArr[-1][j][forceOrder[k]]
-                            alphaGuessArr[j][k] = alphaArr[-1][j][forceOrder[k]]
+                            if settings[&#34;carryOverForce&#34;]:
+                                forceGuessArr[j][k] = forceArr[-1][j][forceOrder[k]]
+                            if settings[&#34;carryOverAlpha&#34;]:
+                                alphaGuessArr[j][k] = alphaArr[-1][j][forceOrder[k]]
 
 
             # In this case, we want to add a small randomly generated contribution
@@ -524,8 +549,11 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         for j in range(len(centers)):
             if not skipParticles[j]:
                 try:
+                    # We don&#39;t need to pass fSigma, pxPerMeter, or brightfield to the method
+                    # because they will get added to optimizationKwargs automatically.
                     optForceArr, optBetaArr, optAlphaArr, res = forceOptimize(forceGuessArr[j], betaGuessArr[j], alphaGuessArr[j], radii[j], centers[j], peImage,
-                                                                              settings[&#34;fSigma&#34;], settings[&#34;pxPerMeter&#34;], settings[&#34;brightfield&#34;], **optimizationKwargs)
+                                                                              #settings[&#34;fSigma&#34;], settings[&#34;pxPerMeter&#34;], settings[&#34;brightfield&#34;],
+                                                                              **optimizationKwargs)
                     optimizedForceArr.append(optForceArr)
                     optimizedBetaArr.append(optBetaArr)
                     optimizedAlphaArr.append(optAlphaArr)
@@ -672,24 +700,24 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
               &#39;      and parameters that were used here, the path of this file\n&#39;,
              f&#39;      (\&#39;{outputFolderPath}readme.txt\&#39;) \n&#39;,
               &#39;      can be passed via the \&#39;settingsFile\&#39; keyword argument of `pepe.auto.forceSolve()`.\n&#39;,
-              &#39;      In this case, explictly passed arguments will override the values in the settings file.\n\n&#39;]
+              &#39;      In this case, explictly passed arguments will override the values in the settings file.\n&#39;]
 
-    lines += [&#39;## Runtime Information\n&#39;,
+    lines += [&#39;\n## Runtime Information\n&#39;,
               f&#39;Total runtime: {time.perf_counter() - overallStartTime:.6}s\n&#39;,
               f&#39;Mean tracking time: {np.mean(trackingTimes):.4}s\n&#39;,
               f&#39;Mean guess generation time: {np.mean(initialGuessTimes):.4}s\n&#39;,
               f&#39;Mean optimization time: {np.mean(optimizationTimes):.4}s\n&#39;,
               f&#39;Mean misc. time: {np.mean(miscTimes):.4}s\n&#39;,
-              f&#39;Number of failed particles: {totalFailedParticles}\n\n&#39;]
+              f&#39;Number of failed particles: {totalFailedParticles}\n&#39;]
 
     settings.update(circleTrackingKwargs)
     settings.update(optimizationKwargs)
 
-    lines += [&#39;## Settings\n&#39;]
+    lines += [&#39;\n## Settings\n&#39;]
     for k,v in settings.items():
         lines += [f&#39;{k}: {v}\n&#39;]
    
-    lines += [&#39;## Errors\n&#39;]
+    lines += [&#39;\n## Errors\n&#39;]
     if len(errorMsgs) &gt; 0:
         lines += errorMsgs
     else:
@@ -705,10 +733,10 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         with open(outputFolderPath + &#39;forces.pickle&#39;, &#39;wb&#39;) as f:
             pickle.dump(rectForceArr, f)
 
-        with open(outputFolderPath + &#39;betas.pickle&#39;, &#39;wb&#39;) as f:
+        with open(outputFolderPath + &#39;alphas.pickle&#39;, &#39;wb&#39;) as f:
             pickle.dump(rectAlphaArr, f)
 
-        with open(outputFolderPath + &#39;alphas.pickle&#39;, &#39;wb&#39;) as f:
+        with open(outputFolderPath + &#39;betas.pickle&#39;, &#39;wb&#39;) as f:
             pickle.dump(rectBetaArr, f)
 
         with open(outputFolderPath + &#39;centers.pickle&#39;, &#39;wb&#39;) as f:

@@ -251,7 +251,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, newBetaContactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, localizeAlphaOptimzation=True, debug=False):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, localizeAlphaOptimzation=True, debug=False):
     """
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -350,9 +350,50 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         and residuals (False). Note that if multiple optimizations are being performed, only the
         final result object will be returned.
     
+    allowAddForces : bool
+        Whether or not to allow the optimization routine to attempt to detect missing forces,
+        and add them in. This detection is done by examining the gradient squared of the 
+        photoelastic image provided to the method (`realImage`). If a force is added, the
+        last optimization routine will be run again, with the added ability to vary the
+        contact position, beta (if this was not already the case).
+
+    allowRemoveForces : bool
+        Whether or not to allow the optimization routine to remove forces that have a
+        magnitude below a certain threshold (see `minForceThreshold`).
+
     minForceThreshold : float
         The minimizer will automatically remove any forces whose magnitude is lower than
         this value between fittings and after the final one.
+
+    contactMaskRadius : float
+        The radius in pixels of the circular mask applied over contacts, either during localized
+        alpha optimization (see `localizeAlphaOptimization`) or detection of missing
+        contacts (see `allowAddForces`).
+    
+    newBetaMinSeparation : float
+        The minimum separation for a potential new contact (see `allowAddForces`) to be
+        considered as a real force to be added. Larger values can prevent doubling up
+        on forces, when there is really only a single, extended contact point
+
+    newBetaG2Height : float
+        The threshold for average gradient squared value in a localized region around
+        a potential new contact.
+
+    missingForceChiSqrThreshold : float
+        The minimum chi squared value (as calculated by the optimization routine; analagous to error)
+        above which the method will attempt to detect missing forces.
+
+        Found by experimentation.
+
+    localizeAlphaOptimization : bool
+        When optimizing for the incident angle (alpha) alone, the effect of varying
+        this value can be very subtle across the entire particle. This parameter will have
+        the largest effect in a small region around the contact. If this value is `True`, 
+        optimizations only for alpha (done by passing `parametersToFit=['a']`, or similar)
+        will mask the particle except for a small region around the contact.
+
+    debug : bool
+        Whether or not to print out status statements as the optimization is performed.
     """
 
     residuals = []
@@ -483,7 +524,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
                 contactPoint = center + radius * np.array([np.cos(betaArr[j]), np.sin(betaArr[j])])
                 
                 # Create a mask just over the small area inside of the particle
-                localizedMask += circularMask(realImage.shape, contactPoint, newBetaContactMaskRadius)[:,:,0]
+                localizedMask += circularMask(realImage.shape, contactPoint, contactMaskRadius)[:,:,0]
 
             # >= 10 + 1 such that the points must be inside the
             # The value 10 is mostly arbitrary, but makes it very unlikely
@@ -522,7 +563,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
                 contactPoint = center + radius * np.array([np.cos(newBetaArr[j]), np.sin(newBetaArr[j])])
                 
                 # Create a mask just over the small area inside of the particle
-                contactMask = circularMask(realImage.shape, contactPoint, newBetaContactMaskRadius)[:,:,0]
+                contactMask = circularMask(realImage.shape, contactPoint, contactMaskRadius)[:,:,0]
                 contactMask = (contactMask + particleMask) == 2
 
                 avgG2Arr[j] = np.sum(contactMask * gSqr) / np.sum(contactMask)

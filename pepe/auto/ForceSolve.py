@@ -479,7 +479,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                                                         boundaryMask=maskArr, ignoreBoundary=ignoreBoundary, g2Cal=g2Cal)
 
             # This variable will certainly exist (even though it was defined in an if statement
-            for j in range(len(centers)):
+            for j in range(len(betaArr[-1])):
                 if len(betaArr[-1][j]) > 0:
                     # Centers should already be in the same order, so now we just have to order
                     # the forces in case one was added/removed
