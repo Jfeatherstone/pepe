@@ -281,7 +281,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, localizeAlphaOptimzation=True, debug=False):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, localizeAlphaOptimization=True, debug=False):
     &#34;&#34;&#34;
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -1562,7 +1562,7 @@ multiplied by the g2 calibration value to get the initial force magnitude guess.
 </details>
 </dd>
 <dt id="pepe.analysis.ForceSolve.forceOptimize"><code class="name flex">
-<span>def <span class="ident">forceOptimize</span></span>(<span>forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-3.141592653589793, 3.141592653589793), alphaBounds=(0, 3.141592653589793), forceTolerance=0.5, betaTolerance=0.2, alphaTolerance=0.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=0.01, contactMaskRadius=30, newBetaMinSeparation=0.4, newBetaG2Height=0.0005, missingForceChiSqrThreshold=210000000.0, localizeAlphaOptimzation=True, debug=False)</span>
+<span>def <span class="ident">forceOptimize</span></span>(<span>forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-3.141592653589793, 3.141592653589793), alphaBounds=(0, 3.141592653589793), forceTolerance=0.5, betaTolerance=0.2, alphaTolerance=0.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=0.01, contactMaskRadius=30, newBetaMinSeparation=0.4, newBetaG2Height=0.0005, missingForceChiSqrThreshold=210000000.0, localizeAlphaOptimization=True, debug=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Optimize an initial guess for the forces acting on a particle using
@@ -1690,7 +1690,7 @@ will mask the particle except for a small region around the contact.</dd>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, localizeAlphaOptimzation=True, debug=False):
+<pre><code class="python">def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, localizeAlphaOptimization=True, debug=False):
     &#34;&#34;&#34;
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.

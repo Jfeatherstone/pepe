@@ -140,7 +140,7 @@ def fullVisContacts(outputDir, centerArr, radiusArr, betaArr, alphaArr=None, for
         canvas.draw()
         images[i] = Image.frombytes(&#39;RGB&#39;, canvas.get_width_height(), 
                      canvas.tostring_rgb())
-        plt.show()
+        plt.close(fig)
 
     images[0].save(outputDir + &#39;contact_tracking.gif&#39;, save_all=True, append_images=images[1:], duration=fps, optimize=True, loop=True)</code></pre>
 </details>
@@ -196,7 +196,7 @@ def fullVisContacts(outputDir, centerArr, radiusArr, betaArr, alphaArr=None, for
         canvas.draw()
         images[i] = Image.frombytes(&#39;RGB&#39;, canvas.get_width_height(), 
                      canvas.tostring_rgb())
-        plt.show()
+        plt.close(fig)
 
     images[0].save(outputDir + &#39;contact_tracking.gif&#39;, save_all=True, append_images=images[1:], duration=fps, optimize=True, loop=True)</code></pre>
 </details>
