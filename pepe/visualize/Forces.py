@@ -111,6 +111,6 @@ def fullVisContacts(outputDir, centerArr, radiusArr, betaArr, alphaArr=None, for
         canvas.draw()
         images[i] = Image.frombytes('RGB', canvas.get_width_height(), 
                      canvas.tostring_rgb())
-        plt.show()
+        plt.close(fig)
 
     images[0].save(outputDir + 'contact_tracking.gif', save_all=True, append_images=images[1:], duration=fps, optimize=True, loop=True)
