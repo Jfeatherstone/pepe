@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 from pepe.visualize import visCircles, genRandomDistancedColors
 
 
-def visForces(forceArr, alphaArr, betaArr, fps=None):
+def visForces(forceArr, alphaArr, betaArr, centerArr=None, fps=None):
 
-    fig, ax = plt.subplots(1, 3, figsize=(12,3))
+    fig, ax = plt.subplots(1, 3 + int(centerArr is not None), figsize=(3.5*3+int(centerArr is not None),3))
     
     if len(forceArr) == 0:
         return fig, ax
@@ -15,19 +15,26 @@ def visForces(forceArr, alphaArr, betaArr, fps=None):
    
     if fps is None:
         fps = 1
+   
+    if centerArr is not None:
+        ax[3].plot(tArr/fps, centerArr[:,1], label='X')
+        ax[3].plot(tArr/fps, centerArr[:,0], label='Y')
 
     for i in range(len(tArr)):
         ax[0].plot(tArr/fps, forceArr[i])
         ax[1].plot(tArr/fps, alphaArr[i], 'o')
-        ax[2].plot(tArr/fps, betaArr[i])
+        ax[2].plot(tArr/fps, betaArr[i], 'o')
 
     ax[0].set_ylabel('Force [N]')
     ax[1].set_ylabel('Alpha [rad]')
     ax[2].set_ylabel('Beta [rad]')
+    if centerArr is not None:
+        ax[3].set_ylabel('Position [px]')
+        ax[3].legend()
 
-    for i in range(3):
+    for i in range(3 + int(centerArr is not None)):
         if fps == 1:
-            ax[i].set_xlabel('Time [step]')
+            ax[i].set_xlabel('Time [frame]')
         else:
             ax[i].set_xlabel('Time [s]')
 

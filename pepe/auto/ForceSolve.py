@@ -22,7 +22,7 @@ from pepe.visualize import genRandomColors
 # passed to the function, and which were left as default values. See beginning
 # of method code for more information/motivation.
 @explicitKwargs()
-def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True):
+def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
     """
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be returned and potentially written to various files.
@@ -192,7 +192,13 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
         Currently WIP and does not do anything.
 
+    genFitReport : bool
+        Whether or not to generate a fit report of the results, including errors per frame,
+        examinations of all particles/forces, and settings, compiled in a latex pdf.
 
+        Will generate both the compiled file 'FitReport.pdf' and the source directory
+        'FitReport_src/'.
+    
     Returns
     -------
 
@@ -262,7 +268,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 "forceNoiseWidth": forceNoiseWidth,
                 "saveMovie": saveMovie,
                 "pickleArrays": pickleArrays,
-                "outputRootFolder": outputRootFolder}
+                "outputRootFolder": outputRootFolder,
+                "outputExtension": outputExtension,
+                "genFitReport": genFitReport}
 
     # 2. Anything read in from a settings file
     # Note that it works to our advantage that we already have values for most entries,
@@ -413,6 +421,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     alphaArr = []
 
     imageArr = []
+    errorArr = []
 
     # For keeping track of time (though will only be display if debug=True)
     trackingTimes = np.zeros(len(imageFiles))
@@ -559,7 +568,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         centersArr.append(centers)
         radiiArr.append(radii)
 
-        if debug or saveMovie:
+        if settings["debug"] or settings["saveMovie"] or settings["genFitReport"]:
             estimatedPhotoelasticChannel = np.zeros_like(peImage, dtype=np.float64)    
             for j in range(len(centers)):
                 estimatedPhotoelasticChannel += genSyntheticResponse(np.array(forceGuessArr[j]),
@@ -580,6 +589,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                                                                      settings["pxPerMeter"], settings["brightfield"], imageSize=peImage.shape,
                                                                      center=centers[j])
             
+
+            # Just simple mean-squared error
+            error.append(np.sqrt(np.sum((optimizedPhotoelasticChannel - peImage)**2)))
 
             imgArr = np.zeros((*optimizedPhotoelasticChannel.shape, 3))
             
@@ -645,14 +657,15 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     
     if showProgressBar:
         bar.update(len(imageFiles))
+
     # Reuse the name of the folder the images come from as a part of
     # the output folder name
     # [-2] element for something of form 'path/to/final/folder/' will be 'folder'
     # If we are missing the final /, you have to take just the [-1] element
     if imageDirectory[-1] == '/':
-        outputFolderPath = outputRootFolder + imageDirectory.split('/')[-2] + '_Synthetic/'
+        outputFolderPath = outputRootFolder + imageDirectory.split('/')[-2] + f'_Synthetic{settings["outputExtension"]}/'
     else:
-        outputFolderPath = outputRootFolder + imageDirectory.split('/')[-1] + '_Synthetic/'
+        outputFolderPath = outputRootFolder + imageDirectory.split('/')[-1] + f'_Synthetic{settings["outputExtension"]}/'
 
     if not os.path.exists(outputFolderPath):
         os.mkdir(outputFolderPath)
@@ -700,6 +713,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # Restructure the arrays to make them more friendly, and to track forces/particles across timesteps
     rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr = rectangularizeForceArrays(forceArr, alphaArr, betaArr, centersArr, radiiArr)
 
+    # Save the arrays to pickle files (optional)
     if settings["pickleArrays"]:
         with open(outputFolderPath + 'forces.pickle', 'wb') as f:
             pickle.dump(rectForceArr, f)
@@ -715,5 +729,51 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
         with open(outputFolderPath + 'radii.pickle', 'wb') as f:
             pickle.dump(rectRadiusArr, f)
+
+    # Generate a fit report (optional)
+    # This include informtaion about the error for each frame, all of the forces/alphas/betas/
+    # centers/radii for each particle at each timestep, and all settings in a nicely compiled
+    # (via latex) pdf.
+    if settings["genFitReport"]:
+        # Make the source directory
+        if not os.path.exists(outputFolderPath + 'FitReport_src'):
+            os.mkdir(outputFolderPath + 'FitReport_src')
+
+        # First, generate a plot of the error
+        fig, ax = plt.subplots()
+
+        ax.plot(error)
+        ax.set_xlabel('Frame')
+        ax.set_ylabel('Mean-squared error')
+        ax.set_title('Difference Between Optimized Result and Real Image')
+
+        fig.savefig(outputFolderPath + 'FitReport_src/error.pdf')
+        plt.close(fig)
+
+        # Draw all of the circles, with their labeled numbers
+        fig, ax = plt.subplots(1, 2, figsize=(8,3))
+        # First timestep
+        visCircles([centerArr[i][0] for i in range(len(rectCenterArr))], [rectRadiusArr[i][0] for i in range(len(rectRadiusArr))],
+                   ax=ax[0], annotations=np.arange(len(rectCenterArr)), setBounds=True) 
+        # Last timestep
+        visCircles([centerArr[i][-1] for i in range(len(rectCenterArr))], [rectRadiusArr[i][-1] for i in range(len(rectRadiusArr))],
+                   ax=ax[1], annotations=np.arange(len(rectCenterArr)), setBounds=True) 
+
+        for i in range(2):
+            ax[i].set_xlabel('X [px]')
+            ax[i].set_ylabel('Y [px]')
+
+        ax[0].set_title('First Frame')
+        ax[1].set_title('Last Frame')
+        fig.savefig(outputFolderPath + 'FitReport_src/particle_identities.pdf')
+        plt.close(fig)
+
+        # Next, draw the forces/betas/alphas/centers for each particle
+        # through time
+        for i in range(len(rectForceArr)):
+            fig, ax = visForces(rectForceArr[i], rectAlphaArr[i], rectBetaArr[i], rectCenterArr[i])
+            fig.suptitle(f'Particle {i}')
+            fig.savefig(outputFolderPath + f'FitReport_src/particle_{i}_forces.pdf')
+            plt.close(fig)
 
     return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr
