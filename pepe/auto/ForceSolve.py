@@ -16,7 +16,7 @@ from pepe.analysis import initialForceSolve, forceOptimize, gSquared, g2ForceCal
 from pepe.tracking import houghCircle, convCircle
 from pepe.simulate import genSyntheticResponse
 from pepe.utils import preserveOrderArgsort, rectangularizeForceArrays, explicitKwargs
-from pepe.visualize import genRandomColors
+from pepe.visualize import genRandomColors, visCircles, visForces
 
 # Decorator that allows us to identify which keyword arguments were explicitly
 # passed to the function, and which were left as default values. See beginning

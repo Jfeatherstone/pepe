@@ -5,8 +5,59 @@ from pepe.visualize import visCircles, genRandomDistancedColors
 
 
 def visForces(forceArr, alphaArr, betaArr, centerArr=None, fps=None):
+    """
+    Visualize all of the forces acting on a single particle, by plotting
+    the magnitudes, alphas, and betas (and optionally center position).
 
-    fig, ax = plt.subplots(1, 3 + int(centerArr is not None), figsize=(3.5*3+int(centerArr is not None),3))
+    Requires that `forceArr`, `alphaArr`, `betaArr`, and `centerArr` have
+    indices of `forceArr[forceIndex][timeIndex]`, as would be given by
+    rectangularizing via `pepe.utils.rectangularizeForceArrays()` and 
+    indexing a single value in the first dimension.
+
+    Examples
+    --------
+
+    ```
+    # Solve for some forces
+    forceArr, alphaArr, betaArr, centerArr, radiusArr = forceOptimize(...)
+
+    # Particle index
+    pI = 0
+
+    fig, ax = visForces(forceArr[pI], alphaArr[pI], betaArr[pI], centerArr[pI])
+    plt.show()
+    ```
+
+    Parameters
+    ----------
+
+    forceArr : np.ndarray[F,T]
+        Array containing magnitudes of F forces for T timesteps.
+
+    alphaArr : np.ndarray[F,T]
+        Array containing alpha angles of F forces for T timesteps.
+
+    betaArr : np.ndarray[F,T]
+        Array containing beta angles of F forces for T timesteps.
+
+    centerArr : np.ndarray[T,2] or None
+        Array containing center position in form [y,x] of the particle for T timesteps.
+
+    fps : float or None
+        The number of frames per second of the capture video, used to convert the x-axis
+        units from frame number to proper seconds.
+
+    Returns
+    -------
+
+    fig : plt.figure()
+        The figure object the quantities are plotted on.
+
+    ax : plt.axis()
+        The list of 3 (or 4, if centers are provided) axes that the quantities are plotted on.
+    """
+
+    fig, ax = plt.subplots(1, 3 + int(centerArr is not None), figsize=(3.7*3+int(centerArr is not None),3))
     
     if len(forceArr) == 0:
         return fig, ax
@@ -20,7 +71,7 @@ def visForces(forceArr, alphaArr, betaArr, centerArr=None, fps=None):
         ax[3].plot(tArr/fps, centerArr[:,1], label='X')
         ax[3].plot(tArr/fps, centerArr[:,0], label='Y')
 
-    for i in range(len(tArr)):
+    for i in range(len(forceArr)):
         ax[0].plot(tArr/fps, forceArr[i])
         ax[1].plot(tArr/fps, alphaArr[i], 'o')
         ax[2].plot(tArr/fps, betaArr[i], 'o')
@@ -44,6 +95,15 @@ def visForces(forceArr, alphaArr, betaArr, centerArr=None, fps=None):
 
 
 def visContacts(center, radius, betaArr, alphaArr=None, forceArr=None, ax=None, setBounds=False, circleColor=None, forceColors=None, drawCircle=False):
+    """
+    Visualize the contacts for a system of particles, indicating either positions
+    of contacts, or positions and contact angles (if `alphaArr` is provided).
+
+    Returns
+    -------
+
+    ax : plt.axis()
+    """
 
     npCenter = np.array(center)
 
