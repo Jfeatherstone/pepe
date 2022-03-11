@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pepe.visualize import genRandomColors, genRandomDistancedColors
+from pepe.visualize import genColors
 
 def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColors=False, setBounds=False):
     """
@@ -23,10 +23,10 @@ def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColor
 
     if colors is None:
         if sameColors:
-            singleColor = genRandomDistancedColors(1)[0]
+            singleColor = genColors(1)[0]
             circleColorsList = [singleColor for _ in range(len(centers))]
         else:
-            circleColorsList = genRandomDistancedColors(len(centers))
+            circleColorsList = genColors(len(centers))
 
     elif not type(colors) is list:
         # If a single color is given, we want to repeat that

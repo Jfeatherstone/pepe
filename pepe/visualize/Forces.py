@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pepe.visualize import visCircles, genRandomDistancedColors
+from pepe.visualize import visCircles, genRandomDistancedColors, genColors
 
 
 def visForces(forceArr, alphaArr, betaArr, centerArr=None, fps=None):
@@ -57,7 +57,7 @@ def visForces(forceArr, alphaArr, betaArr, centerArr=None, fps=None):
         The list of 3 (or 4, if centers are provided) axes that the quantities are plotted on.
     """
 
-    fig, ax = plt.subplots(1, 3 + int(centerArr is not None), figsize=(3.7*3+int(centerArr is not None),3))
+    fig, ax = plt.subplots(1, 3 + int(centerArr is not None), figsize=(3.6*(3+int(centerArr is not None)),3))
     
     if len(forceArr) == 0:
         return fig, ax
@@ -111,12 +111,14 @@ def visContacts(center, radius, betaArr, alphaArr=None, forceArr=None, ax=None, 
         fig, ax = plt.subplots()
 
     if forceColors is None:
-        colors = genRandomDistancedColors(len(betaArr), 1000)
+        colors = genColors(len(betaArr), 1000)
+    elif type(forceColors) is str:
+        colors = [forceColors for i in range(len(betaArr))]
     else:
         colors = forceColors
     
     if drawCircle:
-        visCircles([npCenter], [radius], ax, setBounds=setBounds, colors=circleColor)
+        visCircles([npCenter], [radius], ax, setBounds=setBounds, colors=colors[0])
 
     if len(betaArr) == 0:
         return ax

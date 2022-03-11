@@ -113,6 +113,8 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
     rectAlphaArr = []
 
     # Scalar
+    # TODO Make this capable of following same process as for forces, where
+    # identities are maintained even if multiple particles appear/disappear
     maxNumParticles = np.max([len(betaArr[i]) for i in range(len(betaArr))])
     numTimesteps = len(forceArr)
     # First, make the centers array look nice, which we then use to identify
@@ -131,9 +133,11 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
     particleExists = np.zeros((numTimesteps, maxNumParticles), dtype=np.int16)
 
     for i in range(1, numTimesteps):
-        particleOrder[i] = preserveOrderArgsort(rectCenterArr[:,i-1][np.isnan(rectCenterArr[:,i-1])[:,0] == False], centerArr[i], padMissingValues=True)
-        rectCenterArr[:,i] = [centerArr[i][particleOrder[i,j]] if particleOrder[i,j] is not None else [np.nan, np.nan] for j in range(len(particleOrder[i]))]
-        rectRadiusArr[:,i] = [radiusArr[i][particleOrder[i,j]] if particleOrder[i,j] is not None else np.nan for j in range(len(particleOrder[i]))]
+        currOrder = preserveOrderArgsort(rectCenterArr[:,i-1], centerArr[i], padMissingValues=True, fillNanSpots=True)
+        # Convert all None to np.nan (since None can't be turned into an integer)
+        particleOrder[i] = [ci if ci is not None else np.nan for ci in currOrder]
+        rectCenterArr[:,i] = [centerArr[i][particleOrder[i,j]] if not np.isnan(particleOrder[i,j]) else [np.nan, np.nan] for j in range(len(particleOrder[i]))]
+        rectRadiusArr[:,i] = [radiusArr[i][particleOrder[i,j]] if not np.isnan(particleOrder[i,j]) else np.nan for j in range(len(particleOrder[i]))]
 
     # We now have linked the particles from frame to frame, and can
     # rectangularize the other quantities on a particle-by-particle basis

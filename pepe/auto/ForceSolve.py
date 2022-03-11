@@ -16,7 +16,7 @@ from pepe.analysis import initialForceSolve, forceOptimize, gSquared, g2ForceCal
 from pepe.tracking import houghCircle, convCircle
 from pepe.simulate import genSyntheticResponse
 from pepe.utils import preserveOrderArgsort, rectangularizeForceArrays, explicitKwargs
-from pepe.visualize import genRandomColors, visCircles, visForces
+from pepe.visualize import genColors, visCircles, visForces, visContacts
 
 # Decorator that allows us to identify which keyword arguments were explicitly
 # passed to the function, and which were left as default values. See beginning
@@ -270,7 +270,8 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 "pickleArrays": pickleArrays,
                 "outputRootFolder": outputRootFolder,
                 "outputExtension": outputExtension,
-                "genFitReport": genFitReport}
+                "genFitReport": genFitReport,
+                "debug": debug}
 
     # 2. Anything read in from a settings file
     # Note that it works to our advantage that we already have values for most entries,
@@ -319,7 +320,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # that over a bit later.
 
     # TODO: Make this more robust
-    centerColors = genRandomColors(10)
+    centerColors = genColors(10)
 
     # Find all images in the directory
     imageFiles = os.listdir(settings["imageDirectory"])
@@ -591,7 +592,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             
 
             # Just simple mean-squared error
-            error.append(np.sqrt(np.sum((optimizedPhotoelasticChannel - peImage)**2)))
+            errorArr.append(np.sqrt(np.sum((optimizedPhotoelasticChannel - peImage)**2)))
 
             imgArr = np.zeros((*optimizedPhotoelasticChannel.shape, 3))
             
@@ -742,7 +743,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         # First, generate a plot of the error
         fig, ax = plt.subplots()
 
-        ax.plot(error)
+        ax.plot(errorArr)
         ax.set_xlabel('Frame')
         ax.set_ylabel('Mean-squared error')
         ax.set_title('Difference Between Optimized Result and Real Image')
@@ -753,18 +754,20 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         # Draw all of the circles, with their labeled numbers
         fig, ax = plt.subplots(1, 2, figsize=(8,3))
         # First timestep
-        visCircles([centerArr[i][0] for i in range(len(rectCenterArr))], [rectRadiusArr[i][0] for i in range(len(rectRadiusArr))],
+        visCircles([rectCenterArr[i][0] for i in range(len(rectCenterArr))], [rectRadiusArr[i][0] for i in range(len(rectRadiusArr))],
                    ax=ax[0], annotations=np.arange(len(rectCenterArr)), setBounds=True) 
         # Last timestep
-        visCircles([centerArr[i][-1] for i in range(len(rectCenterArr))], [rectRadiusArr[i][-1] for i in range(len(rectRadiusArr))],
+        visCircles([rectCenterArr[i][-1] for i in range(len(rectCenterArr))], [rectRadiusArr[i][-1] for i in range(len(rectRadiusArr))],
                    ax=ax[1], annotations=np.arange(len(rectCenterArr)), setBounds=True) 
 
         for i in range(2):
             ax[i].set_xlabel('X [px]')
             ax[i].set_ylabel('Y [px]')
+            ax[i].invert_yaxis()
 
         ax[0].set_title('First Frame')
         ax[1].set_title('Last Frame')
+
         fig.savefig(outputFolderPath + 'FitReport_src/particle_identities.pdf')
         plt.close(fig)
 
@@ -776,4 +779,64 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             fig.savefig(outputFolderPath + f'FitReport_src/particle_{i}_forces.pdf')
             plt.close(fig)
 
+
+    # Create gifs of the contacts
+    forceColors = genColors(len(rectBetaArr))
+    # The list comprehension is to make sure that we index a particle that actually has forces acting
+    # on it.
+    tSteps = len([b for b in betaArr if len(b) > 0][0])
+    contactPointImages = [None for i in range(tSteps)]
+    contactAngleImages = [None for i in range(tSteps)]
+
+    for i in range(tSteps):
+        # Have to do this, because the settings variable could be None 
+        startI = settings["imageStartIndex"] if settings["imageStartIndex"] is not None else 0
+
+        # First, just the contact points
+        fig, ax = plt.subplots()
+        visCircles([rectCenterArr[p][i] for p in range(len(rectCenterArr))], [rectRadiusArr[p][i] for p in range(len(rectRadiusArr))], ax=ax)
+
+        for particleIndex in range(len(rectBetaArr)):
+            visContacts(rectCenterArr[particleIndex][i], rectRadiusArr[particleIndex][i],
+                        rectBetaArr[particleIndex][:,i], ax=ax, forceColors=forceColors[particleIndex])
+
+        ax.set_xlim([0, 1280])
+        ax.set_ylim([0, 1024])
+        ax.set_aspect('equal')
+        ax.set_title(f'Frame {i + startI}')
+        ax.invert_yaxis()
+
+        canvas = plt.get_current_fig_manager().canvas
+        canvas.draw()
+        contactPointImages[i] = Image.frombytes('RGB', canvas.get_width_height(), 
+                                    canvas.tostring_rgb())
+
+        plt.close(fig)
+   
+        # Now the one with angles
+        fig, ax = plt.subplots()
+        visCircles([rectCenterArr[p][i] for p in range(len(rectCenterArr))], [rectRadiusArr[p][i] for p in range(len(rectRadiusArr))], ax=ax)
+
+        for particleIndex in range(len(rectBetaArr)):
+            visContacts(rectCenterArr[particleIndex][i], rectRadiusArr[particleIndex][i],
+                        rectBetaArr[particleIndex][:,i], ax=ax, forceColors=forceColors[particleIndex], alphaArr=rectAlphaArr[particleIndex][:,i])
+                                            
+        ax.set_xlim([0, 1280])
+        ax.set_ylim([0, 1024])
+        ax.set_aspect('equal')
+        ax.set_title(f'Frame {i + startI}')
+        ax.invert_yaxis()
+
+        canvas = plt.get_current_fig_manager().canvas
+        canvas.draw()
+        contactAngleImages[i] = Image.frombytes('RGB', canvas.get_width_height(), 
+                                    canvas.tostring_rgb())
+
+        plt.close(fig)
+
+    contactPointImages[0].save(outputFolderPath + 'FitReport_src/contact_points.gif', save_all=True,
+                               append_images=contactPointImages[1:], duration=25, optimize=True, loop=True)
+
+    contactAngleImages[0].save(outputFolderPath + 'FitReport_src/contact_angles.gif', save_all=True,
+                               append_images=contactAngleImages[1:], duration=25, optimize=True, loop=True)
     return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr

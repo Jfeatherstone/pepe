@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.neighbors import KDTree
 
 
-def preserveOrderSort(oldValues, newValues, padMissingValues=False, maxDistance=None, periodic=False):
+def preserveOrderSort(oldValues, newValues, padMissingValues=False, maxDistance=None, periodic=False, fillNanSpots=True):
     """
     Order a set of values as similarly to a previous set of values as possible.
     That is, arange `newValues` such that the first element is the one that is
@@ -49,6 +49,11 @@ def preserveOrderSort(oldValues, newValues, padMissingValues=False, maxDistance=
         Whether the values to be sorted are periodic such that pi and -pi are actually
         the same point (and should have a separation of 0, not 2pi.
 
+    fillNanSpots : bool
+        Whether to fill Nan spots in the old list with unmatched new values (True), or
+        to preserve the position of the nan value and append unmatched new values to
+        the end (False).
+
     Returns
     -------
 
@@ -57,104 +62,18 @@ def preserveOrderSort(oldValues, newValues, padMissingValues=False, maxDistance=
         of `oldValues`.
     """
 
-    if maxDistance is None:
-        maxDistance = np.inf
+    # We already have preserveOrderArgsort written, so we can just wrap that
+    order = preserveOrderArgsort(oldValues, newValues, padMissingValues, maxDistance, periodic, fillNanSpots)
 
-    # Make sure all of the values are np arrays
-    npOldValues = np.array(oldValues)
-    npNewValues = np.array(newValues)
+    dim = len(newValues[0])
 
-    # This is required for the kdtree to work, since it is
-    # generalized for higher dimensional spaces
-    scalarValues = npOldValues.ndim == 1
-    if scalarValues:
-        npNewValues = npNewValues[:,None]
-        npOldValues = npOldValues[:,None]
-
-    # We want to have the longer list of items be the source points
-    # for the kdtree, and the shorter be the query points. If they are
-    # the same length, it doesn't matter.
-
-    # If we have an empty old list, we just the original list
-    if len(npOldValues) == 0:
-        return newValues
-
-    # If there are no new values, we return empty list (the new values)
-    # or a list of None values
-    if len(npNewValues) == 0:
-        if padMissingValues:
-            return [None for _ in range(len(npOldValues))]
-        else:
-            return newValues
-
-    if len(npOldValues) > len(npNewValues):
-
-        # The list that we will be building
-        addedIndices = [None for i in range(len(npOldValues))]
-
-        kdTree = KDTree(npOldValues, leaf_size=5)
-        # This gives us the closest k points to each of the old values
-        dist, ind = kdTree.query(npNewValues, k=len(npOldValues))
-
-        if periodic:
-            # Points can't be more than pi away from each other on a circle (ignoring circulation
-            # direction)
-            dist = np.where(dist < np.pi, dist, 2*np.pi - dist)
-
-        for i in range(len(npNewValues)):
-            possiblePoints = [ind[i][j] for j in range(len(ind[i])) if (not addedIndices[ind[i][j]] is not None and dist[i][j] < maxDistance)]
-            if len(possiblePoints) > 0:
-                addedIndices[possiblePoints[0]] = i
-            else:
-                # If we didn't find any possible pairs for this point, it must have been too far from
-                # any other point to correspond properly, so we add it at the end, denoting that this
-                # represents a new point
-                addedIndices.append(i)
-
-        # We build the arrays out of the original elements (not the np ones) so that we return
-        # an array of the exact same shape as the original, which would not be the case for
-        # a list of scalar values (since we had to stack them for the kdtree)
-        if padMissingValues:
-            orderedValues = [newValues[i] if i is not None else None for i in addedIndices]
-        else:
-            orderedValues = [newValues[i] for i in addedIndices if i is not None]
-
-        return orderedValues
-
+    if dim == 1:
+        return np.array([newValues[i] if i is not None else np.nan for i in order])
     else:
-
-        # The list that we will be building
-        # We'll append new entries on at the end
-        addedIndices = [None for i in range(len(npOldValues))]
-
-        kdTree = KDTree(npNewValues, leaf_size=5)
-        # This gives us the closest k points to each of the old values
-        dist, ind = kdTree.query(npOldValues, k=len(npNewValues))
-
-        if periodic:
-            # Points can't be more than pi away from each other on a circle (ignoring circulation
-            # direction)
-            dist = np.where(dist < np.pi, dist, 2*np.pi - dist)
-
-        for i in range(len(npOldValues)):
-            possiblePoints = [ind[i][j] for j in range(len(ind[i])) if (not ind[i][j] in addedIndices and dist[i][j] < maxDistance)]
-            if len(possiblePoints) > 0:
-                addedIndices[i] = possiblePoints[0]
-            else:
-                # Otherwise we don't need to do anything, because the extra values will be added
-                # at the end anyway (unlike the previous case above)
-                pass
-
-        orderedValues = [newValues[i] if i is not None else None for i in addedIndices]
-
-        for i in range(len(npNewValues)):
-            if not i in addedIndices:
-                orderedValues.append(newValues[i])
-
-        return orderedValues
+        return np.array([newValues[i] if i is not None else np.repeat(np.nan, dim) for i in order])
 
 
-def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistance=None, periodic=False):
+def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistance=None, periodic=False, fillNanSpots=True):
     """
     Return a set of indices that order a set of values as similarly to a previous
     set of values as possible. That is, a set of indices that arranges `newValues`
@@ -202,6 +121,11 @@ def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistan
         Whether the values to be sorted are periodic such that pi and -pi are actually
         the same point (and should have a separation of 0, not 2pi.
 
+    fillNanSpots : bool
+        Whether to fill Nan spots in the old list with unmatched new values (True), or
+        to preserve the position of the nan value and append unmatched new values to
+        the end (False).
+
     Returns
     -------
 
@@ -227,8 +151,8 @@ def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistan
     # Convert all potential None values to np.nan (since they play nicer)
     # TODO: I never finished making this method compatable with nan/None values,
     # so that needs to be finished (or would be nice to have finished)
-    #npNewValues = np.array(np.where(npNewValues, npNewValues, np.nan), dtype=np.float64)
-    #npOldValues = np.array(np.where(npOldValues, npOldValues, np.nan), dtype=np.float64)
+    npNewValues = np.array(np.where(npNewValues, npNewValues, np.nan), dtype=np.float64)
+    npOldValues = np.array(np.where(npOldValues, npOldValues, np.nan), dtype=np.float64)
 
     # We want to have the longer list of items be the source points
     # for the kdtree, and the shorter be the query points. If they are
@@ -246,63 +170,48 @@ def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistan
         else:
             return newValues
 
-    if len(npOldValues) > len(npNewValues):
-        # The list that we will be building
-        addedIndices = [None for i in range(len(npOldValues))]
+    # Detect which values are valid aka not np.nan (see above about nan/None)
+    oldValidIndices = np.unique(np.where(np.isnan(npOldValues) == False)[0])
+    newValidIndices = np.unique(np.where(np.isnan(npNewValues) == False)[0])
 
-        # Detect if any values are None/nan (see above about nan/None)
-        #noneIndices = np.unique(np.where(np.isnan(npOldValues))[0])
+    # The list that we will be building
+    # We'll append new entries on at the end
+    addedIndices = [None for i in range(len(npOldValues))]
 
-        kdTree = KDTree(npOldValues, leaf_size=5)
-        # This gives us the closest k points to each of the old values
-        dist, ind = kdTree.query(npNewValues, k=len(npOldValues))
+    kdTree = KDTree(npNewValues[newValidIndices], leaf_size=5)
+    # This gives us the closest k points to each of the old values
+    dist, ind = kdTree.query(npOldValues[oldValidIndices], k=len(newValidIndices))
 
-        if periodic:
-            # Points can't be more than pi away from each other on a circle (ignoring circulation
-            # direction)
-            dist = np.where(dist < np.pi, dist, 2*np.pi - dist)
+    # Now convert the indices return from the kd tree (which excluded np.nan values)
+    # back to the original order, which includes np.nan values
+    ind = [[newValidIndices[ind[i][j]] for j in range(len(ind[i]))] for i in range(len(ind))]
 
-        for i in range(len(npNewValues)):
-            possiblePoints = [ind[i][j] for j in range(len(ind[i])) if (not addedIndices[ind[i][j]] is not None and dist[i][j] < maxDistance)]
-            if len(possiblePoints) > 0:
-                addedIndices[possiblePoints[0]] = i
-            else:
-                # If we didn't find any possible pairs for this point, it must have been too far from
-                # any other point to correspond properly, so we add it at the end, denoting that this
-                # represents a new point
-                addedIndices.append(i)
+    if periodic:
+        # Points can't be more than pi away from each other on a circle (ignoring circulation
+        # direction)
+        dist = np.where(dist < np.pi, dist, 2*np.pi - dist)
 
-        if not padMissingValues:
-            addedIndices = [i for i in addedIndices if i is not None]
+    for i in range(len(oldValidIndices)):
+        possiblePoints = [ind[i][j] for j in range(len(ind[i])) if (not ind[i][j] in addedIndices and dist[i][j] < maxDistance)]
+        if len(possiblePoints) > 0:
+            addedIndices[i] = possiblePoints[0]
+        else:
+            # Otherwise we don't need to do anything, because the extra values will be added
+            # at the end anyway (unlike the previous case above)
+            pass
 
-        return addedIndices
+    unaddedIndices = [i for i in range(len(newValidIndices)) if not i in addedIndices]
 
-    else:
+    if fillNanSpots:
+        oldNanIndices = np.unique(np.where(np.isnan(npOldValues) == True)[0])
+        for i in range(min(len(oldNanIndices), len(unaddedIndices))):
+            addedIndices[oldNanIndices[i]] = unaddedIndices[i]
 
-        # The list that we will be building
-        # We'll append new entries on at the end
-        addedIndices = [None for i in range(len(npOldValues))]
+        unaddedIndices = unaddedIndices[len(oldNanIndices):] if len(oldNanIndices) < len(unaddedIndices) else []
 
-        kdTree = KDTree(npNewValues, leaf_size=5)
-        # This gives us the closest k points to each of the old values
-        dist, ind = kdTree.query(npOldValues, k=len(npNewValues))
+    addedIndices += unaddedIndices
+    
+    if not padMissingValues:
+        addedIndices = [i for i in addedIndices if i is not None]
 
-        if periodic:
-            # Points can't be more than pi away from each other on a circle (ignoring circulation
-            # direction)
-            dist = np.where(dist < np.pi, dist, 2*np.pi - dist)
-
-        for i in range(len(npOldValues)):
-            possiblePoints = [ind[i][j] for j in range(len(ind[i])) if (not ind[i][j] in addedIndices and dist[i][j] < maxDistance)]
-            if len(possiblePoints) > 0:
-                addedIndices[i] = possiblePoints[0]
-            else:
-                # Otherwise we don't need to do anything, because the extra values will be added
-                # at the end anyway (unlike the previous case above)
-                pass
-
-        for i in range(len(npNewValues)):
-            if not i in addedIndices:
-                addedIndices.append(i)
-
-        return addedIndices
+    return addedIndices
