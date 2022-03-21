@@ -53,8 +53,8 @@ def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColor
                 ax.text(npCenters[i,1], npCenters[i,0], annotations[i + int(np.sum(1 - goodIndices[:i]))], ha='center', va='center', color=circleColorsList[i])
 
     if setBounds:
-        ax.set_xlim([np.min(npCenters[:,1])-1.5*np.max(radii), np.max(npCenters[:,1])+1.5*np.max(radii)])
-        ax.set_ylim([np.min(npCenters[:,0])-1.5*np.max(radii), np.max(npCenters[:,0])+1.5*np.max(radii)])
+        ax.set_xlim([np.min(npCenters[:,1])-1.5*np.max(npRadii), np.max(npCenters[:,1])+1.5*np.max(npRadii)])
+        ax.set_ylim([np.min(npCenters[:,0])-1.5*np.max(npRadii), np.max(npCenters[:,0])+1.5*np.max(npRadii)])
         ax.set_aspect('equal')
 
     return ax
