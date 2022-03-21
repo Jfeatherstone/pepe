@@ -22,7 +22,7 @@ from pepe.visualize import genColors, visCircles, visForces, visContacts
 # passed to the function, and which were left as default values. See beginning
 # of method code for more information/motivation.
 @explicitKwargs()
-def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
+def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
     """
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be returned and potentially written to various files.
@@ -159,9 +159,14 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         The channel of the image that will be used to gauge the photoelastic response. `0` for red, `1` for
         green, and `2` for blue.
 
-    forceNoiseWidth : float
+    forceNoiseWidth : float or None
         The width of the gaussian distribution (centered at 0) that noise is sampled from to add to the
-        force magnitudes from the previous frame. This is done to avoid getting stuck in a local
+        force guesses (potentially from the previous frame). This is done to avoid getting stuck in a local
+        minimum for too long (adds some Monte-Carlo-esque behavior to the solving).
+
+    alphaNoiseWidth : float or None
+        The width of the gaussian distribution (centered at 0) that noise is sampled from to add to the
+        alpha guesses (potentially from the previous frame). This is done to avoid getting stuck in a local
         minimum for too long (adds some Monte-Carlo-esque behavior to the solving).
 
     optimizationKwargs : **kwargs
@@ -266,6 +271,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 "photoelasticChannel": photoelasticChannel,
                 "maxBetaDisplacement": maxBetaDisplacement,
                 "forceNoiseWidth": forceNoiseWidth,
+                "alphaNoiseWidth": alphaNoiseWidth,
                 "saveMovie": saveMovie,
                 "pickleArrays": pickleArrays,
                 "outputRootFolder": outputRootFolder,
@@ -469,43 +475,50 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         # ----------------------
         # Generate initial guess
         # ----------------------
-        # We rerun the initial guess mostly when we can't carry over the values from
-        # the previous step
-        if len(centersArr) == 0:
-            forceGuessArr, alphaGuessArr, betaGuessArr = initialForceSolve(peImage,
-                                                        centers, radii, settings["fSigma"], settings["pxPerMeter"],
-                                                        settings["contactPadding"], settings["g2MaskPadding"],
-                                                        contactMaskRadius=settings["contactMaskRadius"],
-                                                        boundaryMask=maskArr, ignoreBoundary=ignoreBoundary, g2Cal=g2Cal)
+        # We run the initial guess regardless of whether we are going to overwrite
+        # with values from the previous frame. This is because the beta values
+        # are caluclated via the contact network, which should not be carried over
+        # (since the particles are moving).
+        forceGuessArr, alphaGuessArr, betaGuessArr = initialForceSolve(peImage,
+                                                    centers, radii, settings["fSigma"], settings["pxPerMeter"],
+                                                    settings["contactPadding"], settings["g2MaskPadding"],
+                                                    contactMaskRadius=settings["contactMaskRadius"],
+                                                    boundaryMask=maskArr, ignoreBoundary=ignoreBoundary, g2Cal=g2Cal)
 
-        else:
-        #elif len(centers) != len(centersArr[-1]):
+        if len(centersArr) > 0:
             # If we have added/lost particles, we want to carry over the previous values where
             # possible, and otherwise take the results of initialForceSolve
-            forceGuessArr, alphaGuessArr, betaGuessArr = initialForceSolve(peImage,
-                                                        centers, radii, settings["fSigma"], settings["pxPerMeter"],
-                                                        settings["contactPadding"], settings["g2MaskPadding"],
-                                                        contactMaskRadius=settings["contactMaskRadius"],
-                                                        boundaryMask=maskArr, ignoreBoundary=ignoreBoundary, g2Cal=g2Cal)
 
-            # This variable will certainly exist (even though it was defined in an if statement
-            for j in range(len(betaArr[-1])):
-                if len(betaArr[-1][j]) > 0:
-                    # Centers should already be in the same order, so now we just have to order
-                    # the forces in case one was added/removed
-                    forceOrder = preserveOrderArgsort(betaGuessArr[j], betaArr[-1][j], padMissingValues=True, maxDistance=settings["maxBetaDisplacement"])
-                    for k in range(len(forceGuessArr[j])):
-                        if forceOrder[k] is not None:
-                            if settings["carryOverForce"]:
-                                forceGuessArr[j][k] = forceArr[-1][j][forceOrder[k]]
-                            if settings["carryOverAlpha"]:
-                                alphaGuessArr[j][k] = alphaArr[-1][j][forceOrder[k]]
+            # Note that this is the complement to the center order calculated previously:
+            # this orders the old centers according the new ones.
+            oldCenterOrder = preserveOrderArgsort(centers, centersArr[-1], padMissingValues=True)
+
+            # Now find each new particle's old counterpart (if it exists), and then
+            # line up the forces using the value of beta, such that we can (optionally)
+            # carry over force magnitudes and alpha values.
+            for j in range(len(betaGuessArr)):
+                if oldCenterOrder[j] is None:
+                    continue
+                    
+                # maxBetaDisplacement should be an angle value (in radians) that a force would
+                # never move in a single frame, but is large enough to not lose a force if it
+                # moves because of noise/small fluctuations.
+                forceOrder = preserveOrderArgsort(betaGuessArr[j], betaArr[-1][oldCenterOrder[j]], padMissingValues=True, maxDistance=settings["maxBetaDisplacement"])
+                for k in range(len(forceGuessArr[j])):
+                    if forceOrder[k] is not None:
+                        if settings["carryOverForce"]:
+                            forceGuessArr[j][k] = forceArr[-1][j][forceOrder[k]]
+                        if settings["carryOverAlpha"]:
+                            alphaGuessArr[j][k] = alphaArr[-1][j][forceOrder[k]]
 
 
             # In this case, we want to add a small randomly generated contribution
             # so that the algorithm doesn't get stuck in some incorrect loop and so that it
             # explores a little more of the parameter space to find a nice minimum at each step
-            forceGuessArr = [np.abs(np.array(f) + np.random.normal(0, settings["forceNoiseWidth"], size=len(f))) for f in forceGuessArr]
+            if settings["forceNoiseWidth"] is not None:
+                forceGuessArr = [np.abs(np.array(f) + np.random.normal(0, settings["forceNoiseWidth"], size=len(f))) for f in forceGuessArr]
+            if settings["alphaNoiseWidth"] is not None:
+                alphaGuessArr = [np.abs(np.array(a) + np.random.normal(0, settings["alphaNoiseWidth"], size=len(a))) for a in alphaGuessArr]
 
 
         initialGuessTimes[i] = time.perf_counter() - trackingTimes[i] - start

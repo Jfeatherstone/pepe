@@ -534,16 +534,41 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
             # Otherwise we just multiply by 1, which doesn't affect our optimization at all
             localizedMask = 1
 
-        # Now do the optimization
-        result = minimize(objectiveFunction, params,
-                         args=(maskedImage, z, radius, center, localizedMask),
-                         method=methodList[i], max_nfev=maxEvalsList[i])
+        # This is the callback function after each minimization step
+        # There seems to be an error where sometimes the optimization
+        # will raise an error if the max number of iterations is reached
+        # (and sometimes it doesn't care) so we use this to make sure
+        # we get the best set of parameters out, even if this error
+        # comes up
+        #def iterCallback(params, iter, resid, *args, **kwargs):
+        #    if iter >= maxEvalsList[i]:
 
-        # Copy over the new values of the forces, alphas, and betas
-        for j in range(z):
-            forceArr[j] = result.params[f"f{j}"] 
-            betaArr[j] = result.params[f"b{j}"] 
-            alphaArr[j] = result.params[f"a{j}"] 
+        # Just kidding, I'll just use a try and ignore the error, since I
+        # am pretty sure that the params variable is constantly updated, not just
+        # at the end.
+
+        try:
+            # Now do the optimization
+            result = minimize(objectiveFunction, params,
+                             args=(maskedImage, z, radius, center, localizedMask),
+                             method=methodList[i], max_nfev=maxEvalsList[i], nan_policy='omit')
+
+            # Copy over the new values of the forces, alphas, and betas
+            for j in range(z):
+                forceArr[j] = result.params[f"f{j}"] 
+                betaArr[j] = result.params[f"b{j}"] 
+                alphaArr[j] = result.params[f"a{j}"] 
+        # Techinically the specific exception we are looking for is
+        # lmfit.AbortFitException, but I can't imagine a need to differentiate
+        # beyond just a general Exception
+        except Exception as e:
+            print(e)
+            # Otherwise, the we take the last good value from the params variable
+            for j in range(z):
+                forceArr[j] = params[f"f{j}"] 
+                betaArr[j] = params[f"b{j}"] 
+                alphaArr[j] = params[f"a{j}"] 
+
 
         # ---------------------
         # Detect missing forces

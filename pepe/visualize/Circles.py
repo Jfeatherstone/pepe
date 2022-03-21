@@ -16,7 +16,10 @@ def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColor
     radii : np.ndarray[N] or list[N]
         List of particle radii (in pixels).
     """
-    npCenters = np.array(centers)
+    # Cut out nan values
+    goodIndices = np.array([0 if np.isnan(r) else 1 for r in radii])
+    npRadii = np.array([r for r in radii if not np.isnan(r)])
+    npCenters = np.array([c for c in centers if not np.isnan(c[0])])
 
     if ax is None:
         fig, ax = plt.subplots()
@@ -24,19 +27,19 @@ def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColor
     if colors is None:
         if sameColors:
             singleColor = genColors(1)[0]
-            circleColorsList = [singleColor for _ in range(len(centers))]
+            circleColorsList = [singleColor for _ in range(len(npCenters))]
         else:
-            circleColorsList = genColors(len(centers))
+            circleColorsList = genColors(len(npCenters))
 
     elif not type(colors) is list:
         # If a single color is given, we want to repeat that
-        circleColorsList = [colors for _ in range(len(centers))]
+        circleColorsList = [colors for _ in range(len(npCenters))]
 
     else:
         circleColorsList = colors
 
-    for i in range(len(centers)):
-        c = plt.Circle(npCenters[i,::-1], radii[i], color=circleColorsList[i], fill=False, linewidth=1)
+    for i in range(len(npCenters)):
+        c = plt.Circle(npCenters[i,::-1], npRadii[i], color=circleColorsList[i], fill=False, linewidth=1)
         ax.add_artist(c)
 
     if annotations is not None:
@@ -44,8 +47,10 @@ def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColor
             print('Warning: Invalid number of annotations provided! Ignoring...')
             pass
         else:
-            for i in range(len(centers)):
-                ax.text(npCenters[i,1], npCenters[i,0], annotations[i], ha='center', va='center', color=circleColorsList[i])
+            for i in range(len(npCenters)):
+                # The annotation array might be mismatched if we had any nan circles
+                # so we have to account for that
+                ax.text(npCenters[i,1], npCenters[i,0], annotations[i + int(np.sum(1 - goodIndices[:i]))], ha='center', va='center', color=circleColorsList[i])
 
     if setBounds:
         ax.set_xlim([np.min(npCenters[:,1])-1.5*np.max(radii), np.max(npCenters[:,1])+1.5*np.max(radii)])

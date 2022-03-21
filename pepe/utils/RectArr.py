@@ -134,7 +134,7 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
 
     for i in range(1, numTimesteps):
         currOrder = preserveOrderArgsort(rectCenterArr[:,i-1], centerArr[i], padMissingValues=True, fillNanSpots=True)
-        # Convert all None to np.nan (since None can't be turned into an integer)
+        # Convert all None to -1 (since None can't be turned into an integer)
         particleOrder[i] = [ci if ci is not None else -1 for ci in currOrder]
         rectCenterArr[:,i] = [centerArr[i][particleOrder[i,j]] if particleOrder[i,j] >= 0 else [np.nan, np.nan] for j in range(len(particleOrder[i]))]
         rectRadiusArr[:,i] = [radiusArr[i][particleOrder[i,j]] if particleOrder[i,j] >= 0 else np.nan for j in range(len(particleOrder[i]))]
@@ -148,8 +148,17 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
 
         # This will be triangular array representing the indices of each force in the final
         # rectangular array
-        triSortedBetaArr = [betaArr[0][particleOrder[0,i]]]
-        triSortedForceOrderArr = [list(np.arange(len(triSortedBetaArr[0])))]
+        # We have to make sure this particle exists at the first timestep as well
+        print(particleOrder[0])
+        print(betaArr[0])
+        if particleOrder[0,i] >= 0 and particleOrder[0,i] < len(betaArr[0]):
+            triSortedBetaArr = [betaArr[0][particleOrder[0,i]]]
+            triSortedForceOrderArr = [list(np.arange(len(triSortedBetaArr[0])))]
+        else:
+            # Otherwise, we just use an empty list
+            triSortedBetaArr = [[]]
+            triSortedForceOrderArr = [[]]
+
 
         for j in range(1, numTimesteps):
             particleIndex = particleOrder[j,i]
