@@ -149,8 +149,8 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
         # This will be triangular array representing the indices of each force in the final
         # rectangular array
         # We have to make sure this particle exists at the first timestep as well
-        print(particleOrder[0])
-        print(betaArr[0])
+        #print(particleOrder[0])
+        #print(betaArr[0])
         if particleOrder[0,i] >= 0 and particleOrder[0,i] < len(betaArr[0]):
             triSortedBetaArr = [betaArr[0][particleOrder[0,i]]]
             triSortedForceOrderArr = [list(np.arange(len(triSortedBetaArr[0])))]

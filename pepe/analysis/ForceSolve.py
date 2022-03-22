@@ -396,8 +396,6 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         Whether or not to print out status statements as the optimization is performed.
     """
 
-    residuals = []
-
     # If we are passed a 2d list of parametersToFit, that means we 
     # are to perform multiple minimizations, likely with different
     # parameters being optimized each time.
@@ -452,6 +450,14 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     assert len(betaTolList) == numFits, 'Invalid betaTol provided'
     assert len(alphaTolList) == numFits, 'Invalid alphaTol provided'
 
+    # We need to keep track of the best set of parameters externally from
+    # the optimization routine, in the case that the minimize() function
+    # fails.
+    global residuals, bestResidual, bestParams
+    residuals = []
+    bestResidual = 1e16 # Arbitrary large number that will be overwritten
+    bestParams = None
+
     # Setup our function based on what parameters we are fitting
     # We want to avoid any if statements within the function itself, since
     # that will be evaluated many many times.
@@ -459,13 +465,22 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     # changed or not, which means we don't actually have to change which variables
     # are passed to the function.
     def objectiveFunction(params, trueImage, z, radius, center, mask):
+        global residuals, bestResidual, bestParams
+
         forceArr = np.array([params[f"f{j}"] for j in range(z)])
         betaArr = np.array([params[f"b{j}"] for j in range(z)])
         alphaArr = np.array([params[f"a{j}"] for j in range(z)])
 
         synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter, brightfield, imageSize=trueImage.shape, center=center)
+
+        # Save residual for tracking error
         residuals.append(np.sum(np.abs(synImage - trueImage) * mask))
-        return np.sum(np.abs(synImage - trueImage))
+        # Save best configuration outside of minimization
+        if residuals[-1] < bestResidual:
+            bestResidual = residuals[-1]
+            bestParams = params
+
+        return residuals[-1]
 
 
     # Mask our real image
@@ -563,18 +578,25 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         # beyond just a general Exception
         except Exception as e:
             print(e)
-            # Otherwise, the we take the last good value from the params variable
-            for j in range(z):
-                forceArr[j] = params[f"f{j}"] 
-                betaArr[j] = params[f"b{j}"] 
-                alphaArr[j] = params[f"a{j}"] 
+            # Otherwise, the we take the last good value (since we kept track outside of
+            # the optimization function)
+            if bestParams is not None:
+                for j in range(z):
+                    forceArr[j] = bestParams[f"f{j}"] 
+                    betaArr[j] = bestParams[f"b{j}"] 
+                    alphaArr[j] = bestParams[f"a{j}"] 
+            else:
+                # If we don't have any good parameter values, just return the initial
+                # guess. The arrays are initialized as this value, so we don't need
+                # to do anything in this case.
+                pass
 
 
         # ---------------------
         # Detect missing forces
         # ---------------------
         # If the code detects there is a missing force (no idea how yet)
-        if result.chisqr > missingForceChiSqrThreshold and allowAddForces:
+        if result is not None and result.chisqr > missingForceChiSqrThreshold and allowAddForces:
             # We sweep around the edge of the particle to see if there
             # are any regions that look like they could have a force
             # (denoted by a particularly high g2 value, or rather a peak)

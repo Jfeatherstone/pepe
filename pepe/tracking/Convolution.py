@@ -218,7 +218,7 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
 
     peakPositions, peakPrevalences = findPeaks2D(downsampledConvArr, minPeakPrevalence=minPeakPrevalence)
 
-    print(peakPositions)
+    #print(peakPositions)
 
     # Look around each peak to find the real peak in the full-resolution image
     refinedPeakPositions = []
@@ -236,7 +236,6 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
             maximumPositions = np.zeros((len(possibleRadii), 2))
 
             upsampledPosition = np.array([peakPositions[i][0]*peakDownsample, peakPositions[i][1]*peakDownsample])
-            print(upsampledPosition)
             for j in range(len(possibleRadii)):
                 # This is the point in the real image (not the conv arr)
                 imagePadding = int(possibleRadii[j]*1.2)
@@ -276,9 +275,9 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
                 if np.sum(newMask) == 0:
                     maximumValues[j] = 0
 
-                    print(maximumPositions[j])
-                    plt.imshow(newMask)
-                    plt.show()
+                    #print(maximumPositions[j])
+                    #plt.imshow(newMask)
+                    #plt.show()
                 else:
                     maximumValues[j] = np.sum(singleChannelFrame * newMask) / np.sum(newMask)
            
@@ -291,8 +290,8 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
 
             maximumValues = [int(m*1e2) if not np.isnan(m) else 0 for m in maximumValues]
 
-            plt.plot(possibleRadii, maximumValues)
-            plt.show()
+            #plt.plot(possibleRadii, maximumValues)
+            #plt.show()
 
             # Now save whichever on had the largest signal
             # We want to sort the list backwards, because we want the largest possible radius
