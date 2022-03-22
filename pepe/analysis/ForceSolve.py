@@ -4,7 +4,7 @@ Methods to solve for vector contact forces from a photoelastic image.
 
 import numpy as np
 
-from pepe.preprocess import circularMask, rectMask, ellipticalMask, mergeMasks
+from pepe.preprocess import circularMask, rectMask, ellipticalMask, mergeMasks, upsample, downsample
 from pepe.analysis import gSquared, adjacencyMatrix
 from pepe.simulate import genSyntheticResponse
 from pepe.utils import outerSubtract
@@ -251,7 +251,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, localizeAlphaOptimization=True, debug=False):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, imageScaleFactor=1, localizeAlphaOptimization=True, debug=False):
     """
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -392,6 +392,11 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         optimizations only for alpha (done by passing `parametersToFit=['a']`, or similar)
         will mask the particle except for a small region around the contact.
 
+    imageScaleFactor : int > 1 or positive float < 1
+       Factor by which to scale the real image when optimizating. Integer larger than 1 will
+       lead to the image being upsampled, and float less than 1 (but greater than 0) will lead
+       to the image being downsampled.
+
     debug : bool
         Whether or not to print out status statements as the optimization is performed.
     """
@@ -471,10 +476,10 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         betaArr = np.array([params[f"b{j}"] for j in range(z)])
         alphaArr = np.array([params[f"a{j}"] for j in range(z)])
 
-        synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter, brightfield, imageSize=trueImage.shape, center=center)
+        synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter, brightfield, imageSize=trueImage.shape, center=center, mask=mask)
 
         # Save residual for tracking error
-        residuals.append(np.sum(np.abs(synImage - trueImage) * mask))
+        residuals.append(np.sum(np.abs(synImage - trueImage)))
         # Save best configuration outside of minimization
         if residuals[-1] < bestResidual:
             bestResidual = residuals[-1]
@@ -483,9 +488,16 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         return residuals[-1]
 
 
+    if imageScaleFactor > 1:
+        scaledImage = upsample(realImage, imageScaleFactor)
+    elif imageScaleFactor < 1:
+        scaledImage = downsample(realImage, int(1/imageScaleFactor))
+    else:
+        scaledImage = realImage
+
     # Mask our real image
-    particleMask = circularMask(realImage.shape, center, radius)[:,:,0]
-    maskedImage = realImage * particleMask
+    particleMask = circularMask(scaledImage.shape, center, radius)[:,:,0]
+    maskedImage = scaledImage * particleMask
 
     # Since we may be doing multiple fits, we want to set up the initial conditions
     # such that each fit uses the result of the previous one (and the first one
@@ -539,15 +551,15 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
                 contactPoint = center + radius * np.array([np.cos(betaArr[j]), np.sin(betaArr[j])])
                 
                 # Create a mask just over the small area inside of the particle
-                localizedMask += circularMask(realImage.shape, contactPoint, contactMaskRadius)[:,:,0]
+                localizedMask += circularMask(scaledImage.shape, contactPoint, contactMaskRadius)[:,:,0]
 
             # >= 10 + 1 such that the points must be inside the
             # The value 10 is mostly arbitrary, but makes it very unlikely
             # that 10 separate contacts would overlap.
             localizedMask = localizedMask >= 11 
         else:
-            # Otherwise we just multiply by 1, which doesn't affect our optimization at all
-            localizedMask = 1
+            # Otherwise we just set value to none, which will be handled by pepe.simulate.genSyntheticResponse()
+            localizedMask = None
 
         # This is the callback function after each minimization step
         # There seems to be an error where sometimes the optimization
@@ -610,7 +622,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
                 contactPoint = center + radius * np.array([np.cos(newBetaArr[j]), np.sin(newBetaArr[j])])
                 
                 # Create a mask just over the small area inside of the particle
-                contactMask = circularMask(realImage.shape, contactPoint, contactMaskRadius)[:,:,0]
+                contactMask = circularMask(scaledImage.shape, contactPoint, contactMaskRadius)[:,:,0]
                 contactMask = (contactMask + particleMask) == 2
 
                 avgG2Arr[j] = np.sum(contactMask * gSqr) / np.sum(contactMask)
