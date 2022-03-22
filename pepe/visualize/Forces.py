@@ -57,7 +57,7 @@ def visForces(forceArr, alphaArr, betaArr, centerArr=None, fps=None):
         The list of 3 (or 4, if centers are provided) axes that the quantities are plotted on.
     """
 
-    fig, ax = plt.subplots(1, 3 + int(centerArr is not None), figsize=(3.6*(3+int(centerArr is not None)),3))
+    fig, ax = plt.subplots(1, 3 + int(centerArr is not None), figsize=(3.6*(3+int(centerArr is not None)),4))
     
     if len(forceArr) == 0:
         return fig, ax

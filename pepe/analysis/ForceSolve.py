@@ -463,6 +463,19 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     bestResidual = 1e16 # Arbitrary large number that will be overwritten
     bestParams = None
 
+
+    if imageScaleFactor > 1:
+        scaledImage = upsample(realImage, imageScaleFactor)
+    elif imageScaleFactor < 1:
+        scaledImage = downsample(realImage, int(1/imageScaleFactor))
+    else:
+        scaledImage = realImage
+
+    scaledRadius = radius * imageScaleFactor
+    scaledCenter = center * imageScaleFactor
+    scaledPxPerMeter = pxPerMeter * imageScaleFactor
+    scaledContactMaskRadius = contactMaskRadius * imageScaleFactor
+
     # Setup our function based on what parameters we are fitting
     # We want to avoid any if statements within the function itself, since
     # that will be evaluated many many times.
@@ -476,7 +489,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         betaArr = np.array([params[f"b{j}"] for j in range(z)])
         alphaArr = np.array([params[f"a{j}"] for j in range(z)])
 
-        synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter, brightfield, imageSize=trueImage.shape, center=center, mask=mask)
+        synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, scaledRadius, scaledPxPerMeter, brightfield, imageSize=scaledImage.shape, center=scaledCenter, mask=mask)
 
         # Save residual for tracking error
         residuals.append(np.sum(np.abs(synImage - trueImage)))
@@ -487,13 +500,6 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
 
         return residuals[-1]
 
-
-    if imageScaleFactor > 1:
-        scaledImage = upsample(realImage, imageScaleFactor)
-    elif imageScaleFactor < 1:
-        scaledImage = downsample(realImage, int(1/imageScaleFactor))
-    else:
-        scaledImage = realImage
 
     # Mask our real image
     particleMask = circularMask(scaledImage.shape, center, radius)[:,:,0]
@@ -548,10 +554,10 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
             localizedMask = np.copy(particleMask) * 10
 
             for j in range(len(betaArr)):
-                contactPoint = center + radius * np.array([np.cos(betaArr[j]), np.sin(betaArr[j])])
+                contactPoint = scaledCenter + scaledRadius * np.array([np.cos(betaArr[j]), np.sin(betaArr[j])])
                 
                 # Create a mask just over the small area inside of the particle
-                localizedMask += circularMask(scaledImage.shape, contactPoint, contactMaskRadius)[:,:,0]
+                localizedMask += circularMask(scaledImage.shape, contactPoint, scaledContactMaskRadius)[:,:,0]
 
             # >= 10 + 1 such that the points must be inside the
             # The value 10 is mostly arbitrary, but makes it very unlikely
@@ -577,7 +583,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         try:
             # Now do the optimization
             result = minimize(objectiveFunction, params,
-                             args=(maskedImage, z, radius, center, localizedMask),
+                             args=(maskedImage, z, scaledRadius, scaledCenter, localizedMask),
                              method=methodList[i], max_nfev=maxEvalsList[i], nan_policy='omit')
 
             # Copy over the new values of the forces, alphas, and betas
@@ -617,12 +623,12 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
             newBetaArr = np.linspace(-np.pi, np.pi, testBetaCount)
 
             # Calculate all of the g2s around the edge of the particle
-            gSqr = gSquared(realImage)
+            gSqr = gSquared(scaledImage)
             for j in range(testBetaCount):
-                contactPoint = center + radius * np.array([np.cos(newBetaArr[j]), np.sin(newBetaArr[j])])
+                contactPoint = scaledCenter + scaledRadius * np.array([np.cos(newBetaArr[j]), np.sin(newBetaArr[j])])
                 
                 # Create a mask just over the small area inside of the particle
-                contactMask = circularMask(scaledImage.shape, contactPoint, contactMaskRadius)[:,:,0]
+                contactMask = circularMask(scaledImage.shape, contactPoint, scaledContactMaskRadius)[:,:,0]
                 contactMask = (contactMask + particleMask) == 2
 
                 avgG2Arr[j] = np.sum(contactMask * gSqr) / np.sum(contactMask)
