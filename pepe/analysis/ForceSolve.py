@@ -556,7 +556,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
             # >= 10 + 1 such that the points must be inside the
             # The value 10 is mostly arbitrary, but makes it very unlikely
             # that 10 separate contacts would overlap.
-            localizedMask = localizedMask >= 11 
+            localizedMask = (localizedMask >= 11).astype(np.uint8)
         else:
             # Otherwise we just set value to none, which will be handled by pepe.simulate.genSyntheticResponse()
             localizedMask = None
