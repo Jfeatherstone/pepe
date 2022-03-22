@@ -237,7 +237,7 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
     # Now we fit an appropriate function to each peak to see if we can refine the center
     for i in range(len(peakPositions)):
         upsampledPosition = np.array([peakPositions[i][0]*peakDownsample, peakPositions[i][1]*peakDownsample])
-        imagePadding = int(np.mean(possibleRadii)*.8)
+        imagePadding = int(np.mean(possibleRadii))
         # Crop out the small area of the image around the peak
         localConv = convArr[max(upsampledPosition[0]-imagePadding, 0):min(upsampledPosition[0]+imagePadding,convArr.shape[0]-1), max(upsampledPosition[1]-imagePadding, 0):min(upsampledPosition[1]+imagePadding, convArr.shape[1]-1)]
 
@@ -285,7 +285,7 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
             upsampledPosition = np.int16(lorentzPositions[i])
             for j in range(len(possibleRadii)):
                 # This is the point in the real image (not the conv arr)
-                imagePadding = int(possibleRadii[j]*.8)
+                imagePadding = int(possibleRadii[j])
                 # Crop out the small area of the image that we are working with
                 localImage = imageArr[max(upsampledPosition[0]-imagePadding, 0):min(upsampledPosition[0]+imagePadding,imageArr.shape[0]-1),max(upsampledPosition[1]-imagePadding, 0):min(upsampledPosition[1]+imagePadding, imageArr.shape[1]-1)]
 
