@@ -10,7 +10,7 @@ from pepe.preprocess import sobelEdgeDetection, laplacianEdgeDetection, cannyEdg
 
 import matplotlib.pyplot as plt
 
-def houghCircle(singleChannelFrame, radius, edgeDetection='laplacian', blurKernel=None, cannyEdgeThreshold=70, accumulatorThreshold=20, radiusTolerance=15, minSeparation=None, draw=False):
+def houghCircle(singleChannelFrame, radius, edgeDetection='laplacian', blurKernel=None, cannyEdgeThreshold=70, accumulatorThreshold=20, radiusTolerance=15, minSeparation=None, debug=False):
     """
     Perform Hough circle detection on the provided image.
 
@@ -62,7 +62,7 @@ def houghCircle(singleChannelFrame, radius, edgeDetection='laplacian', blurKerne
         default value) this will be calculated as twice the radius minus the
         radius tolerance.
 
-    draw : bool
+    debug : bool
         Whether or not to draw debug information on a plot.
 
     Returns
@@ -136,7 +136,7 @@ def houghCircle(singleChannelFrame, radius, edgeDetection='laplacian', blurKerne
     radii = detectedCircles[0,:,2]
 
 
-    if draw:
+    if debug:
         fig, ax = plt.subplots(1, 3, figsize=(10,4))
         ax[0].imshow(singleChannelFrame)
         ax[0].set_title('Original image')
@@ -151,7 +151,6 @@ def houghCircle(singleChannelFrame, radius, edgeDetection='laplacian', blurKerne
             ax[2].add_artist(c)
 
         fig.tight_layout()
-        plt.show()
 
     return centers, radii
 

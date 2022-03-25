@@ -471,10 +471,10 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     else:
         scaledImage = realImage
 
-    scaledRadius = radius * imageScaleFactor
-    scaledCenter = center * imageScaleFactor
-    scaledPxPerMeter = pxPerMeter * imageScaleFactor
-    scaledContactMaskRadius = contactMaskRadius * imageScaleFactor
+    scaledRadius = np.int64(radius * imageScaleFactor)
+    scaledCenter = np.array(center * imageScaleFactor, dtype=np.int64)
+    scaledPxPerMeter = np.int64(pxPerMeter * imageScaleFactor)
+    scaledContactMaskRadius = np.int64(contactMaskRadius * imageScaleFactor)
 
     # Setup our function based on what parameters we are fitting
     # We want to avoid any if statements within the function itself, since
@@ -502,7 +502,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
 
 
     # Mask our real image
-    particleMask = circularMask(scaledImage.shape, center, radius)[:,:,0]
+    particleMask = circularMask(scaledImage.shape, scaledCenter, scaledRadius)[:,:,0]
     maskedImage = scaledImage * particleMask
 
     # Since we may be doing multiple fits, we want to set up the initial conditions
@@ -595,7 +595,9 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         # lmfit.AbortFitException, but I can't imagine a need to differentiate
         # beyond just a general Exception
         except Exception as e:
-            print(e)
+            if debug:
+                print(e)
+
             # Otherwise, the we take the last good value (since we kept track outside of
             # the optimization function)
             if bestParams is not None:

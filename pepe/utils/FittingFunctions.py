@@ -38,7 +38,7 @@ def cone(p, center, halfAngle, offset, roundness):
     return offset - d/np.tan(halfAngle) * np.exp(-(roundness)**2/d)
 
 
-def lorentzian(p, center, width, offset):
+def lorentzian(p, center, width, amp, offset):
     r"""
     The 2D Lorentzian function, evaluated at a single point.
 
@@ -54,6 +54,9 @@ def lorentzian(p, center, width, offset):
     width : float
         The width of the Lorentzian.
 
+    amp : float
+        The amplitude of the Lorentzian.
+
     offset : float
         The z coordinate of the tip of the Lorentzian.
 
@@ -63,4 +66,4 @@ def lorentzian(p, center, width, offset):
     z : float
         The z position at the point `p` on the Lorentzian.
     """
-    return 0.5 * width / ( ((center[0] - p[0])**2 + (center[1] - p[1])**2) + 0.25 * width**2) + offset
+    return amp * 0.5 * width / ( ((center[0] - p[0])**2 + (center[1] - p[1])**2) + 0.25 * width**2) + offset

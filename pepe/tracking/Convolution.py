@@ -12,7 +12,7 @@ from pepe.analysis import adjacencyMatrix
 
 from lmfit import minimize, Parameters
 
-def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, outlineOnly=False, outlineThickness=.05, negativeHalo=False, negativeInside=False, peakDownsample=10, minPeakPrevalence=.1, intensitySoftmax=1.2, intensitySoftmin=.1, invert=False, allowOverlap=False, debug=False):
+def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, outlineOnly=False, outlineThickness=.05, negativeHalo=False, negativeInside=False, peakDownsample=10, minPeakPrevalence=.1, intensitySoftmax=1.2, intensitySoftmin=.1, invert=False, allowOverlap=False, fitPeaks=True, debug=False):
     """
     Perform convolution circle detection on the provided image.
 
@@ -103,7 +103,7 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
         detection. The final peak detection will always be performed at the original
         resolution, so this should not affect the accuracy of the detected circles,
         though it is possible that some particles in a densely packed system may
-        not be detected.
+        not be detected. False
 
         Set to `1` or `None` to perform no downsampling, though this is not recommended,
         as the peak finding algorithm is O(N) where N is the total number of grid points.
@@ -114,6 +114,11 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
         of the total intensity data range that must be spanned by a feature.
 
         See `pepe.topology.findPeaks2D()` for more information.
+
+    fitPeaks : bool
+        Whether or not to fit each peak in the convolution with a lorentzian
+        form and use that center as the location of the particle (instead of
+        the simple maximum point).
 
     intensitySoftmax : float
         Value at which to cap the intensity values in the image, calculated as
@@ -224,47 +229,54 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
     lorentzPositions = np.zeros((len(peakPositions), 2))
     cleanedConvArr = np.zeros_like(convArr)
 
-    def objectiveFunction(params, localImage):
-        # Create a small grid across the area
-        Y,X = np.ogrid[:localImage.shape[0], :localImage.shape[1]]
-        Y += int(params["center_y"] - localImage.shape[0]/2)
-        X += int(params["center_x"] - localImage.shape[1]/2)
+    # We have the option to fit lorentzian peaks to each maximum in the convolution
+    # matrix, or we can just take the peak positions as they are
+    if fitPeaks:
+        def objectiveFunction(params, localImage):
+            # Create a small grid across the area
+            Y,X = np.ogrid[:localImage.shape[0], :localImage.shape[1]]
+            Y += int(params["center_y"] - localImage.shape[0]/2)
+            X += int(params["center_x"] - localImage.shape[1]/2)
 
-        lorentzArr = lorentzian([Y,X], [params["center_y"], params["center_x"]], params["width"], params["offset"])
+            lorentzArr = lorentzian([Y,X], [params["center_y"], params["center_x"]], params["width"], params["amp"], params["offset"])
+            
+            return np.sum((localImage - lorentzArr)**2)
+
+        # Now we fit an appropriate function to each peak to see if we can refine the center
+        for i in range(len(peakPositions)):
+            upsampledPosition = np.array([peakPositions[i][0]*peakDownsample, peakPositions[i][1]*peakDownsample])
+            imagePadding = int(np.mean(possibleRadii))
+            # Crop out the small area of the image around the peak
+            localConv = convArr[max(upsampledPosition[0]-imagePadding, 0):min(upsampledPosition[0]+imagePadding,convArr.shape[0]-1), max(upsampledPosition[1]-imagePadding, 0):min(upsampledPosition[1]+imagePadding, convArr.shape[1]-1)]
+
+
+            #plt.imshow(localConv)
+            #plt.show()
+            # Now setup a fit to this function
+            params = Parameters()
+
+            params.add('center_y', value=localConv.shape[0]/2, vary=True)
+            params.add('center_x', value=localConv.shape[1]/2, vary=True)
+            params.add('width', value=imagePadding/2, vary=False)
+            params.add('amp', value=np.max(localConv)-np.min(localConv), vary=False)
+            params.add('offset', value=np.min(localConv), vary=False)
         
-        return np.sum((localImage - lorentzArr)**2)
+            result = minimize(objectiveFunction, params, args=[localConv], method='nelder', max_nfev=10000)
+            
+            if result is not None:
+                lorentzPositions[i,0] = upsampledPosition[0] - localConv.shape[0]/2 + result.params["center_y"]
+                lorentzPositions[i,1] = upsampledPosition[1] - localConv.shape[1]/2 + result.params["center_x"]
 
-    # Now we fit an appropriate function to each peak to see if we can refine the center
-    for i in range(len(peakPositions)):
-        upsampledPosition = np.array([peakPositions[i][0]*peakDownsample, peakPositions[i][1]*peakDownsample])
-        imagePadding = int(np.mean(possibleRadii))
-        # Crop out the small area of the image around the peak
-        localConv = convArr[max(upsampledPosition[0]-imagePadding, 0):min(upsampledPosition[0]+imagePadding,convArr.shape[0]-1), max(upsampledPosition[1]-imagePadding, 0):min(upsampledPosition[1]+imagePadding, convArr.shape[1]-1)]
+                Y,X = np.ogrid[:convArr.shape[0], :convArr.shape[1]]
+                cleanedConvArr += lorentzian([Y,X], lorentzPositions[i], result.params["width"], result.params["amp"], result.params["offset"])
 
+            else:
+                lorentzPositions[i] = upsampledPosition
 
-        #plt.imshow(localConv)
-        #plt.show()
-        # Now setup a fit to this function
-        params = Parameters()
-
-        params.add('center_y', value=localConv.shape[0]/2, vary=True)
-        params.add('center_x', value=localConv.shape[1]/2, vary=True)
-        params.add('width', value=imagePadding/2, vary=True)
-        params.add('offset', value=np.mean(localConv), vary=True)
-    
-        result = minimize(objectiveFunction, params, args=[localConv], method='nelder', max_nfev=100)
-        
-        if result is not None:
-            lorentzPositions[i,0] = upsampledPosition[0] - localConv.shape[0]/2 + result.params["center_y"]
-            lorentzPositions[i,1] = upsampledPosition[1] - localConv.shape[1]/2 + result.params["center_x"]
-
-            Y,X = np.ogrid[:convArr.shape[0], :convArr.shape[1]]
-            cleanedConvArr += lorentzian([Y,X], lorentzPositions[i], result.params["width"], result.params["offset"])
-
-        else:
+    else:
+        for i in range(len(peakPositions)):
+            upsampledPosition = np.array([peakPositions[i][0]*peakDownsample, peakPositions[i][1]*peakDownsample])
             lorentzPositions[i] = upsampledPosition
-
-    #print(peakPositions)
 
     # Look around each peak to find the real peak in the full-resolution image
     refinedPeakPositions = []
@@ -313,6 +325,7 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
                 params.add('center_y', value=localImage.shape[0]/2, vary=True)
                 params.add('center_x', value=localImage.shape[1]/2, vary=True)
                 params.add('width', value=imagePadding, vary=True)
+                params.add('amp', value=np.max(localConvArr)/2, vary=True)
                 params.add('offset', value=np.mean(localConvArr), vary=True)
                 
                 try:
@@ -379,20 +392,23 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
 
         else:
             # Position of the peaks in the convolution image (NOT the real image)
-            #upsampledPosition = np.array([peakPositions[i][0]*peakDownsample, peakPositions[i][1]*peakDownsample])
             upsampledPosition = np.int16(lorentzPositions[i])
-            # This just looks long because my naming is a little verbose
-            # + we also have to make sure we don't accidentally go off of the image
-            # That should never happen because the fft padding is quite large, but can't hurt
-            # to be extra careful
-            #localRegion = convArr[max(upsampledPosition[0]-localPadding, 0):min(upsampledPosition[0]+localPadding,convArr.shape[0]-1),max(upsampledPosition[1]-localPadding, 0):min(upsampledPosition[1]+localPadding, convArr.shape[1]-1)]
-            # Find maximum intensity in small region around that position
-            #realLocalMax = np.unravel_index(np.argmax(localRegion.flatten()), localRegion.shape)
-            # This is relative to the small region we just created, so we have to subtract off the bounds
-            # eg. if this local max was found to be in the center of the local image, that would mean
-            # that the original upsampled position was correct.
-            #refinementOffset = realLocalMax - np.repeat(localPadding, 2)
-            refinementOffset = 0
+            
+            # We don't need to refine if we fit a peak, since that already did refine the
+            # position
+            if fitPeaks:
+                refinementOffset = 0
+
+            else:
+                # This just looks long because my naming is a little verbose
+                # + we also have to make sure we don't accidentally go off of the image
+                localRegion = convArr[max(upsampledPosition[0]-localPadding, 0):min(upsampledPosition[0]+localPadding,convArr.shape[0]-1),max(upsampledPosition[1]-localPadding, 0):min(upsampledPosition[1]+localPadding, convArr.shape[1]-1)]
+                # Find maximum intensity in small region around that position
+                realLocalMax = np.unravel_index(np.argmax(localRegion.flatten()), localRegion.shape)
+                # This is relative to the small region we just created, so we have to subtract off the bounds
+                # eg. if this local max was found to be in the center of the local image, that would mean
+                # that the original upsampled position was correct.
+                refinementOffset = realLocalMax - np.repeat(localPadding, 2)
 
             # Now put everything together the coordinates of the circle in the original image
             refinedPeakPositions.append(tuple(upsampledPosition + refinementOffset))

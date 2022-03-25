@@ -22,7 +22,7 @@ from pepe.visualize import genColors, visCircles, visForces, visContacts
 # passed to the function, and which were left as default values. See beginning
 # of method code for more information/motivation.
 @explicitKwargs()
-def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
+def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, cropXBounds=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
     """
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be returned and potentially written to various files.
@@ -109,6 +109,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         A mask array, containing values of `0` or `1`, with the latter representing the regions of
         importance for the image. Used in detecting particles, generating initial guesses, and
         calculating error during non-linear optimization. can also be a path to an image.
+
+    cropXBounds : [int, int] or None
+        Bounds to crop down the image in the x direction.
 
     peBlurKernel : int
         The kernel size that will be used for bluring the photoelastic channel of each image, to
@@ -257,6 +260,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 "g2CalibrationImage": g2CalibrationImage,
                 "g2CalibrationCutoffFactor": g2CalibrationCutoffFactor,
                 "maskImage": maskImage,
+                "cropXBounds": cropXBounds,
                 "circleDetectionMethod": circleDetectionMethod,
                 "guessRadius": guessRadius,
                 "fSigma": fSigma,
@@ -354,11 +358,16 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     if settings["showProgressBar"]:
         bar = progressbar.ProgressBar(max_value=len(imageFiles))
 
+    if settings["cropXBounds"] is None:
+        xB = [None, None]
+    else:
+        xB = settings["cropXBounds"]
+
     # This will calculation the light correction across the images 
     if settings["lightCorrectionImage"] is not None:
-        cImageProper = checkImageType(settings["lightCorrectionImage"])
-        vMask = checkImageType(settings["lightCorrectionVerticalMask"])
-        hMask = checkImageType(settings["lightCorrectionHorizontalMask"])
+        cImageProper = checkImageType(settings["lightCorrectionImage"])[:,xB[0]:xB[1]]
+        vMask = checkImageType(settings["lightCorrectionVerticalMask"])[:,xB[0]:xB[1]]
+        hMask = checkImageType(settings["lightCorrectionHorizontalMask"])[:,xB[0]:xB[1]]
 
         if vMask.ndim == 3:
             vMask = vMask[:,:,0]
@@ -375,7 +384,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # that we don't care about, and also potentially indicate which particles
     # are close to the boundary.
     if settings["maskImage"] is not None:
-        maskArr = checkImageType(settings["maskImage"])
+        maskArr = checkImageType(settings["maskImage"])[:,xB[0]:xB[1]]
         ignoreBoundary = False
 
     else:
@@ -403,7 +412,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # that is below that away when solving (optional)
     checkMinG2 = False
     if settings["g2CalibrationImage"] is not None:
-        g2CalImage = checkImageType(settings["g2CalibrationImage"])
+        g2CalImage = checkImageType(settings["g2CalibrationImage"])[:,xB[0]:xB[1]]
 
         g2CalPEImage = cv2.blur((g2CalImage[:,:,settings["photoelasticChannel"]] + lightCorrection).astype(np.float64) / 255, (settings["peBlurKernel"],settings["peBlurKernel"]))
         # Locate particles
@@ -445,7 +454,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # The big loop that iterates over every image
     for i in range(len(imageFiles)):
 
-        image = checkImageType(settings["imageDirectory"] + imageFiles[i])
+        image = checkImageType(settings["imageDirectory"] + imageFiles[i])[:,xB[0]:xB[1]]
         # Convert to floats on the domain [0,1], so we can compare to the output of 
         # genSyntheticResponse()
         peImage = cv2.blur((image[:,:,settings["photoelasticChannel"]] + lightCorrection).astype(np.float64) / 255, (settings["peBlurKernel"],settings["peBlurKernel"]))
@@ -507,9 +516,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 for k in range(len(forceGuessArr[j])):
                     if forceOrder[k] is not None:
                         if settings["carryOverForce"]:
-                            forceGuessArr[j][k] = forceArr[-1][j][forceOrder[k]]
+                            forceGuessArr[j][k] = forceArr[-1][oldCenterOrder[j]][forceOrder[k]]
                         if settings["carryOverAlpha"]:
-                            alphaGuessArr[j][k] = alphaArr[-1][j][forceOrder[k]]
+                            alphaGuessArr[j][k] = alphaArr[-1][oldCenterOrder[j]][forceOrder[k]]
 
 
             # In this case, we want to add a small randomly generated contribution
@@ -762,6 +771,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         ax.set_title('Difference Between Optimized Result and Real Image')
 
         fig.savefig(outputFolderPath + 'FitReport_src/error.pdf')
+        fig.savefig(outputFolderPath + 'FitReport_src/error.png')
         plt.close(fig)
 
         # Draw all of the circles, with their labeled numbers
@@ -782,6 +792,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         ax[1].set_title('Last Frame')
 
         fig.savefig(outputFolderPath + 'FitReport_src/particle_identities.pdf')
+        fig.savefig(outputFolderPath + 'FitReport_src/particle_identities.png')
         plt.close(fig)
 
         # Next, draw the forces/betas/alphas/centers for each particle
@@ -790,6 +801,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             fig, ax = visForces(rectForceArr[i], rectAlphaArr[i], rectBetaArr[i], rectCenterArr[i])
             fig.suptitle(f'Particle {i}')
             fig.savefig(outputFolderPath + f'FitReport_src/particle_{i}_forces.pdf')
+            fig.savefig(outputFolderPath + f'FitReport_src/particle_{i}_forces.png')
             plt.close(fig)
 
 
@@ -797,7 +809,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     forceColors = genColors(len(rectBetaArr))
     # The list comprehension is to make sure that we index a particle that actually has forces acting
     # on it.
-    tSteps = len([b for b in betaArr if len(b) > 0][0])
+    tSteps = len([b for b in rectBetaArr if len(b) > 0][0])
     contactPointImages = [None for i in range(tSteps)]
     contactAngleImages = [None for i in range(tSteps)]
 

@@ -149,8 +149,8 @@ def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistan
         npOldValues = npOldValues[:,None]
 
     # Convert all potential None values to np.nan (since they play nicer)
-    # TODO: I never finished making this method compatable with nan/None values,
-    # so that needs to be finished (or would be nice to have finished)
+    # Numpy can only hold values of None in an array if the dtype is 'object',
+    # which is inconvient for working with the kd tree
     npNewValues = np.array(np.where(npNewValues, npNewValues, np.nan), dtype=np.float64)
     npOldValues = np.array(np.where(npOldValues, npOldValues, np.nan), dtype=np.float64)
 
@@ -158,21 +158,36 @@ def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistan
     # for the kdtree, and the shorter be the query points. If they are
     # the same length, it doesn't matter.
 
-    # If we have an empty old list, we just the original indexing
-    if len(npOldValues) == 0:
-        return [i for i in range(len(npNewValues))]
-
-    # If there are no new values, we return empty list (the new values)
-    # or a list of None values
-    if len(npNewValues) == 0:
-        if padMissingValues:
-            return [None for _ in range(len(npOldValues))]
-        else:
-            return newValues
-
     # Detect which values are valid aka not np.nan (see above about nan/None)
     oldValidIndices = np.unique(np.where(np.isnan(npOldValues) == False)[0])
     newValidIndices = np.unique(np.where(np.isnan(npNewValues) == False)[0])
+
+    # If we have an empty old list, we just the original indexing
+    if len(oldValidIndices) == 0:
+        # If there just aren't any values in the old list
+        # then we just return indexing for the new values
+        if len(npOldValues) == 0:
+            return [i for i in range(len(npNewValues))]
+        else:
+            # If there are some old values, but they are just all
+            # None/nan, then we have to decide what to do based on
+            # whether we want to fill in the nan spots or not
+            if fillNanSpots:
+                # Filling nan spots, we just return the same indexing for the new
+                # list, potentially with some None values at the end
+                return [i for i in range(len(npNewValues))] + [None]*(len(npOldValues)-len(npNewValues))
+            else:
+                # Otherwise, we return a similar thing, but with the None values at the
+                # beginning, in the same spot as they were for the old list
+                return [None]*len(npOldValues) + [i for i in range(len(npNewValues))]
+
+    # If there are no new values, we return empty list (the new values)
+    # or a list of None values
+    if len(newValidIndices) == 0:
+        if padMissingValues:
+            return [None]*len(npOldValues)
+        else:
+            return [None]*len(npNewValues)
 
     # The list that we will be building
     # We'll append new entries on at the end
