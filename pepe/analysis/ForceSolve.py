@@ -293,9 +293,16 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         will use the Nelder-Mead optimization scheme on the first pass, and then COBYLA on the second one. If
         a single value is provided for any of these parameters, that will be used for all optimizations.
 
-    method : ['nelder', 'bfgsb', 'powell', 'cobyla']
+    method : str
         The method to use for optimization. See wiki page on Force Solver for more information on selecting
-        an appropriate one. If in doubt, 'nelder' is usually a safe bet.
+        an appropriate one. Generally any method from [lmfit](https://lmfit.github.io/lmfit-py/fitting.html#the-minimize-function)
+        can be used, but the following tend to give the best results:
+
+        - `lm` - Levenberg-Marquardt
+
+        - `least_squares` - Trust region reflective
+
+        - `nelder` - Nelder-Mead
 
         Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
 
@@ -482,7 +489,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     # lmfit has a nice setup in that you can denote whether a variable can be
     # changed or not, which means we don't actually have to change which variables
     # are passed to the function.
-    def objectiveFunction(params, trueImage, z, radius, center, mask):
+    def objectiveFunction(params, trueImage, z, radius, center, mask, sumReturn):
         global residuals, bestResidual, bestParams
 
         forceArr = np.array([params[f"f{j}"] for j in range(z)])
@@ -497,8 +504,13 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         if residuals[-1] < bestResidual:
             bestResidual = residuals[-1]
             bestParams = params
-
-        return residuals[-1]
+    
+        # Levenberg marquardt requires the full difference matrix,
+        # not just the sum
+        if sumReturn:
+            return residuals[-1]
+        else:
+            return np.abs(synImage - trueImage)
 
 
     # Mask our real image
@@ -580,10 +592,14 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         # am pretty sure that the params variable is constantly updated, not just
         # at the end.
 
+        # Levenberg-Marquardt algorithm ('leastsq') requires that we return the
+        # full difference array
+        sumReturn = not methodList[i] == 'leastsq'
+    
         try:
             # Now do the optimization
             result = minimize(objectiveFunction, params,
-                             args=(maskedImage, z, scaledRadius, scaledCenter, localizedMask),
+                             args=(maskedImage, z, scaledRadius, scaledCenter, localizedMask, sumReturn),
                              method=methodList[i], max_nfev=maxEvalsList[i], nan_policy='omit')
 
             # Copy over the new values of the forces, alphas, and betas
