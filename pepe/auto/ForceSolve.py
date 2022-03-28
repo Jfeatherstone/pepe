@@ -22,7 +22,7 @@ from pepe.visualize import genColors, visCircles, visForces, visContacts
 # passed to the function, and which were left as default values. See beginning
 # of method code for more information/motivation.
 @explicitKwargs()
-def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, cropXBounds=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
+def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, cropXBounds=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, performOptimization=True, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
     """
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be returned and potentially written to various files.
@@ -177,6 +177,13 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
         For more information, see `pepe.analysis.forceOptimize()`.
 
+    performOptimization : bool
+        Whether or not to perform optimization on the particles.
+
+        Mostly included as a debug option, but any real data analysis should
+        utilize the optimization, as the initial guessing is often not nearly
+        accurate enough to get any real results.
+
     debug : bool
         Whether to print progress updates for each frame to the screen (`True`) or not (`False`).
 
@@ -281,6 +288,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 "outputRootFolder": outputRootFolder,
                 "outputExtension": outputExtension,
                 "genFitReport": genFitReport,
+                "performOptimization": performOptimization,
                 "debug": debug}
 
     # 2. Anything read in from a settings file
@@ -549,33 +557,41 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 avgG2 = np.sum(gSqr * cMask) / np.sum(cMask)
                 skipParticles[j] = avgG2 < minParticleG2
 
-        for j in range(len(centers)):
-            if not skipParticles[j]:
-                try:
-                    # We don't need to pass fSigma, pxPerMeter, or brightfield to the method
-                    # because they will get added to optimizationKwargs automatically.
-                    optForceArr, optBetaArr, optAlphaArr, res = forceOptimize(forceGuessArr[j], betaGuessArr[j], alphaGuessArr[j], radii[j], centers[j], peImage,
-                                                                              #settings["fSigma"], settings["pxPerMeter"], settings["brightfield"],
-                                                                              **optimizationKwargs)
-                    optimizedForceArr.append(optForceArr)
-                    optimizedBetaArr.append(optBetaArr)
-                    optimizedAlphaArr.append(optAlphaArr)
-                except Exception as ex:
-                    print(ex)
-                    errorMsgs.append(f'File {imageFiles[i]}: ' + str(ex) + '\n')
-                    failed[j] = True
-                    totalFailedParticles += 1
-                    # Append empty lists (ie say there are no forces) 
-                    #optimizedForceArr.append(forceGuessArr[j])
-                    #optimizedBetaArr.append(betaGuessArr[j])
-                    #optimizedAlphaArr.append(alphaGuessArr[j])
+        # Mostly just a debug option, so we can test particle tracking
+        if settings["performOptimization"]:
+            optimizedForceArr = forceGuessArr
+            optimizedAlphaArr = alphaGuessArr
+            optimizedBetaArr = betaGuessArr
+
+        else:
+            # This is what should run the majority of the time
+            for j in range(len(centers)):
+                if not skipParticles[j]:
+                    try:
+                        # We don't need to pass fSigma, pxPerMeter, or brightfield to the method
+                        # because they will get added to optimizationKwargs automatically.
+                        optForceArr, optBetaArr, optAlphaArr, res = forceOptimize(forceGuessArr[j], betaGuessArr[j], alphaGuessArr[j], radii[j], centers[j], peImage,
+                                                                                  #settings["fSigma"], settings["pxPerMeter"], settings["brightfield"],
+                                                                                  **optimizationKwargs)
+                        optimizedForceArr.append(optForceArr)
+                        optimizedBetaArr.append(optBetaArr)
+                        optimizedAlphaArr.append(optAlphaArr)
+                    except Exception as ex:
+                        print(ex)
+                        errorMsgs.append(f'File {imageFiles[i]}: ' + str(ex) + '\n')
+                        failed[j] = True
+                        totalFailedParticles += 1
+                        # Append empty lists (ie say there are no forces) 
+                        #optimizedForceArr.append(forceGuessArr[j])
+                        #optimizedBetaArr.append(betaGuessArr[j])
+                        #optimizedAlphaArr.append(alphaGuessArr[j])
+                        optimizedForceArr.append([])
+                        optimizedBetaArr.append([])
+                        optimizedAlphaArr.append([])
+                else:
                     optimizedForceArr.append([])
                     optimizedBetaArr.append([])
                     optimizedAlphaArr.append([])
-            else:
-                optimizedForceArr.append([])
-                optimizedBetaArr.append([])
-                optimizedAlphaArr.append([])
 
         # If necessary, impose force balance on all particles
         if requireForceBalance:
