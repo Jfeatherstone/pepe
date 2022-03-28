@@ -825,7 +825,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     forceColors = genColors(len(rectBetaArr))
     # The list comprehension is to make sure that we index a particle that actually has forces acting
     # on it.
-    tSteps = len([b for b in rectBetaArr if len(b) > 0][0])
+    tSteps = len(imageFiles)#len([b for b in rectBetaArr if len(b) > 0][0])
     contactPointImages = [None for i in range(tSteps)]
     contactAngleImages = [None for i in range(tSteps)]
 

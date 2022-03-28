@@ -12,7 +12,7 @@ from pepe.analysis import adjacencyMatrix
 
 from lmfit import minimize, Parameters
 
-def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, outlineOnly=False, outlineThickness=.05, negativeHalo=False, negativeInside=False, peakDownsample=10, minPeakPrevalence=.1, intensitySoftmax=1.2, intensitySoftmin=.1, invert=False, allowOverlap=False, fitPeaks=True, debug=False):
+def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False, peakDownsample=10, minPeakPrevalence=.1, intensitySoftmax=1.2, intensitySoftmin=.1, invert=False, allowOverlap=False, fitPeaks=True, debug=False):
     """
     Perform convolution circle detection on the provided image.
 
@@ -91,6 +91,12 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
     negativeHalo : bool
         Whether to surround the particle mask with a region of negative value, which
         further promotes identifying distinct objects as grains.
+
+    haloThickness : float or int
+        Thickness of the negative halo in the kernel; only relevant if `negativeHalo=True`.
+
+        If float, will be taken as fraction of the radius; if integer, will be taken as number
+        of pixels.
 
     negativeInside : bool
         Whether to fill the inside of the particle mask with a negative value, which 
@@ -211,7 +217,8 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
     # Calculate convolution
     convArr = circularKernelFind(imageArr, initialRadius, fftPadding=int(initialRadius*paddingFactor),
                                  outlineOnly=outlineOnly, outlineThickness=outlineThickness,
-                                 negativeHalo=negativeHalo, negativeInside=negativeInside, debug=debug)
+                                 negativeHalo=negativeHalo, haloThickness=haloThickness,
+                                 negativeInside=negativeInside, debug=debug)
 
     if debug:
         plt.show()
@@ -307,7 +314,8 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
                 localConvPadding = int(possibleRadii[j])
                 localConvArr = circularKernelFind(localImage, possibleRadii[j], fftPadding=localConvPadding,
                                                   outlineOnly=outlineOnly, outlineThickness=outlineThickness,
-                                                  negativeHalo=negativeHalo, negativeInside=negativeInside, debug=False)
+                                                  negativeHalo=negativeHalo, haloThickness=haloThickness,
+                                                  negativeInside=negativeInside, debug=False)
                 # Required if you set debug=True in above line
                 #plt.show()
 
@@ -499,7 +507,7 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
     return np.array(refinedPeakPositions), np.array(refinedRadii)
 
 
-def circularKernelFind(singleChannelFrame, radius, fftPadding, outlineOnly=False, outlineThickness=.05, negativeHalo=False, negativeInside=False, paddingValue=None, debug=False):
+def circularKernelFind(singleChannelFrame, radius, fftPadding, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False, paddingValue=None, debug=False):
     """
     Calculate the convolution of a circular mask with an image,
     identifying likely locations of circles within the image. Adapted from
@@ -542,6 +550,22 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, outlineOnly=False
 
         If float, will be taken as fraction of the radius; if integer, will be taken as number
         of pixels.
+
+    negativeHalo : bool
+        Whether to surround the particle mask with a region of negative value, which
+        further promotes identifying distinct objects as grains.
+
+    haloThickness : float or int
+        Thickness of the negative halo in the kernel; only relevant if `negativeHalo=True`.
+
+        If float, will be taken as fraction of the radius; if integer, will be taken as number
+        of pixels.
+
+    negativeInside : bool
+        Whether to fill the inside of the particle mask with a negative value, which 
+        further promotes identifying outlines of circles.
+
+        Has no effect unless `outlineOnly=True`.
 
     paddingValue : [float, `'sigmoid'`, or `None`]
         What value to fill in for the extra padding that is added during the fft/ifft.
@@ -629,13 +653,24 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, outlineOnly=False
             innerRadius = np.ceil((1 - outlineThickness) * radius)
         else:
             innerRadius = radius - outlineThickness
-            kernelArr = kernelArr - negativeInsideFactor * circularMask(paddedImageArr.shape, center, innerRadius)[:,:,0].astype(np.float64)
+        
+        kernelArr = kernelArr - negativeInsideFactor * circularMask(paddedImageArr.shape, center, innerRadius)[:,:,0].astype(np.float64)
 
         if negativeHalo:
-            kernelArr = 2*kernelArr - (circularMask(paddedImageArr.shape, center, radius+2)[:,:,0].astype(np.float64) - circularMask(paddedImageArr.shape, center, radius)[:,:,0].astype(np.float64))
+            if haloThickness < 1:
+                haloRadius = radius + np.ceil((1 - haloThickness) * radius)
+            else:
+                haloRadius = radius + haloThickness
+
+            kernelArr = 2*kernelArr - (circularMask(paddedImageArr.shape, center, haloRadius)[:,:,0].astype(np.float64) - circularMask(paddedImageArr.shape, center, radius)[:,:,0].astype(np.float64))
 
     elif negativeHalo:
-        kernelArr = 2*kernelArr - circularMask(paddedImageArr.shape, center, radius+2)[:,:,0].astype(np.float64)
+        if haloThickness < 1:
+            haloRadius = np.ceil((1 - haloThickness) * radius)
+        else:
+            haloRadius = radius + haloThickness
+
+        kernelArr = 2*kernelArr - circularMask(paddedImageArr.shape, center, haloRadius)[:,:,0].astype(np.float64)
 
     # First convolutional term
     convTerm1 = ifft2(fft2(paddedImageArr**2) * fft2(kernelArr))
