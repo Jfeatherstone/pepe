@@ -382,11 +382,15 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         if hMask.ndim == 3:
             hMask = hMask[:,:,0]
         lightCorrection = lightCorrectionDiff(cImageProper, vMask, hMask)
+        
+        trackCorrection = lightCorrection[:,:,settings["circleTrackingChannel"]]
+        peCorrection = lightCorrection[:,:,settings["photoelasticChannel"]]
     else:
         # It probably isn't great hygiene to have this variableflip between a single
         # value and an array, but you can always add a scalar to a numpy array, so
         # this is the easiest way (since we haven't loaded any images yet)
-        lightCorrection = 0
+        trackCorrection = 0
+        peCorrection = 0
 
     # Load up the mask image, which will be used to remove parts of the images
     # that we don't care about, and also potentially indicate which particles
@@ -422,9 +426,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     if settings["g2CalibrationImage"] is not None:
         g2CalImage = checkImageType(settings["g2CalibrationImage"])[:,xB[0]:xB[1]]
 
-        g2CalPEImage = cv2.blur((g2CalImage[:,:,settings["photoelasticChannel"]] + lightCorrection).astype(np.float64) / 255, (settings["peBlurKernel"],settings["peBlurKernel"]))
+        g2CalPEImage = cv2.blur((g2CalImage[:,:,settings["photoelasticChannel"]] + peCorrection).astype(np.float64) / 255, (settings["peBlurKernel"],settings["peBlurKernel"]))
         # Locate particles
-        centers, radii = circFunc(g2CalImage[:,:,settings["circleTrackingChannel"]] * maskArr[:,:,0], settings["guessRadius"], **circleTrackingKwargs)
+        centers, radii = circFunc((g2CalImage[:,:,settings["circleTrackingChannel"]] + trackCorrection) * maskArr[:,:,0], settings["guessRadius"], **circleTrackingKwargs)
         # There should only be 1 particle in the calibration image
         if len(centers) < 0:
             print(f'Warning: Gradient-squared calibration image does not contain any particles! Ignoring...')
@@ -465,13 +469,13 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         image = checkImageType(settings["imageDirectory"] + imageFiles[i])[:,xB[0]:xB[1]]
         # Convert to floats on the domain [0,1], so we can compare to the output of 
         # genSyntheticResponse()
-        peImage = cv2.blur((image[:,:,settings["photoelasticChannel"]] + lightCorrection).astype(np.float64) / 255, (settings["peBlurKernel"],settings["peBlurKernel"]))
+        peImage = cv2.blur((image[:,:,settings["photoelasticChannel"]] + peCorrection).astype(np.float64) / 255, (settings["peBlurKernel"],settings["peBlurKernel"]))
 
         # -------------
         # Track circles
         # -------------
         start = time.perf_counter()
-        centers, radii = circFunc(image[:,:,settings["circleTrackingChannel"]] * maskArr[:,:,0], settings["guessRadius"], **circleTrackingKwargs)
+        centers, radii = circFunc((image[:,:,settings["circleTrackingChannel"]] + trackCorrection) * maskArr[:,:,0], settings["guessRadius"], **circleTrackingKwargs)
 
         # We do some indexing using the centers/radii, so it is helpful
         # to have them as an integer type
@@ -558,7 +562,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 skipParticles[j] = avgG2 < minParticleG2
 
         # Mostly just a debug option, so we can test particle tracking
-        if settings["performOptimization"]:
+        if not settings["performOptimization"]:
             optimizedForceArr = forceGuessArr
             optimizedAlphaArr = alphaGuessArr
             optimizedBetaArr = betaGuessArr
@@ -661,10 +665,10 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                     ax[1].add_artist(cc)
                     
                 # Now plot past center positions
-                for k in range(len(centersArr)):
-                    if len(centersArr[k]) >= j:
-                        cc = plt.Circle(centersArr[k][j][::-1], 5, color=centerColors[j], fill=True)
-                        ax[0].add_artist(cc)
+                #for k in range(len(centersArr)):
+                #    if len(centersArr[k]) >= j:
+                #        cc = plt.Circle(centersArr[k][j][::-1], 5, color=centerColors[j], fill=True)
+                #        ax[0].add_artist(cc)
                     
 
             ax[1].imshow(estimatedPhotoelasticChannel)
@@ -821,63 +825,64 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             plt.close(fig)
 
 
-    # Create gifs of the contacts
-    forceColors = genColors(len(rectBetaArr))
-    # The list comprehension is to make sure that we index a particle that actually has forces acting
-    # on it.
-    tSteps = len(imageFiles)#len([b for b in rectBetaArr if len(b) > 0][0])
-    contactPointImages = [None for i in range(tSteps)]
-    contactAngleImages = [None for i in range(tSteps)]
+        # Create gifs of the contacts
+        forceColors = genColors(len(rectBetaArr))
+        # The list comprehension is to make sure that we index a particle that actually has forces acting
+        # on it.
+        tSteps = len(imageFiles)#len([b for b in rectBetaArr if len(b) > 0][0])
+        contactPointImages = [None for i in range(tSteps)]
+        contactAngleImages = [None for i in range(tSteps)]
 
-    for i in range(tSteps):
-        # Have to do this, because the settings variable could be None 
-        startI = settings["imageStartIndex"] if settings["imageStartIndex"] is not None else 0
+        for i in range(tSteps):
+            # Have to do this, because the settings variable could be None 
+            startI = settings["imageStartIndex"] if settings["imageStartIndex"] is not None else 0
 
-        # First, just the contact points
-        fig, ax = plt.subplots()
-        visCircles([rectCenterArr[p][i] for p in range(len(rectCenterArr))], [rectRadiusArr[p][i] for p in range(len(rectRadiusArr))], ax=ax)
+            # First, just the contact points
+            fig, ax = plt.subplots()
+            visCircles([rectCenterArr[p][i] for p in range(len(rectCenterArr))], [rectRadiusArr[p][i] for p in range(len(rectRadiusArr))], ax=ax)
 
-        for particleIndex in range(len(rectBetaArr)):
-            visContacts(rectCenterArr[particleIndex][i], rectRadiusArr[particleIndex][i],
-                        rectBetaArr[particleIndex][:,i], ax=ax, forceColors=forceColors[particleIndex])
+            for particleIndex in range(len(rectBetaArr)):
+                visContacts(rectCenterArr[particleIndex][i], rectRadiusArr[particleIndex][i],
+                            rectBetaArr[particleIndex][:,i], ax=ax, forceColors=forceColors[particleIndex])
 
-        ax.set_xlim([0, 1280])
-        ax.set_ylim([0, 1024])
-        ax.set_aspect('equal')
-        ax.set_title(f'Frame {i + startI}')
-        ax.invert_yaxis()
+            ax.set_xlim([0, 1280])
+            ax.set_ylim([0, 1024])
+            ax.set_aspect('equal')
+            ax.set_title(f'Frame {i + startI}')
+            ax.invert_yaxis()
 
-        canvas = plt.get_current_fig_manager().canvas
-        canvas.draw()
-        contactPointImages[i] = Image.frombytes('RGB', canvas.get_width_height(), 
-                                    canvas.tostring_rgb())
+            canvas = plt.get_current_fig_manager().canvas
+            canvas.draw()
+            contactPointImages[i] = Image.frombytes('RGB', canvas.get_width_height(), 
+                                        canvas.tostring_rgb())
 
-        plt.close(fig)
-   
-        # Now the one with angles
-        fig, ax = plt.subplots()
-        visCircles([rectCenterArr[p][i] for p in range(len(rectCenterArr))], [rectRadiusArr[p][i] for p in range(len(rectRadiusArr))], ax=ax)
+            plt.close(fig)
+       
+            # Now the one with angles
+            fig, ax = plt.subplots()
+            visCircles([rectCenterArr[p][i] for p in range(len(rectCenterArr))], [rectRadiusArr[p][i] for p in range(len(rectRadiusArr))], ax=ax)
 
-        for particleIndex in range(len(rectBetaArr)):
-            visContacts(rectCenterArr[particleIndex][i], rectRadiusArr[particleIndex][i],
-                        rectBetaArr[particleIndex][:,i], ax=ax, forceColors=forceColors[particleIndex], alphaArr=rectAlphaArr[particleIndex][:,i])
-                                            
-        ax.set_xlim([0, 1280])
-        ax.set_ylim([0, 1024])
-        ax.set_aspect('equal')
-        ax.set_title(f'Frame {i + startI}')
-        ax.invert_yaxis()
+            for particleIndex in range(len(rectBetaArr)):
+                visContacts(rectCenterArr[particleIndex][i], rectRadiusArr[particleIndex][i],
+                            rectBetaArr[particleIndex][:,i], ax=ax, forceColors=forceColors[particleIndex], alphaArr=rectAlphaArr[particleIndex][:,i])
+                                                
+            ax.set_xlim([0, 1280])
+            ax.set_ylim([0, 1024])
+            ax.set_aspect('equal')
+            ax.set_title(f'Frame {i + startI}')
+            ax.invert_yaxis()
 
-        canvas = plt.get_current_fig_manager().canvas
-        canvas.draw()
-        contactAngleImages[i] = Image.frombytes('RGB', canvas.get_width_height(), 
-                                    canvas.tostring_rgb())
+            canvas = plt.get_current_fig_manager().canvas
+            canvas.draw()
+            contactAngleImages[i] = Image.frombytes('RGB', canvas.get_width_height(), 
+                                        canvas.tostring_rgb())
 
-        plt.close(fig)
+            plt.close(fig)
 
-    contactPointImages[0].save(outputFolderPath + 'FitReport_src/contact_points.gif', save_all=True,
-                               append_images=contactPointImages[1:], duration=25, optimize=True, loop=True)
+        contactPointImages[0].save(outputFolderPath + 'FitReport_src/contact_points.gif', save_all=True,
+                                   append_images=contactPointImages[1:], duration=25, optimize=True, loop=True)
 
-    contactAngleImages[0].save(outputFolderPath + 'FitReport_src/contact_angles.gif', save_all=True,
-                               append_images=contactAngleImages[1:], duration=25, optimize=True, loop=True)
+        contactAngleImages[0].save(outputFolderPath + 'FitReport_src/contact_angles.gif', save_all=True,
+                                   append_images=contactAngleImages[1:], duration=25, optimize=True, loop=True)
+
     return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr
