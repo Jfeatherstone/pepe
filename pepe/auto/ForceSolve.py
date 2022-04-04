@@ -512,7 +512,8 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
             # Note that this is the complement to the center order calculated previously:
             # this orders the old centers according the new ones.
-            oldCenterOrder = preserveOrderArgsort(centers, centersArr[-1], padMissingValues=True)
+            # We make the assumption that a particle cannot travel more than it's radius in a single frame
+            oldCenterOrder = preserveOrderArgsort(centers, centersArr[-1], padMissingValues=True, maxDistance=settings["guessRadius"])
 
             # Now find each new particle's old counterpart (if it exists), and then
             # line up the forces using the value of beta, such that we can (optionally)
@@ -880,9 +881,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             plt.close(fig)
 
         contactPointImages[0].save(outputFolderPath + 'FitReport_src/contact_points.gif', save_all=True,
-                                   append_images=contactPointImages[1:], duration=25, optimize=True, loop=True)
+                                   append_images=contactPointImages[1:], duration=20, optimize=True, loop=True)
 
         contactAngleImages[0].save(outputFolderPath + 'FitReport_src/contact_angles.gif', save_all=True,
-                                   append_images=contactAngleImages[1:], duration=25, optimize=True, loop=True)
+                                   append_images=contactAngleImages[1:], duration=20, optimize=True, loop=True)
 
     return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr

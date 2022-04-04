@@ -457,7 +457,11 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
                 pMask = 2*pMask - circularMask(singleChannelFrame.shape, refinedPeakPositions[i], refinedRadii[i]+2)[:,:,0].astype(np.int16)
 
             if np.sum(pMask) > 0:
-                particleScores[i] = np.sum(singleChannelFrame * pMask) / np.sum(pMask)
+                # I square-root the mask sum so that the particles at the edge don't
+                # always win out against actual particles
+                # TODO: This still doesn't give priority to particles on screen;
+                # need to figure out a way to do that
+                particleScores[i] = np.sum(singleChannelFrame * pMask) / np.sqrt(np.sum(pMask))
             else:
                 particleScores[i] = 0 
 
@@ -578,6 +582,9 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, outlineOnly=False
 
     debug : bool
         Whether or not to plot various quantities of the calculation for inspection
+- `S`: Soft particles; shore hardness 40
+- `M`: Medium particles; shore hardness 50
+- `H`: Hard particles; shore hardness 60, thickness
         at the end of the evaluation.
 
     Returns
@@ -666,7 +673,7 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, outlineOnly=False
 
     elif negativeHalo:
         if haloThickness < 1:
-            haloRadius = np.ceil((1 - haloThickness) * radius)
+            haloRadius = np.ceil((1 + haloThickness) * radius)
         else:
             haloRadius = radius + haloThickness
 

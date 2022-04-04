@@ -251,7 +251,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, imageScaleFactor=1, localizeAlphaOptimization=True, debug=False):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(-np.pi, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, imageScaleFactor=1, localizeAlphaOptimization=True, debug=False):
     """
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -499,7 +499,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, scaledRadius, scaledPxPerMeter, brightfield, imageSize=scaledImage.shape, center=scaledCenter, mask=mask)
 
         # Save residual for tracking error
-        residuals.append(np.sum(np.abs(synImage - trueImage)))
+        residuals.append(np.sum((synImage - trueImage)**2))
         # Save best configuration outside of minimization
         if residuals[-1] < bestResidual:
             bestResidual = residuals[-1]
@@ -510,7 +510,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         if sumReturn:
             return residuals[-1]
         else:
-            return np.abs(synImage - trueImage)
+            return (synImage - trueImage)**2
 
 
     # Mask our real image
