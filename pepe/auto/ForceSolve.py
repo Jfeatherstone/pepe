@@ -40,7 +40,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     choices for parameters first.
 
     The output readme file can also serve as a cache of the parameter values/settings, which
-    can be passed back to this method using the `inputSettingsFile` argument.
+    can be passed back to future calls of this method using the `inputSettingsFile` argument.
 
     Parameters
     ----------
@@ -48,7 +48,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     imageDirectory : str
         An absolute or relative path to the directory containing the images that are
         to be analyzed. The names of the images need not follow any particular naming
-        scheme, but they should be such that sorted the list alphabetically will give
+        scheme, but they should be such that sorting the list alphabetically will give
         the images in their proper order.
 
     guessRadius : float
@@ -58,19 +58,23 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
         Currently no support for particles of different sizes.
 
-    fSigma : float
+    fSigma : float
         Stress optic coefficient, relating to material thickness, wavelength of light and
-        other material property (C).
+        other material property (denoted as C in most literature; sometimes also called the
+        "stress optic coefficient").
 
     pxPerMeter : float
         The number of pixels per meter in the images. Depends on the camera, lens, and 
         zoom settings used to capture the images.
 
+        Note that this is **not** the inverse of the number of pixels per meter, as is used
+        in some of the other force solving implementations.
+
     brightfield : bool
         Whether the images are captured using a brightfield polariscope (`True`) or
         a darkfield polariscope (`False`).
 
-    contactPadding : int
+    contactPadding : int
         Maximum distance (in pixels) between a particle's edge and the wall or the edges of two
         particles that will still be considered a potential force-bearing contact.
 
@@ -234,11 +238,10 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         Particle radii for each timestep. Elements take on a value of `np.nan` if the particle
         does not exist for a given timestep.
 
-    
-    Depending on kwarg values, several quantities may be written into the output folder,
-    which will be located in `outputRootFolder` and named according to `imageDirectory`,
-    with '_Synthetic' appended.
 
+    Depending on kwarg values, several files may be written created in the output
+    folder, which will be located in `outputRootFolder` and named according
+    to:  '<`imageDirectory`>_Synthetic/'.
     """
    
     overallStartTime = time.perf_counter()
@@ -312,7 +315,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             for line in fileObj:
                 # Check each line and see if it looks like a dictionary value
                 split = line.split(':')
-                if len(split) == 2 and split[0] in settings.keys() and not split[0] in forceSolve.explicit_kwargs:
+                if len(split) == 2 and split[0].strip() in settings.keys() and not split[0].strip() in forceSolve.explicit_kwargs:
                     # Cast to the type of the value already in the dict
                     settings[split[0].strip()] = type(settings[split[0].strip()])(split[1].strip())
         else:
@@ -338,7 +341,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # that over a bit later.
 
     # TODO: Make this more robust
-    centerColors = genColors(10)
+    #centerColors = genColors(10)
 
     # Find all images in the directory
     imageFiles = os.listdir(settings["imageDirectory"])
