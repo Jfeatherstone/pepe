@@ -5,6 +5,7 @@ import time
 import progressbar
 import pickle
 import inspect
+import ast
 
 import matplotlib.pyplot as plt
 
@@ -15,7 +16,7 @@ from pepe.preprocess import checkImageType, lightCorrectionDiff, circularMask
 from pepe.analysis import initialForceSolve, forceOptimize, gSquared, g2ForceCalibration, singleParticleForceBalance
 from pepe.tracking import houghCircle, convCircle
 from pepe.simulate import genSyntheticResponse
-from pepe.utils import preserveOrderArgsort, rectangularizeForceArrays, explicitKwargs
+from pepe.utils import preserveOrderArgsort, rectangularizeForceArrays, explicitKwargs, parseList
 from pepe.visualize import genColors, visCircles, visForces, visContacts
 
 # Decorator that allows us to identify which keyword arguments were explicitly
@@ -407,13 +408,20 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 # Read settings into the master settings file
                 if len(split) == 2 and split[0].strip() in argDTypes.keys() and not split[0].strip() in forceSolve.explicit_kwargs:
                     # Cast to the type of the value already in the dict
-                    print(split[0].strip(), split[1].strip())
                     if split[1].strip() == 'None':
                         settings[split[0].strip()] = None
                     else:
-                        settings[split[0].strip()] = argDTypes[split[0].strip()](split[1].strip())
+                        if '[' in split[1]:
+                            settings[split[0].strip()] = parseList(split[1].strip(), dtype=argDTypes[split[0].strip()])
+                        else:
+                            # Bools need a special condition
+                            if argDTypes[split[0].strip()] is bool:
+                                val = split[1].strip() == 'True'
+                            else:
+                                val = argDTypes[split[0].strip()](split[1].strip())
 
-            print(settings)
+                            settings[split[0].strip()] = val
+
         else:
             print(f'Warning: provided settings file does not exist! Attempting to run regardless...')
 
@@ -557,7 +565,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     errorMsgs = []
 
     # Calculate the gradient-squared-to-force calibration value
-    g2Cal = g2ForceCalibration(fSigma, guessRadius, pxPerMeter)
+    g2Cal = g2ForceCalibration(settings["fSigma"], settings["guessRadius"], settings["pxPerMeter"])
 
     # The big loop that iterates over every image
     for i in range(len(imageFiles)):

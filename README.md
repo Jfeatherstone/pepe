@@ -46,7 +46,7 @@ Some of the test notebooks may also make use of the Matlab API to compare agains
 ## Usage
 
 The [wiki](https://github.com/Jfeatherstone/pepe/wiki) and [documentation](http://jfeatherstone.github.io/pepe/pepe) contain information about how to use the toolbox. All test notebooks can be
-found in the repo's [`tests`](https://github.com/Jfeatherstone/pepe/tree/master/tests) directory.
+found in the repo's [`notebooks`](https://github.com/Jfeatherstone/pepe/tree/master/tests) directory.
 
 ## Further Reading and References
 
