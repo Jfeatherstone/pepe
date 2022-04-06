@@ -195,28 +195,89 @@ def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistan
     # We'll append new entries on at the end
     addedIndices = [None for i in range(len(npOldValues))]
 
-    kdTree = KDTree(npNewValues[newValidIndices], leaf_size=5)
+    kdTree = KDTree(npOldValues[oldValidIndices], leaf_size=5)
     # This gives us the closest k points to each of the old values
-    dist, ind = kdTree.query(npOldValues[oldValidIndices], k=len(newValidIndices))
+    dist, ind = kdTree.query(npNewValues[newValidIndices], k=len(oldValidIndices))
 
     # Now convert the indices return from the kd tree (which excluded np.nan values)
     # back to the original order, which includes np.nan values
-    ind = [[newValidIndices[ind[i][j]] for j in range(len(ind[i]))] for i in range(len(ind))]
+    ind = [[oldValidIndices[ind[i][j]] for j in range(len(ind[i]))] for i in range(len(ind))]
 
     if periodic:
         # Points can't be more than pi away from each other on a circle (ignoring circulation
         # direction)
         dist = np.where(dist < np.pi, dist, 2*np.pi - dist)
+        # TODO: resort ind since the distances may have changed
 
-    for i in range(len(oldValidIndices)):
-        possiblePoints = [ind[i][j] for j in range(len(ind[i])) if (not ind[i][j] in addedIndices and dist[i][j] < maxDistance)]
-        if len(possiblePoints) > 0:
-            addedIndices[i] = possiblePoints[0]
-        else:
-            # Otherwise we don't need to do anything, because the extra values will be added
-            # at the end anyway
-            pass
+    # Now for each new point, grab the closest old point that hasn't already
+    # been added. The order we do this in is quite arbitrary (it follows the order
+    # the user has passed in the values) which means that if particles move quite
+    # large distances each frame, the algorithm may be incorrect. It would be more
+    # apt to instead perform a minimization on the sum of the change in particle positions
+    # for any possible pair configuration. TODO
+    
+    # When two new points have the same closest old point, one of them will have to
+    # use their second closest old point instead (the farther one). This list records
+    # the index their closest neighbor that they are able to use. eg. a value of 0
+    # here means that that particular point used it's closest old point, a value of 1
+    # means it had to use it's second closest point (because the first closest was
+    # already taken).
+    indexChoicePositions = [None]*len(newValidIndices)
 
+    # This has to be a while loop with the list here because we may need
+    # to recheck certain points (eg. if we first assign a point, and then realize
+    # that there is actually a better match later on).
+    newIndicesToAssign = list(np.arange(len(newValidIndices)))
+    listIndex = 0
+    while listIndex < len(newIndicesToAssign):
+        # i is the index of the current new point
+        i = newIndicesToAssign[listIndex]
+        # The indices in possible points index the old array, so when we eventually
+        # assign a pair, this index will be the **index** of the actual value. The value
+        # will just be i, since that is what is iterating over the new list.
+
+        # Checking to see that the addedIndices array is None is making sure that this new
+        # point hasn't already been assigned
+        # Check to make sure all of the possible points are within the max distance
+        possiblePoints = [ind[i][j] for j in range(len(ind[i])) if dist[i][j] < maxDistance]
+        # We don't need to explicitly check if len(possiblePoints) = 0, since the behavior
+        # in that case should do nothing, as such points are dealt with at the end
+
+        # We'll likely break out of this loop on the first iteration most of the time,
+        # but we need to be able to handle if the first/second/etc. best options are already
+        # taken
+        for j in range(len(possiblePoints)):
+            # It is possible that the closest old point to this new one has already
+            # been assigned to another new point.
+            if addedIndices[possiblePoints[j]] is None:
+                # If it hasn't, of course that's no problem, and we can assign it
+                addedIndices[possiblePoints[j]] = i
+                indexChoicePositions[i] = j
+                break
+            else:
+                # Otherwise, we have to check to see which is actually closer
+                compareNewIndex = addedIndices[possiblePoints[j]]
+                if dist[i][j] < dist[compareNewIndex][indexChoicePositions[compareNewIndex]]:
+                    # If the new point is closer, we reassign the entry in addedIndices
+                    # and change the previous best point to the next best (available) one
+                    addedIndices[possiblePoints[j]] = i
+                    indexChoicePositions[i] = j
+                    
+                    # And add the replaced index back into the list so
+                    # we can find it a new match
+                    indexChoicePositions[compareNewIndex] = None
+                    newIndicesToAssign.append(compareNewIndex)
+                    break
+                else:
+                    # If the new point is further, we just continue the j loop and try the
+                    # next closest old point
+                    continue
+
+        listIndex += 1
+
+    # Check which new indices haven't been assigned yet
+    # Again, the values of addedIndices are the new indices, and the indices of
+    # addedIndices are the old indices (yikes, am I right?)
     unaddedIndices = [i for i in range(len(newValidIndices)) if not i in addedIndices]
 
     if fillNanSpots:
