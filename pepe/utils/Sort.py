@@ -67,6 +67,8 @@ def preserveOrderSort(oldValues, newValues, padMissingValues=False, maxDistance=
 
     dim = len(newValues[0])
 
+    # Slightly different behavior for d=1 vs. d>1, since we don't want
+    # an extra dimension nested in there if our data is 1d
     if dim == 1:
         return np.array([newValues[i] if i is not None else np.nan for i in order])
     else:
@@ -212,7 +214,7 @@ def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistan
             addedIndices[i] = possiblePoints[0]
         else:
             # Otherwise we don't need to do anything, because the extra values will be added
-            # at the end anyway (unlike the previous case above)
+            # at the end anyway
             pass
 
     unaddedIndices = [i for i in range(len(newValidIndices)) if not i in addedIndices]

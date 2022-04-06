@@ -22,7 +22,7 @@ from pepe.visualize import genColors, visCircles, visForces, visContacts
 # passed to the function, and which were left as default values. See beginning
 # of method code for more information/motivation.
 @explicitKwargs()
-def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, cropXBounds=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, performOptimization=True, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
+def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, cropXMin=None, cropXMax=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, performOptimization=True, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
     """
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be returned and potentially written to various files.
@@ -114,8 +114,11 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         importance for the image. Used in detecting particles, generating initial guesses, and
         calculating error during non-linear optimization. can also be a path to an image.
 
-    cropXBounds : [int, int] or None
-        Bounds to crop down the image in the x direction.
+    cropXMin : int or None
+        Left bound to crop down the image in the x direction.
+
+    cropXMax : int or None
+        Right bound to crop down the image in the x direction.
 
     peBlurKernel : int
         The kernel size that will be used for bluring the photoelastic channel of each image, to
@@ -270,7 +273,8 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 "g2CalibrationImage": g2CalibrationImage,
                 "g2CalibrationCutoffFactor": g2CalibrationCutoffFactor,
                 "maskImage": maskImage,
-                "cropXBounds": cropXBounds,
+                "cropXMin": cropXMin,
+                "cropXMax": cropXMax,
                 "circleDetectionMethod": circleDetectionMethod,
                 "guessRadius": guessRadius,
                 "fSigma": fSigma,
@@ -294,6 +298,91 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 "performOptimization": performOptimization,
                 "debug": debug}
 
+    # For the next step, we will need to know all of the data types of each
+    # argument (to properly cast). Because certain arguments have None as a default
+    # value, we can't automatically generate this information.
+    argDTypes  = {"imageDirectory": str,
+                "imageExtension": str,
+                "imageEndIndex": int,
+                "imageStartIndex": int,
+                "carryOverAlpha": bool,
+                "carryOverForce": bool,
+                "showProgressBar": bool,
+                "lightCorrectionImage": str,
+                "lightCorrectionVerticalMask": str,
+                "lightCorrectionHorizontalMask": str,
+                "g2CalibrationImage": str,
+                "g2CalibrationCutoffFactor": float,
+                "maskImage": str,
+                "cropXMin": int,
+                "cropXMax": int,
+                "circleDetectionMethod": str,
+                "guessRadius": float,
+                "fSigma": float,
+                "pxPerMeter": float,
+                "brightfield": bool,
+                "contactPadding": int,
+                "g2MaskPadding": int,
+                "contactMaskRadius": int,
+                "peBlurKernel": int,
+                "requireForceBalance": bool,
+                "circleTrackingChannel": int,
+                "photoelasticChannel": int,
+                "maxBetaDisplacement": float,
+                "forceNoiseWidth": float,
+                "alphaNoiseWidth": float,
+                "saveMovie": bool,
+                "pickleArrays": bool,
+                "outputRootFolder": str,
+                "outputExtension": str,
+                "genFitReport": bool,
+                "performOptimization": bool,
+                "debug": bool}
+
+    # We need to do the same thing for the kwargs for both
+    # circle tracking and optimization
+    circleTrackDTypes = {"radiusTolerance": int,
+                         "offscreenParticles": bool,
+                         "outlineOnly": bool,
+                         "outlineThickness": float,
+                         "negativeHalo": bool,
+                         "haloThickness": float,
+                         "negativeInside": bool,
+                         "peakDownsample": int,
+                         "minPeakPrevalence": float,
+                         "intensitySoftmax": float,
+                         "intensitySoftmin": float,
+                         "invert": bool,
+                         "allowOverlap": bool,
+                         "fitPeaks": bool,
+                         "debug": bool}
+
+    optimizationDTypes = {"parametersToFit": list,
+                          "method": str,
+                          "maxEvals": int,
+                          "forceBounds": tuple,
+                          "betaBounds": tuple,
+                          "alphaBounds": tuple,
+                          "forceTolerance": float,
+                          "betaTolerance": float,
+                          "alphaTolerance": float,
+                          "useTolerance": bool,
+                          "returnOptResult": bool,
+                          "allowAddForces": bool,
+                          "allowRemoveForces": bool,
+                          "minForceThreshold": float,
+                          "contactMaskRadius": int,
+                          "newBetaMinSeparation": float,
+                          "newBetaG2Height": float,
+                          "missingForceChiSqrThreshold": float,
+                          "imageScaleFactor": float,
+                          "localizeAlphaOptimization": bool,
+                          "debug": bool}
+
+    # Now add all the dictionaries together
+    argDTypes.update(circleTrackDTypes)
+    argDTypes.update(optimizationDTypes)
+
     # 2. Anything read in from a settings file
     # Note that it works to our advantage that we already have values for most entries,
     # since the settings file doesn't include type information, so we need the old
@@ -310,14 +399,21 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # of this method that is a list of the kwargs that are explicitly passed to the
     # decorator. See `pepe.utils.explicitKwargs()` for more info.
     if inputSettingsFile is not None:
-        if os.exists(inputSettingsFile):
+        if os.path.exists(inputSettingsFile):
             fileObj = open(inputSettingsFile, 'r')
             for line in fileObj:
                 # Check each line and see if it looks like a dictionary value
                 split = line.split(':')
-                if len(split) == 2 and split[0].strip() in settings.keys() and not split[0].strip() in forceSolve.explicit_kwargs:
+                # Read settings into the master settings file
+                if len(split) == 2 and split[0].strip() in argDTypes.keys() and not split[0].strip() in forceSolve.explicit_kwargs:
                     # Cast to the type of the value already in the dict
-                    settings[split[0].strip()] = type(settings[split[0].strip()])(split[1].strip())
+                    print(split[0].strip(), split[1].strip())
+                    if split[1].strip() == 'None':
+                        settings[split[0].strip()] = None
+                    else:
+                        settings[split[0].strip()] = argDTypes[split[0].strip()](split[1].strip())
+
+            print(settings)
         else:
             print(f'Warning: provided settings file does not exist! Attempting to run regardless...')
 
@@ -369,10 +465,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     if settings["showProgressBar"]:
         bar = progressbar.ProgressBar(max_value=len(imageFiles))
 
-    if settings["cropXBounds"] is None:
-        xB = [None, None]
-    else:
-        xB = settings["cropXBounds"]
+    xB = [settings["cropXMin"], settings["cropXMax"]]
 
     # This will calculation the light correction across the images 
     if settings["lightCorrectionImage"] is not None:
