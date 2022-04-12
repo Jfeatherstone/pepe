@@ -11,7 +11,7 @@ from pepe.utils import outerSubtract
 
 import numba
 
-from lmfit import minimize, Parameters, fit_report
+from lmfit import minimize, Parameters, fit_report, AbortFitException 
 from scipy.signal import find_peaks
 
 import matplotlib.pyplot as plt
@@ -404,6 +404,10 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
        lead to the image being upsampled, and float less than 1 (but greater than 0) will lead
        to the image being downsampled.
 
+       Must lead to an integer up- or downscale factor; for upscaling this is not an issue, but
+       downscale factors may be rounded in not the exact inverse of an integer. eg. a value of `.35`
+       will result in a downscale by a factor of 3, not 2.85.
+
     debug : bool
         Whether or not to print out status statements as the optimization is performed.
     """
@@ -472,16 +476,21 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
 
 
     if imageScaleFactor > 1:
-        scaledImage = upsample(realImage, imageScaleFactor)
+        # Make sure we have an integer factor
+        realScaleFactor = int(imageScaleFactor)
+        scaledImage = upsample(realImage, realScaleFactor)
     elif imageScaleFactor < 1:
+        # Make sure we have the inverse of an integer factor
+        realScaleFactor = 1/float(int(1/imageScaleFactor))
         scaledImage = downsample(realImage, int(1/imageScaleFactor))
     else:
         scaledImage = realImage
+        realScaleFactor = 1
 
-    scaledRadius = np.int64(radius * imageScaleFactor)
-    scaledCenter = np.array(center * imageScaleFactor, dtype=np.int64)
-    scaledPxPerMeter = np.int64(pxPerMeter * imageScaleFactor)
-    scaledContactMaskRadius = np.int64(contactMaskRadius * imageScaleFactor)
+    scaledRadius = np.int64(radius * realScaleFactor)
+    scaledCenter = np.array(center * realScaleFactor, dtype=np.int64)
+    scaledPxPerMeter = np.int64(pxPerMeter * realScaleFactor)
+    scaledContactMaskRadius = np.int64(contactMaskRadius * realScaleFactor)
 
     # Setup our function based on what parameters we are fitting
     # We want to avoid any if statements within the function itself, since
@@ -527,6 +536,9 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     # Now that we have all of that bookkeeping done, we can actually get on
     # to doing the minimization
     result = None
+    # Whether we should vary beta only for the next run, in case
+    # we have added a force
+    tempVaryBeta = False
     i = 0
     # We use a while loop here because we may want to repeat a fit if
     # we add a new force, which isn't possible in a for loop
@@ -548,13 +560,15 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
                 # Have to make sure that certain values aren't allowed to go negative, but
                 # otherwise the bounds are just the initial value +/- the tolerances
                 params.add(f'f{j}', value=forceArr[j], vary='f' in parametersToFitList[i], min=max(forceArr[j]-forceTolList[i], 0), max=forceArr[j]+forceTolList[i])
-                params.add(f'b{j}', value=betaArr[j], vary='b' in parametersToFitList[i], min=max(betaArr[j]-betaTolList[i], -np.pi), max=min(betaArr[j]+betaTolList[i], np.pi))
+                params.add(f'b{j}', value=betaArr[j], vary='b' in parametersToFitList[i] or tempVaryBeta, min=max(betaArr[j]-betaTolList[i], -np.pi), max=min(betaArr[j]+betaTolList[i], np.pi))
                 params.add(f'a{j}', value=alphaArr[j], vary='a' in parametersToFitList[i], min=alphaArr[j]-alphaTolList[i], max=alphaArr[j]+alphaTolList[i])
             else:
                 params.add(f'f{j}', value=forceArr[j], vary='f' in parametersToFitList[i], min=forceBounds[0], max=forceBounds[1])
-                params.add(f'b{j}', value=betaArr[j], vary='b' in parametersToFitList[i], min=betaBounds[0], max=betaBounds[1])
+                params.add(f'b{j}', value=betaArr[j], vary='b' in parametersToFitList[i] or tempVaryBeta, min=betaBounds[0], max=betaBounds[1])
                 params.add(f'a{j}', value=alphaArr[j], vary='a' in parametersToFitList[i], min=alphaBounds[0], max=alphaBounds[1])
 
+        # Reset the vary beta bool so we only do it this round
+        tempVaryBeta = False
 
         # If alpha is the only parameter being adjusted, it can help to look only in a
         # localized region around each contact, since changing alpha has such a subtle
@@ -607,10 +621,11 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
                 forceArr[j] = result.params[f"f{j}"] 
                 betaArr[j] = result.params[f"b{j}"] 
                 alphaArr[j] = result.params[f"a{j}"] 
-        # Techinically the specific exception we are looking for is
-        # lmfit.AbortFitException, but I can't imagine a need to differentiate
-        # beyond just a general Exception
-        except Exception as e:
+
+        # If we run out of function evaluations, that not too huge a deal,
+        # so we just grab the best value and move on. If we run into an actual error,
+        # that shouldn't be caught here, since that might be serious.
+        except AbortFitException as e:
             if debug:
                 print(e)
 
@@ -684,8 +699,8 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
                 if debug:
                     print(f'Added {len(forceArr) - z} force(s).')
                 # We also want to make sure we're allowed to vary beta on the next iteration
-                if 'b' not in parametersToFitList[i]:
-                    parametersToFitList[i] += ['b']
+                tempVaryBeta = True
+
                 # This skips the i += 1 at the end of the loop, and makes the optimization run again
                 continue
 

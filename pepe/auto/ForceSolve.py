@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw
 from IPython.display import clear_output
 
+import pepe
 from pepe.preprocess import checkImageType, lightCorrectionDiff, circularMask
 from pepe.analysis import initialForceSolve, forceOptimize, gSquared, g2ForceCalibration, singleParticleForceBalance
 from pepe.tracking import houghCircle, convCircle
@@ -835,6 +836,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
               '      In this case, explictly passed arguments will override the values in the settings file.\n']
 
     lines += ['\n## Runtime Information\n',
+              f'Version: pepe {pepe.__version__}\n',
               f'Total runtime: {time.perf_counter() - overallStartTime:.6}s\n',
               f'Mean tracking time: {np.mean(trackingTimes):.4}s\n',
               f'Mean guess generation time: {np.mean(initialGuessTimes):.4}s\n',
@@ -848,7 +850,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     lines += ['\n## Settings\n']
     for k,v in settings.items():
         lines += [f'{k}: {v}\n']
-   
+
     lines += ['\n## Errors\n']
     if len(errorMsgs) > 0:
         lines += errorMsgs
