@@ -4,3 +4,4 @@ from .RectArr import *
 from .Kwargs import *
 from .FittingFunctions import *
 from .Parse import *
+from .Coordinates import *

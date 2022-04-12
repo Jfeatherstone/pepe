@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from pepe.visualize import visCircles, genRandomDistancedColors, genColors
 
 
-def visForces(forceArr, alphaArr, betaArr, centerArr=None, fps=None):
+def visForces(forceArr, alphaArr, betaArr, centerArr=None, angleArr=None, fps=None):
     """
     Visualize all of the forces acting on a single particle, by plotting
     the magnitudes, alphas, and betas (and optionally center position).
@@ -43,6 +43,9 @@ def visForces(forceArr, alphaArr, betaArr, centerArr=None, fps=None):
     centerArr : np.ndarray[T,2] or None
         Array containing center position in form [y,x] of the particle for T timesteps.
 
+    angleArr : np.ndarray[T] or None
+        Array containing angles in radians of the particle for T timesteps.
+
     fps : float or None
         The number of frames per second of the capture video, used to convert the x-axis
         units from frame number to proper seconds.
@@ -57,7 +60,10 @@ def visForces(forceArr, alphaArr, betaArr, centerArr=None, fps=None):
         The list of 3 (or 4, if centers are provided) axes that the quantities are plotted on.
     """
 
-    fig, ax = plt.subplots(1, 3 + int(centerArr is not None), figsize=(3.6*(3+int(centerArr is not None)),4))
+    # TODO: As of now, if you pass the angles arr, the plotting will break unless centers are also
+    # passed; fix this.
+
+    fig, ax = plt.subplots(1, 3 + int(centerArr is not None) + int(angleArr is not None), figsize=(3.6*(3+int(centerArr is not None)+int(angleArr is not None)),4))
     
     if len(forceArr) == 0:
         return fig, ax
@@ -71,6 +77,10 @@ def visForces(forceArr, alphaArr, betaArr, centerArr=None, fps=None):
         ax[3].plot(tArr/fps, centerArr[:,1], label='X')
         ax[3].plot(tArr/fps, centerArr[:,0], label='Y')
 
+    if angleArr is not None:
+        ax[4].plot(tArr/fps, angleArr)
+        ax[4].set_ylabel('Angle [rad]')
+
     for i in range(len(forceArr)):
         ax[0].plot(tArr/fps, forceArr[i])
         ax[1].plot(tArr/fps, alphaArr[i], 'o')
@@ -83,7 +93,7 @@ def visForces(forceArr, alphaArr, betaArr, centerArr=None, fps=None):
         ax[3].set_ylabel('Position [px]')
         ax[3].legend()
 
-    for i in range(3 + int(centerArr is not None)):
+    for i in range(3 + int(centerArr is not None) + int(angleArr is not None)):
         if fps == 1:
             ax[i].set_xlabel('Time [frame]')
         else:

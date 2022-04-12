@@ -2,7 +2,7 @@ import numpy as np
 
 from pepe.utils import preserveOrderArgsort
 
-def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr, maxBetaDisplacement=.3, forcePadValue=np.nan, continuousBetas=False):
+def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr, angleArr, maxBetaDisplacement=.3, forcePadValue=np.nan, continuousBetas=False):
     """
     Take the ragged arrays representing particles and forces and convert them to
     particle-wise rectangular arrays.
@@ -69,6 +69,9 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
     radiusArr : list[T,P]
         List of particle radii for T timesteps, with P(T) particles per timestep.
 
+    angleArr : list[T,P]
+        List of particle rotations for T timesteps, with P(T) particles per timestep.
+
     maxBetaDisplacement : float
         The maximum difference of beta angle between timesteps for which a force will
         still be identified with the previous step. The difference is calculated between
@@ -107,6 +110,10 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
     rectRadiusArr : np.ndarray[P,T]
         Particle radii for each timestep. Elements take on a value of `np.nan` if the particle
         does not exist for a given timestep.
+
+    rectAngleArr : np.ndarray[P,T]
+        Particle angles for each timestep. Elements take on a value of `np.nan` if the particle
+        does not exist for a given timestep.
     """
     rectForceArr = []
     rectBetaArr = []
@@ -121,12 +128,14 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
     # particles
     rectCenterArr = np.zeros((maxNumParticles, numTimesteps, 2))
     rectRadiusArr = np.zeros((maxNumParticles, numTimesteps))
+    rectAngleArr = np.zeros((maxNumParticles, numTimesteps))
 
     # We have to initialize the first element so that we can then use the
     # preserveOrderSort function to make sure the identities stay
     # consistent
     rectCenterArr[:,0] = list(centerArr[0]) + [[np.nan, np.nan]]*(maxNumParticles - len(centerArr[0]))
     rectRadiusArr[:,0] = list(radiusArr[0]) + [np.nan]*(maxNumParticles - len(centerArr[0]))
+    rectAngleArr[:,0] = list(angleArr[0]) + [np.nan]*(maxNumParticles - len(centerArr[0]))
 
     particleOrder = np.zeros((numTimesteps, maxNumParticles), dtype=np.int16)
     particleOrder[0] = np.arange(len(particleOrder[0]))
@@ -138,6 +147,12 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
         particleOrder[i] = [ci if ci is not None else -1 for ci in currOrder]
         rectCenterArr[:,i] = [centerArr[i][particleOrder[i,j]] if particleOrder[i,j] >= 0 else [np.nan, np.nan] for j in range(len(particleOrder[i]))]
         rectRadiusArr[:,i] = [radiusArr[i][particleOrder[i,j]] if particleOrder[i,j] >= 0 else np.nan for j in range(len(particleOrder[i]))]
+        rectAngleArr[:,i] = [angleArr[i][particleOrder[i,j]] if particleOrder[i,j] >= 0 else np.nan for j in range(len(particleOrder[i]))]
+
+    # The angles were actually just changes in angle, so we should do a cumulative sum
+    # using arange because we want to go backwards
+    for i in np.arange(1, numTimesteps)[::-1]:
+        rectAngleArr[:,i] = np.sum(rectAngleArr[:,:i], axis=-1)
 
     # We now have linked the particles from frame to frame, and can
     # rectangularize the other quantities on a particle-by-particle basis
@@ -225,5 +240,5 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
         rectAlphaArr.append(singleParticleAlphaArr)
         rectBetaArr.append(singleParticleBetaArr)
 
-    return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr
+    return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr, rectAngleArr
 

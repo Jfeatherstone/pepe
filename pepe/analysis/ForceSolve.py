@@ -11,7 +11,9 @@ from pepe.utils import outerSubtract
 
 import numba
 
-from lmfit import minimize, Parameters, fit_report, AbortFitException 
+from lmfit import minimize, Parameters, fit_report
+from lmfit.minimizer import AbortFitException
+
 from scipy.signal import find_peaks
 
 import matplotlib.pyplot as plt

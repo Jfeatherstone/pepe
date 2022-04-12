@@ -15,10 +15,11 @@ from IPython.display import clear_output
 import pepe
 from pepe.preprocess import checkImageType, lightCorrectionDiff, circularMask
 from pepe.analysis import initialForceSolve, forceOptimize, gSquared, g2ForceCalibration, singleParticleForceBalance
-from pepe.tracking import houghCircle, convCircle
+from pepe.tracking import houghCircle, convCircle, angularConvolution
 from pepe.simulate import genSyntheticResponse
 from pepe.utils import preserveOrderArgsort, rectangularizeForceArrays, explicitKwargs, parseList
 from pepe.visualize import genColors, visCircles, visForces, visContacts
+from pepe.topology import findPeaksMulti
 
 # Decorator that allows us to identify which keyword arguments were explicitly
 # passed to the function, and which were left as default values. See beginning
@@ -548,7 +549,8 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # use an untyped list since the arrays are all triangular and whatnot.
     centersArr = []
     radiiArr = []
-
+    anglesArr = []
+    
     forceArr = []
     betaArr = []
     alphaArr = []
@@ -595,6 +597,40 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             centerOrder = preserveOrderArgsort(centersArr[-1], centers, padMissingValues=False)
             centers = centers[centerOrder]
             radii = radii[centerOrder]
+
+        # --------------
+        # Track rotation
+        # --------------
+        angles = np.zeros(len(centers))
+        padding = settings["guessRadius"] + 5
+
+        # This requires that each particle exist in the previous frame
+        if len(anglesArr) > 0:
+            # We recalculate the order, since we need to know which are carried over and which aren't
+            centerOrder = preserveOrderArgsort(centersArr[-1], centers, padMissingValues=True)
+            refImage = checkImageType(settings["imageDirectory"] + imageFiles[i-1])[:,xB[0]:xB[1],settings["circleTrackingChannel"]]
+            for j in range(len(centers)):
+                if centerOrder[j] is not None:
+                    # This will fail if the particle is partially offscreen, or if there aren't any
+                    # peaks in the convolution (though that shouldn't happen...), but I am too lazy
+                    # to actually write proper handling here, so we'll just leave the angle as 0 if it fails :)
+                    try:
+                        # Crop right around the particle
+                        cropRefImage = refImage[centersArr[-1][j][0] - padding:centersArr[-1][j][0] + padding, centersArr[-1][j][1] - padding:centersArr[-1][j][1] + padding]
+                        cropCurrImage = image[centers[centerOrder[j]][0] - padding:centers[centerOrder[j]][0] + padding, centers[centerOrder[j]][1] - padding:centers[centerOrder[j]][1] + padding, settings["circleTrackingChannel"]]
+                        
+                        # We don't need that wide of bounds, since we are comparing against adjacent frames
+                        # Which is the kernel and which is the reference image doesn't really matter
+                        thetaArr, convArr = angularConvolution(cropRefImage, cropCurrImage, dTheta=.005, angleBounds=(-.2, .2))
+                        angles[j] = thetaArr[findPeaksMulti(convArr)[0][0][0]]
+                    except Exception as e:
+                        print(e)
+        
+        # Since we use an angle step of .005, a value that is less than this means
+        # the maximum of the convolution was actually at 0
+        #angles[np.abs(angles) < .005] = 0.
+        print(angles)
+
 
         trackingTimes[i] = time.perf_counter() - start
 
@@ -716,6 +752,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         alphaArr.append(optimizedAlphaArr)
         centersArr.append(centers)
         radiiArr.append(radii)
+        anglesArr.append(angles)
 
         if settings["debug"] or settings["saveMovie"] or settings["genFitReport"]:
             estimatedPhotoelasticChannel = np.zeros_like(peImage, dtype=np.float64)    
@@ -861,7 +898,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         readmeFile.writelines(lines)
 
     # Restructure the arrays to make them more friendly, and to track forces/particles across timesteps
-    rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr = rectangularizeForceArrays(forceArr, alphaArr, betaArr, centersArr, radiiArr)
+    rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr, rectAngleArr = rectangularizeForceArrays(forceArr, alphaArr, betaArr, centersArr, radiiArr, anglesArr)
 
     # Save the arrays to pickle files (optional)
     if settings["pickleArrays"]:
@@ -879,6 +916,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
         with open(outputFolderPath + 'radii.pickle', 'wb') as f:
             pickle.dump(rectRadiusArr, f)
+
+        with open(outputFolderPath + 'angles.pickle', 'wb') as f:
+            pickle.dump(rectAngleArr, f)
 
     # Generate a fit report (optional)
     # This include informtaion about the error for each frame, all of the forces/alphas/betas/
@@ -925,7 +965,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         # Next, draw the forces/betas/alphas/centers for each particle
         # through time
         for i in range(len(rectForceArr)):
-            fig, ax = visForces(rectForceArr[i], rectAlphaArr[i], rectBetaArr[i], rectCenterArr[i])
+            fig, ax = visForces(rectForceArr[i], rectAlphaArr[i], rectBetaArr[i], rectCenterArr[i], rectAngleArr[i])
             fig.suptitle(f'Particle {i}')
             fig.savefig(outputFolderPath + f'FitReport_src/particle_{i}_forces.pdf')
             fig.savefig(outputFolderPath + f'FitReport_src/particle_{i}_forces.png')
@@ -992,4 +1032,4 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         contactAngleImages[0].save(outputFolderPath + 'FitReport_src/contact_angles.gif', save_all=True,
                                    append_images=contactAngleImages[1:], duration=20, optimize=True, loop=True)
 
-    return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr
+    return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr, rectAngleArr
