@@ -46,11 +46,6 @@ def angularConvolution(image, kernelImg, dTheta=.05, angleBounds=(0, 2*np.pi)):
     convArr : np.ndarray
         The similarity between the images at each rotation angle.
 
-    Notes
-    -----
-
-    The similarity between the reference image and the kernel is defined as the sum of the
-    element-wise product of the two images.
     """
     # If multiple channels are passed, we grayscale the image
     if len(np.array(image).shape) == 3:
@@ -99,6 +94,10 @@ def angularConvolution(image, kernelImg, dTheta=.05, angleBounds=(0, 2*np.pi)):
     pilKernel = Image.fromarray(paddedKernel)
 
     for i in range(len(angleArr)):
-        convArr[i] = np.sum(paddedImage * np.array(pilKernel.rotate(angleArr[i])))
+        convArr[i] = np.sum((paddedImage - np.array(pilKernel.rotate(angleArr[i])))**2)
+
+    # Normalize a bit
+    convArr -= np.max(convArr)
+    convArr = np.abs(convArr)
         
     return angleArr * np.pi/180, convArr

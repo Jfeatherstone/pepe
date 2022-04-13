@@ -57,3 +57,4 @@ it won't be obvious by just the positions of the particles).
 from .Colors import *
 from .Circles import *
 from .Forces import *
+from .Rotation import *
