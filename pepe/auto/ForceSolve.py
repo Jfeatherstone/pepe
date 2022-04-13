@@ -626,11 +626,6 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                     except Exception as e:
                         print(e)
         
-        # Since we use an angle step of .005, a value that is less than this means
-        # the maximum of the convolution was actually at 0
-        #angles[np.abs(angles) < .005] = 0.
-        print(angles)
-
 
         trackingTimes[i] = time.perf_counter() - start
 
