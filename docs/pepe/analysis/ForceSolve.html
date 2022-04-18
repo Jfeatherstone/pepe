@@ -35,7 +35,7 @@ Methods to solve for vector contact forces from a photoelastic image.
 import numpy as np
 
 from pepe.preprocess import circularMask, rectMask, ellipticalMask, mergeMasks, upsample, downsample
-from pepe.analysis import gSquared, adjacencyMatrix
+from pepe.analysis import gSquared, adjacencyMatrix, testForceBalance
 from pepe.simulate import genSyntheticResponse
 from pepe.utils import outerSubtract
 
@@ -68,7 +68,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     2. Find which particles are in contact with each other
     3. Determine if there are any boundary contacts (optional)
     4. Calculate the position of each (boundary or interparticle) force for each particle
-    5. Use the average gradient from step 2 to estimate the magnitude of force at each position
+    5. Use the average gradient from step 1 to estimate the magnitude of force at each position
 
     Intended to be used as the initial condition for optimization process; see
     `pepe.analysis.forceOptimize()` for more information.
@@ -283,7 +283,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(-np.pi, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, imageScaleFactor=1, localizeAlphaOptimization=True, debug=False):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(-np.pi, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, imageScaleFactor=1, localizeAlphaOptimization=True, forceBalanceWeighting=.2, debug=False):
     &#34;&#34;&#34;
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -440,6 +440,10 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
        downscale factors may be rounded in not the exact inverse of an integer. eg. a value of `.35`
        will result in a downscale by a factor of 3, not 2.85.
 
+    forceBalanceWeighting : float
+        If set to some non-zero and non-None value, the optimization cost will include a
+        contribution depending on how badly the ensemble of forces satisfy force balance.
+
     debug : bool
         Whether or not to print out status statements as the optimization is performed.
     &#34;&#34;&#34;
@@ -523,7 +527,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     scaledCenter = np.array(center * realScaleFactor, dtype=np.int64)
     scaledPxPerMeter = np.int64(pxPerMeter * realScaleFactor)
     scaledContactMaskRadius = np.int64(contactMaskRadius * realScaleFactor)
-
+    scaledParticleArea = scaledradius**2 * np.pi
     # Setup our function based on what parameters we are fitting
     # We want to avoid any if statements within the function itself, since
     # that will be evaluated many many times.
@@ -539,8 +543,16 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
 
         synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, scaledRadius, scaledPxPerMeter, brightfield, imageSize=scaledImage.shape, center=scaledCenter, mask=mask)
 
+        # Error component for the response image matching up with the real one
+        diffResidual = np.sum((synImage - trueImage)**2)
+        # Error component for the forces being balanced
+        # We scale by the particle area here, since the one above will be proportional to that
+        # and we want the two to be somewhat comparable
+        balanceResidual = np.sum(testForceBalance(forceArr, betaArr, alphaArr)**2) * scaledParticleArea * forceBalanceWeighting
+
         # Save residual for tracking error
-        residuals.append(np.sum((synImage - trueImage)**2))
+        residuals.append(diffResidual + balanceResidual)
+
         # Save best configuration outside of minimization
         if residuals[-1] &lt; bestResidual:
             bestResidual = residuals[-1]
@@ -551,7 +563,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         if sumReturn:
             return residuals[-1]
         else:
-            return (synImage - trueImage)**2
+            raise Exception(&#39;Not implemented!&#39;)
 
 
     # Mask our real image
@@ -757,98 +769,6 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
 
     else:
         return forceArr, betaArr, alphaArr, residuals
-
-
-
-@numba.jit(nopython=True)
-def singleParticleForceBalance(forceArr, alphaArr, betaArr):
-    &#34;&#34;&#34;
-    **Does not currently work! Any calls to this function will just return the original
-    arrays**
-
-    Takes a set of forces acting on a single particle and ensures they obey
-    force balance.
-
-    The majority of this method is transpiled directly from Jonathan Kollmer&#39;s
-    implementation:
-    https://github.com/jekollmer/PEGS
-
-    Parameters
-    ----------
-
-    forceArr : np.ndarray[N]
-        Array of force magnitudes at each contact point.
-
-    alphaArr : np.ndarray[N]
-        Array of angles that define the direction of force at each contact point
-
-    betaArr : np.ndarray[N]
-        Array of angles that define the contact point of the forces, and therefore are
-        not adjusted in the force balancing process
-
-    Returns
-    -------
-
-    np.ndarray[N] : Magnitude of balanced forces
-
-    np.ndarray[N] : Balanced contact angles alpha
-
-    &#34;&#34;&#34;
-
-    # TODO: Get this function working
-    print(&#34;Warning: force balance is not yet implemented, do not call the singleParticleForceBalance function!&#34;)
-    return forceArr, alphaArr
-
-    # Number of contacts (coordination number, often denoted by z)
-    numContacts = len(forceArr)
-
-    if numContacts &lt; 2:
-        # Can&#39;t do anything with only a single force
-        return forceArr, alphaArr
-    elif numContacts == 2:
-        # For 2 forces, there is a unique process
-
-        # The two force magnitudes must be equal
-        balancedForceArr = np.array([forceArr[0], forceArr[0]])
-
-        balancedAlphaArr = np.zeros(2) 
-        dBeta = (betaArr[0] - betaArr[1]) / 2
-        balancedAlphaArr[0] = np.arccos(np.sin(dBeta))
-        if balancedAlphaArr[0] &gt; np.pi/2:
-            balancedAlphaArr[0] = np.arccos(np.sin(-dBeta))
-        
-        # And the other angle must be the opposite
-        balancedAlphaArr[1] = - balancedAlphaArr[0]
-
-        return balancedForceArr, balancedAlphaArr
-
-    elif numContacts &gt; 2:
-        # We solve any z&gt;2 contacts the same way
-        balancedForceArr = np.zeros_like(forceArr)
-        balancedAlphaArr = np.zeros_like(alphaArr)
-
-        # To calculate the new force magnitudes, we add up vertical and
-        # horizontal components of the other forces
-        for i in range(numContacts):
-            # These initializations are to not count the case where j = i
-            sum1 = -forceArr[i] * np.sin(alphaArr[i])
-            sum2 = -forceArr[i] * np.cos(alphaArr[i])
-            for j in range(numContacts):
-                sum1 += forceArr[j] * np.sin(alphaArr[j] + betaArr[j] - betaArr[i])
-                sum2 += forceArr[j] * np.cos(alphaArr[j] + betaArr[j] - betaArr[i])
-
-            balancedForceArr[i] = np.sqrt(sum1**2 + sum2**2)
-
-        # To calculate new alpha values, we 
-        for i in range(numContacts):
-            sum3 = -balancedForceArr[i] * np.sin(alphaArr[i])
-            for j in range(numContacts):
-                sum3 += balancedForceArr[j] * np.sin(alphaArr[j])
-
-            balancedAlphaArr[i] = np.arcsin(-sum3/balancedForceArr[i])
-
-
-        return balancedForceArr, balancedAlphaArr
 
 
 @numba.jit(nopython=True)
@@ -1662,7 +1582,7 @@ multiplied by the g2 calibration value to get the initial force magnitude guess.
 </details>
 </dd>
 <dt id="pepe.analysis.ForceSolve.forceOptimize"><code class="name flex">
-<span>def <span class="ident">forceOptimize</span></span>(<span>forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-3.141592653589793, 3.141592653589793), alphaBounds=(-3.141592653589793, 3.141592653589793), forceTolerance=0.5, betaTolerance=0.2, alphaTolerance=0.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=0.01, contactMaskRadius=30, newBetaMinSeparation=0.4, newBetaG2Height=0.0005, missingForceChiSqrThreshold=210000000.0, imageScaleFactor=1, localizeAlphaOptimization=True, debug=False)</span>
+<span>def <span class="ident">forceOptimize</span></span>(<span>forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-3.141592653589793, 3.141592653589793), alphaBounds=(-3.141592653589793, 3.141592653589793), forceTolerance=0.5, betaTolerance=0.2, alphaTolerance=0.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=0.01, contactMaskRadius=30, newBetaMinSeparation=0.4, newBetaG2Height=0.0005, missingForceChiSqrThreshold=210000000.0, imageScaleFactor=1, localizeAlphaOptimization=True, forceBalanceWeighting=0.2, debug=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Optimize an initial guess for the forces acting on a particle using
@@ -1805,6 +1725,9 @@ to the image being downsampled.</p>
 downscale factors may be rounded in not the exact inverse of an integer. eg. a value of <code>.35</code>
 will result in a downscale by a factor of 3, not 2.85.</p>
 <dl>
+<dt><strong><code>forceBalanceWeighting</code></strong> :&ensp;<code>float</code></dt>
+<dd>If set to some non-zero and non-None value, the optimization cost will include a
+contribution depending on how badly the ensemble of forces satisfy force balance.</dd>
 <dt><strong><code>debug</code></strong> :&ensp;<code>bool</code></dt>
 <dd>Whether or not to print out status statements as the optimization is performed.</dd>
 </dl></div>
@@ -1812,7 +1735,7 @@ will result in a downscale by a factor of 3, not 2.85.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(-np.pi, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, imageScaleFactor=1, localizeAlphaOptimization=True, debug=False):
+<pre><code class="python">def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(-np.pi, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, imageScaleFactor=1, localizeAlphaOptimization=True, forceBalanceWeighting=.2, debug=False):
     &#34;&#34;&#34;
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -1969,6 +1892,10 @@ will result in a downscale by a factor of 3, not 2.85.</p>
        downscale factors may be rounded in not the exact inverse of an integer. eg. a value of `.35`
        will result in a downscale by a factor of 3, not 2.85.
 
+    forceBalanceWeighting : float
+        If set to some non-zero and non-None value, the optimization cost will include a
+        contribution depending on how badly the ensemble of forces satisfy force balance.
+
     debug : bool
         Whether or not to print out status statements as the optimization is performed.
     &#34;&#34;&#34;
@@ -2052,7 +1979,7 @@ will result in a downscale by a factor of 3, not 2.85.</p>
     scaledCenter = np.array(center * realScaleFactor, dtype=np.int64)
     scaledPxPerMeter = np.int64(pxPerMeter * realScaleFactor)
     scaledContactMaskRadius = np.int64(contactMaskRadius * realScaleFactor)
-
+    scaledParticleArea = scaledradius**2 * np.pi
     # Setup our function based on what parameters we are fitting
     # We want to avoid any if statements within the function itself, since
     # that will be evaluated many many times.
@@ -2068,8 +1995,16 @@ will result in a downscale by a factor of 3, not 2.85.</p>
 
         synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, scaledRadius, scaledPxPerMeter, brightfield, imageSize=scaledImage.shape, center=scaledCenter, mask=mask)
 
+        # Error component for the response image matching up with the real one
+        diffResidual = np.sum((synImage - trueImage)**2)
+        # Error component for the forces being balanced
+        # We scale by the particle area here, since the one above will be proportional to that
+        # and we want the two to be somewhat comparable
+        balanceResidual = np.sum(testForceBalance(forceArr, betaArr, alphaArr)**2) * scaledParticleArea * forceBalanceWeighting
+
         # Save residual for tracking error
-        residuals.append(np.sum((synImage - trueImage)**2))
+        residuals.append(diffResidual + balanceResidual)
+
         # Save best configuration outside of minimization
         if residuals[-1] &lt; bestResidual:
             bestResidual = residuals[-1]
@@ -2080,7 +2015,7 @@ will result in a downscale by a factor of 3, not 2.85.</p>
         if sumReturn:
             return residuals[-1]
         else:
-            return (synImage - trueImage)**2
+            raise Exception(&#39;Not implemented!&#39;)
 
 
     # Mask our real image
@@ -2632,7 +2567,7 @@ measurements in granular materials. Review of Scientific Instruments, 88(5),
 <li>Find which particles are in contact with each other</li>
 <li>Determine if there are any boundary contacts (optional)</li>
 <li>Calculate the position of each (boundary or interparticle) force for each particle</li>
-<li>Use the average gradient from step 2 to estimate the magnitude of force at each position</li>
+<li>Use the average gradient from step 1 to estimate the magnitude of force at each position</li>
 </ol>
 <p>Intended to be used as the initial condition for optimization process; see
 <code>pepe.analysis.forceOptimize()</code> for more information.</p>
@@ -2726,7 +2661,7 @@ and pass it in. If left as None, will be recalculated internally.</dd>
     2. Find which particles are in contact with each other
     3. Determine if there are any boundary contacts (optional)
     4. Calculate the position of each (boundary or interparticle) force for each particle
-    5. Use the average gradient from step 2 to estimate the magnitude of force at each position
+    5. Use the average gradient from step 1 to estimate the magnitude of force at each position
 
     Intended to be used as the initial condition for optimization process; see
     `pepe.analysis.forceOptimize()` for more information.
@@ -2941,129 +2876,6 @@ and pass it in. If left as None, will be recalculated internally.</dd>
     return forceGuessArr, alphaGuessArr, betaGuessArr</code></pre>
 </details>
 </dd>
-<dt id="pepe.analysis.ForceSolve.singleParticleForceBalance"><code class="name flex">
-<span>def <span class="ident">singleParticleForceBalance</span></span>(<span>forceArr, alphaArr, betaArr)</span>
-</code></dt>
-<dd>
-<div class="desc"><p><strong>Does not currently work! Any calls to this function will just return the original
-arrays</strong></p>
-<p>Takes a set of forces acting on a single particle and ensures they obey
-force balance.</p>
-<p>The majority of this method is transpiled directly from Jonathan Kollmer's
-implementation:
-<a href="https://github.com/jekollmer/PEGS">https://github.com/jekollmer/PEGS</a></p>
-<h2 id="parameters">Parameters</h2>
-<dl>
-<dt><strong><code>forceArr</code></strong> :&ensp;<code>np.ndarray[N]</code></dt>
-<dd>Array of force magnitudes at each contact point.</dd>
-<dt><strong><code>alphaArr</code></strong> :&ensp;<code>np.ndarray[N]</code></dt>
-<dd>Array of angles that define the direction of force at each contact point</dd>
-<dt><strong><code>betaArr</code></strong> :&ensp;<code>np.ndarray[N]</code></dt>
-<dd>Array of angles that define the contact point of the forces, and therefore are
-not adjusted in the force balancing process</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<dl>
-<dt><code>np.ndarray[N] : Magnitude</code> of <code>balanced forces</code></dt>
-<dd>&nbsp;</dd>
-<dt><code>np.ndarray[N] : Balanced contact angles alpha</code></dt>
-<dd>&nbsp;</dd>
-</dl></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">@numba.jit(nopython=True)
-def singleParticleForceBalance(forceArr, alphaArr, betaArr):
-    &#34;&#34;&#34;
-    **Does not currently work! Any calls to this function will just return the original
-    arrays**
-
-    Takes a set of forces acting on a single particle and ensures they obey
-    force balance.
-
-    The majority of this method is transpiled directly from Jonathan Kollmer&#39;s
-    implementation:
-    https://github.com/jekollmer/PEGS
-
-    Parameters
-    ----------
-
-    forceArr : np.ndarray[N]
-        Array of force magnitudes at each contact point.
-
-    alphaArr : np.ndarray[N]
-        Array of angles that define the direction of force at each contact point
-
-    betaArr : np.ndarray[N]
-        Array of angles that define the contact point of the forces, and therefore are
-        not adjusted in the force balancing process
-
-    Returns
-    -------
-
-    np.ndarray[N] : Magnitude of balanced forces
-
-    np.ndarray[N] : Balanced contact angles alpha
-
-    &#34;&#34;&#34;
-
-    # TODO: Get this function working
-    print(&#34;Warning: force balance is not yet implemented, do not call the singleParticleForceBalance function!&#34;)
-    return forceArr, alphaArr
-
-    # Number of contacts (coordination number, often denoted by z)
-    numContacts = len(forceArr)
-
-    if numContacts &lt; 2:
-        # Can&#39;t do anything with only a single force
-        return forceArr, alphaArr
-    elif numContacts == 2:
-        # For 2 forces, there is a unique process
-
-        # The two force magnitudes must be equal
-        balancedForceArr = np.array([forceArr[0], forceArr[0]])
-
-        balancedAlphaArr = np.zeros(2) 
-        dBeta = (betaArr[0] - betaArr[1]) / 2
-        balancedAlphaArr[0] = np.arccos(np.sin(dBeta))
-        if balancedAlphaArr[0] &gt; np.pi/2:
-            balancedAlphaArr[0] = np.arccos(np.sin(-dBeta))
-        
-        # And the other angle must be the opposite
-        balancedAlphaArr[1] = - balancedAlphaArr[0]
-
-        return balancedForceArr, balancedAlphaArr
-
-    elif numContacts &gt; 2:
-        # We solve any z&gt;2 contacts the same way
-        balancedForceArr = np.zeros_like(forceArr)
-        balancedAlphaArr = np.zeros_like(alphaArr)
-
-        # To calculate the new force magnitudes, we add up vertical and
-        # horizontal components of the other forces
-        for i in range(numContacts):
-            # These initializations are to not count the case where j = i
-            sum1 = -forceArr[i] * np.sin(alphaArr[i])
-            sum2 = -forceArr[i] * np.cos(alphaArr[i])
-            for j in range(numContacts):
-                sum1 += forceArr[j] * np.sin(alphaArr[j] + betaArr[j] - betaArr[i])
-                sum2 += forceArr[j] * np.cos(alphaArr[j] + betaArr[j] - betaArr[i])
-
-            balancedForceArr[i] = np.sqrt(sum1**2 + sum2**2)
-
-        # To calculate new alpha values, we 
-        for i in range(numContacts):
-            sum3 = -balancedForceArr[i] * np.sin(alphaArr[i])
-            for j in range(numContacts):
-                sum3 += balancedForceArr[j] * np.sin(alphaArr[j])
-
-            balancedAlphaArr[i] = np.arcsin(-sum3/balancedForceArr[i])
-
-
-        return balancedForceArr, balancedAlphaArr</code></pre>
-</details>
-</dd>
 </dl>
 </section>
 <section>
@@ -3087,7 +2899,6 @@ def singleParticleForceBalance(forceArr, alphaArr, betaArr):
 <li><code><a title="pepe.analysis.ForceSolve.g2ForceCalibration" href="#pepe.analysis.ForceSolve.g2ForceCalibration">g2ForceCalibration</a></code></li>
 <li><code><a title="pepe.analysis.ForceSolve.g2ForceCalibrationDebug" href="#pepe.analysis.ForceSolve.g2ForceCalibrationDebug">g2ForceCalibrationDebug</a></code></li>
 <li><code><a title="pepe.analysis.ForceSolve.initialForceSolve" href="#pepe.analysis.ForceSolve.initialForceSolve">initialForceSolve</a></code></li>
-<li><code><a title="pepe.analysis.ForceSolve.singleParticleForceBalance" href="#pepe.analysis.ForceSolve.singleParticleForceBalance">singleParticleForceBalance</a></code></li>
 </ul>
 </li>
 </ul>

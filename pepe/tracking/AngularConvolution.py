@@ -4,7 +4,7 @@ from PIL import Image
 
 import matplotlib.pyplot as plt
 
-def angularConvolution(image, kernelImg, dTheta=.05, angleBounds=(0, 2*np.pi)):
+def angularConvolution(image, kernelImg, dTheta=.01, angleBounds=(0, 2*np.pi)):
     """
     Perform an angular convolution, calculating the effective similarity between two
     images as one of them is rotated.

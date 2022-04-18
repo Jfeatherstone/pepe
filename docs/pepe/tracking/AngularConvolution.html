@@ -33,7 +33,7 @@ from PIL import Image
 
 import matplotlib.pyplot as plt
 
-def angularConvolution(image, kernelImg, dTheta=.05, angleBounds=(0, 2*np.pi)):
+def angularConvolution(image, kernelImg, dTheta=.01, angleBounds=(0, 2*np.pi)):
     &#34;&#34;&#34;
     Perform an angular convolution, calculating the effective similarity between two
     images as one of them is rotated.
@@ -75,11 +75,6 @@ def angularConvolution(image, kernelImg, dTheta=.05, angleBounds=(0, 2*np.pi)):
     convArr : np.ndarray
         The similarity between the images at each rotation angle.
 
-    Notes
-    -----
-
-    The similarity between the reference image and the kernel is defined as the sum of the
-    element-wise product of the two images.
     &#34;&#34;&#34;
     # If multiple channels are passed, we grayscale the image
     if len(np.array(image).shape) == 3:
@@ -128,7 +123,11 @@ def angularConvolution(image, kernelImg, dTheta=.05, angleBounds=(0, 2*np.pi)):
     pilKernel = Image.fromarray(paddedKernel)
 
     for i in range(len(angleArr)):
-        convArr[i] = np.sum(paddedImage * np.array(pilKernel.rotate(angleArr[i])))
+        convArr[i] = np.sum((paddedImage - np.array(pilKernel.rotate(angleArr[i])))**2)
+
+    # Normalize a bit
+    convArr -= np.max(convArr)
+    convArr = np.abs(convArr)
         
     return angleArr * np.pi/180, convArr</code></pre>
 </details>
@@ -141,7 +140,7 @@ def angularConvolution(image, kernelImg, dTheta=.05, angleBounds=(0, 2*np.pi)):
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="pepe.tracking.AngularConvolution.angularConvolution"><code class="name flex">
-<span>def <span class="ident">angularConvolution</span></span>(<span>image, kernelImg, dTheta=0.05, angleBounds=(0, 6.283185307179586))</span>
+<span>def <span class="ident">angularConvolution</span></span>(<span>image, kernelImg, dTheta=0.01, angleBounds=(0, 6.283185307179586))</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Perform an angular convolution, calculating the effective similarity between two
@@ -180,15 +179,12 @@ the kernel by during the convolution, in radians.</dd>
 <dd>The angles for which the convolution was calculated over, in radians.</dd>
 <dt><strong><code>convArr</code></strong> :&ensp;<code>np.ndarray</code></dt>
 <dd>The similarity between the images at each rotation angle.</dd>
-</dl>
-<h2 id="notes">Notes</h2>
-<p>The similarity between the reference image and the kernel is defined as the sum of the
-element-wise product of the two images.</p></div>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def angularConvolution(image, kernelImg, dTheta=.05, angleBounds=(0, 2*np.pi)):
+<pre><code class="python">def angularConvolution(image, kernelImg, dTheta=.01, angleBounds=(0, 2*np.pi)):
     &#34;&#34;&#34;
     Perform an angular convolution, calculating the effective similarity between two
     images as one of them is rotated.
@@ -230,11 +226,6 @@ element-wise product of the two images.</p></div>
     convArr : np.ndarray
         The similarity between the images at each rotation angle.
 
-    Notes
-    -----
-
-    The similarity between the reference image and the kernel is defined as the sum of the
-    element-wise product of the two images.
     &#34;&#34;&#34;
     # If multiple channels are passed, we grayscale the image
     if len(np.array(image).shape) == 3:
@@ -283,7 +274,11 @@ element-wise product of the two images.</p></div>
     pilKernel = Image.fromarray(paddedKernel)
 
     for i in range(len(angleArr)):
-        convArr[i] = np.sum(paddedImage * np.array(pilKernel.rotate(angleArr[i])))
+        convArr[i] = np.sum((paddedImage - np.array(pilKernel.rotate(angleArr[i])))**2)
+
+    # Normalize a bit
+    convArr -= np.max(convArr)
+    convArr = np.abs(convArr)
         
     return angleArr * np.pi/180, convArr</code></pre>
 </details>
