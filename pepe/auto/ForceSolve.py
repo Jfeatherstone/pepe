@@ -18,7 +18,7 @@ from pepe.analysis import initialForceSolve, forceOptimize, gSquared, g2ForceCal
 from pepe.tracking import houghCircle, convCircle, angularConvolution
 from pepe.simulate import genSyntheticResponse
 from pepe.utils import preserveOrderArgsort, rectangularizeForceArrays, explicitKwargs, parseList
-from pepe.visualize import genColors, visCircles, visForces, visContacts
+from pepe.visualize import genColors, visCircles, visForces, visContacts, visRotation
 from pepe.topology import findPeaksMulti
 
 # Decorator that allows us to identify which keyword arguments were explicitly
@@ -472,10 +472,13 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         print(f'Error: directory \'{settings["imageDirectory"]}\' contains no files with extension \'{settings["imageExtension"]}\'!')
         return None
 
+
     if settings["showProgressBar"]:
         bar = progressbar.ProgressBar(max_value=len(imageFiles))
 
     xB = [settings["cropXMin"], settings["cropXMax"]]
+
+    imageSize = checkImageType(settings["imageDirectory"] + imageFiles[0])[:,xB[0]:xB[1],0].shape
 
     # This will calculation the light correction across the images 
     if settings["lightCorrectionImage"] is not None:
@@ -549,7 +552,6 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # use an untyped list since the arrays are all triangular and whatnot.
     centersArr = []
     radiiArr = []
-    anglesArr = []
     
     forceArr = []
     betaArr = []
@@ -598,35 +600,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             centers = centers[centerOrder]
             radii = radii[centerOrder]
 
-        # --------------
-        # Track rotation
-        # --------------
-        angles = np.zeros(len(centers))
-        padding = settings["guessRadius"] + 5
-
-        # This requires that each particle exist in the previous frame
-        if len(anglesArr) > 0:
-            # We recalculate the order, since we need to know which are carried over and which aren't
-            centerOrder = preserveOrderArgsort(centersArr[-1], centers, padMissingValues=True)
-            refImage = checkImageType(settings["imageDirectory"] + imageFiles[i-1])[:,xB[0]:xB[1],settings["circleTrackingChannel"]]
-            for j in range(len(centers)):
-                if centerOrder[j] is not None:
-                    # This will fail if the particle is partially offscreen, or if there aren't any
-                    # peaks in the convolution (though that shouldn't happen...), but I am too lazy
-                    # to actually write proper handling here, so we'll just leave the angle as 0 if it fails :)
-                    try:
-                        # Crop right around the particle
-                        cropRefImage = refImage[centersArr[-1][j][0] - padding:centersArr[-1][j][0] + padding, centersArr[-1][j][1] - padding:centersArr[-1][j][1] + padding]
-                        cropCurrImage = image[centers[centerOrder[j]][0] - padding:centers[centerOrder[j]][0] + padding, centers[centerOrder[j]][1] - padding:centers[centerOrder[j]][1] + padding, settings["circleTrackingChannel"]]
-                        
-                        # We don't need that wide of bounds, since we are comparing against adjacent frames
-                        # Which is the kernel and which is the reference image doesn't really matter
-                        thetaArr, convArr = angularConvolution(cropRefImage, cropCurrImage, dTheta=.005, angleBounds=(-.2, .2))
-                        angles[j] = thetaArr[findPeaksMulti(convArr)[0][0][0]]
-                    except Exception as e:
-                        print(e)
         
-
         trackingTimes[i] = time.perf_counter() - start
 
         # ----------------------
@@ -747,7 +721,6 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         alphaArr.append(optimizedAlphaArr)
         centersArr.append(centers)
         radiiArr.append(radii)
-        anglesArr.append(angles)
 
         if settings["debug"] or settings["saveMovie"] or settings["genFitReport"]:
             estimatedPhotoelasticChannel = np.zeros_like(peImage, dtype=np.float64)    
@@ -836,6 +809,62 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             bar.update(i)
    
     
+    # Restructure the arrays to make them more friendly, and to track forces/particles across timesteps
+    rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr = rectangularizeForceArrays(forceArr, alphaArr, betaArr, centersArr, radiiArr)
+
+    # --------------
+    # Track rotation
+    # --------------
+    # We choose to do this after the actual solving because it helps
+    # to have the rectangular force arrays.
+    padding = settings["guessRadius"] + 5
+
+    # First, we generate our reference images, which are the first
+    # time a particle is completely in frame.
+    refImages = [None] * len(rectCenterArr)
+    for i in range(len(refImages)):
+        for j in range(len(imageFiles)):
+            if not True in np.isnan(rectCenterArr[i][j]):
+                # Continue to the next frame if this one is partially offscreen
+                if True in ((rectCenterArr[i][j] - padding) < 0) or True in ((rectCenterArr[i][j] - np.array(imageSize) + padding) > 0):
+                    continue
+
+                # Otherwise, this is a good frame, so we save it
+                refImageFull = checkImageType(settings["imageDirectory"] + imageFiles[j])[:,xB[0]:xB[1],settings["circleTrackingChannel"]]
+                refImageFull *= circularMask(refImageFull.shape, rectCenterArr[i][j], rectRadiusArr[i][j])[:,:,0]
+
+                refImages[i] = refImageFull[int(rectCenterArr[i][j][0] - padding):int(rectCenterArr[i][j][0] + padding), int(rectCenterArr[i][j][1] - padding):int(rectCenterArr[i][j][1] + padding)]
+                # And move onto the next particle
+                break
+
+    # Same shape as the radius array: 1 value for each timestep, for each particle
+    rectAngleArr = np.zeros(rectRadiusArr.shape)
+    # Set all values to be np.nan initially
+    rectAngleArr[:,:] = np.nan
+    
+    # Now we compare that reference particle to each subsequent frame
+    # (probably not best practice that I've switched the indices
+    # with respect to the previous statements, but :/)
+    for i in range(len(imageFiles)):
+        currentImageFull = checkImageType(settings["imageDirectory"] + imageFiles[i])[:,xB[0]:xB[1],settings["circleTrackingChannel"]]
+
+        for j in range(len(refImages)):
+            # Make sure we have a reference image, and the particle is in full view
+            if True in np.isnan(rectCenterArr[j][i]):
+                continue
+
+            if True in ((rectCenterArr[j][i] - padding) < 0) or True in ((rectCenterArr[j][i] - np.array(imageSize) + padding) > 0):
+                continue
+
+            # Crop out around the particle and mask it
+            currImage = (circularMask(currentImageFull.shape, rectCenterArr[j][i], rectRadiusArr[j][i])[:,:,0] * currentImageFull)[int(rectCenterArr[j][i][0] - padding):int(rectCenterArr[j][i][0] + padding), int(rectCenterArr[j][i][1] - padding):int(rectCenterArr[j][i][1] + padding)]
+           
+            # Which is the kernel and which is the reference image doesn't really matter
+            # (as long as we are consistent)
+            thetaArr, convArr = angularConvolution(refImages[j], currImage, dTheta=.003, angleBounds=(-np.pi, np.pi))
+            rectAngleArr[j,i] = thetaArr[findPeaksMulti(convArr)[0][0][0]]
+
+
     if showProgressBar:
         bar.update(len(imageFiles))
 
@@ -891,9 +920,6 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
     with open(outputFolderPath + 'readme.txt', 'w') as readmeFile:
         readmeFile.writelines(lines)
-
-    # Restructure the arrays to make them more friendly, and to track forces/particles across timesteps
-    rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr, rectAngleArr = rectangularizeForceArrays(forceArr, alphaArr, betaArr, centersArr, radiiArr, anglesArr)
 
     # Save the arrays to pickle files (optional)
     if settings["pickleArrays"]:
@@ -966,6 +992,10 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             fig.savefig(outputFolderPath + f'FitReport_src/particle_{i}_forces.png')
             plt.close(fig)
 
+        # Create a gif of the particle orientation through time, overlaid
+        # on the original images
+        visRotation([settings["imageDirectory"] + f for f in imageFiles],
+                   rectCenterArr, rectRadiusArr, rectAngleArr, outputFolderPath + 'FitReport_src/', (0, cropXMin))
 
         # Create gifs of the contacts
         forceColors = genColors(len(rectBetaArr))
