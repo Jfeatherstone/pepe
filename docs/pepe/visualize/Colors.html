@@ -32,13 +32,69 @@ import matplotlib.colors as mcolors
 
 from sklearn.neighbors import KDTree
 
+# Some manually selected colors that are good
+# Taken from xkcd survey: https://blog.xkcd.com/2010/05/03/color-survey-results/
+MANUAL_COLORS = [&#39;#7E1E9C&#39;, # Purple
+                &#39;#15B01A&#39;, # Green
+                &#39;#0343DF&#39;, # Blue
+                &#39;#FF88C0&#39;, # Pink
+                &#39;#653700&#39;, # Brown
+                &#39;#E50000&#39;, # Red
+                &#39;#029386&#39;, # Teal
+                &#39;#F97306&#39;, # Orange
+                &#39;#033500&#39;, # Dark green
+                &#39;#00035B&#39;, # Dark blue
+                &#39;#650021&#39;, # Maroon
+                &#39;#BF77F6&#39;, # Light purple
+                &#39;#929591&#39;, # Gray
+                &#39;#6E750E&#39;, # Olive
+                &#39;#00FFFF&#39;, # Cyan
+                ]
+
+
 def rgbToHex(rgbC):
     return &#39;%02x%02x%02x&#39; % rgbC
 
 def hexToRgb(hexC):
     return [int(hexC[i:i+2], 16) for i in (0, 2, 4)]
 
+def genColors(size, seed=21):
+    &#34;&#34;&#34;
+    Generate a set of colors for visualization by a hierarchy of methods:
+
+    1. First, select from MANUAL_COLORS defined above.
+    2. Use genRandomDistancedColors()
+    3. Use genRandomColors() 
+    &#34;&#34;&#34;
+    if size &lt; len(MANUAL_COLORS):
+        return [MANUAL_COLORS[i] for i in range(size)]
+    
+    else:
+        # genRandomDistanceColors will already supplement with full random
+        # colors if size is too big, so no need to deal with it here.
+        return MANUAL_COLORS + genRandomDistancedColors(size - len(MANUAL_COLORS), seed)
+
+
 def genRandomColors(size, seed=21):
+    &#34;&#34;&#34;
+    Generate colors by randomly selecting rgb values.
+
+    Parameters
+    ----------
+
+    size : int
+        The number of colors to generate.
+
+    seed : int
+        The seed to use for random generation.
+
+
+    Returns
+    -------
+    
+    colors : list[size]
+        A list of hex codes for colors.
+    &#34;&#34;&#34;
     np.random.seed(seed)
 
     randomColors = [f&#34;#{rgbToHex(tuple(np.random.choice(range(256), size=3).flatten()))}&#34; for i in range(size)]
@@ -46,6 +102,33 @@ def genRandomColors(size, seed=21):
     return randomColors
 
 def genRandomDistancedColors(size, seed=21):
+    &#34;&#34;&#34;
+    Generate colors by sampling from the list of CSS named colors,
+    where the first color will be randomly selected, and each subsequent
+    one will be chosen to maximize it&#39;s distance from previously selected
+    colors in LAB color space (using a kd-tree).
+
+    If the number of requested colors is greater than the number of named
+    colors, the remaining ones will be randomly generated.
+
+    Maybe a bit overkill...
+
+    Parameters
+    ----------
+
+    size : int
+        The number of colors to generate.
+
+    seed : int
+        The seed to use for random generation.
+
+
+    Returns
+    -------
+    
+    colors : list[size]
+        A list of hex codes for colors.
+    &#34;&#34;&#34;
     allCSSColors = list(mcolors.CSS4_COLORS.values())
 
     if size &gt; len(allCSSColors):
@@ -155,16 +238,78 @@ def rgbToLab(inputColor):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="pepe.visualize.Colors.genColors"><code class="name flex">
+<span>def <span class="ident">genColors</span></span>(<span>size, seed=21)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generate a set of colors for visualization by a hierarchy of methods:</p>
+<ol>
+<li>First, select from MANUAL_COLORS defined above.</li>
+<li>Use genRandomDistancedColors()</li>
+<li>Use genRandomColors()</li>
+</ol></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def genColors(size, seed=21):
+    &#34;&#34;&#34;
+    Generate a set of colors for visualization by a hierarchy of methods:
+
+    1. First, select from MANUAL_COLORS defined above.
+    2. Use genRandomDistancedColors()
+    3. Use genRandomColors() 
+    &#34;&#34;&#34;
+    if size &lt; len(MANUAL_COLORS):
+        return [MANUAL_COLORS[i] for i in range(size)]
+    
+    else:
+        # genRandomDistanceColors will already supplement with full random
+        # colors if size is too big, so no need to deal with it here.
+        return MANUAL_COLORS + genRandomDistancedColors(size - len(MANUAL_COLORS), seed)</code></pre>
+</details>
+</dd>
 <dt id="pepe.visualize.Colors.genRandomColors"><code class="name flex">
 <span>def <span class="ident">genRandomColors</span></span>(<span>size, seed=21)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Generate colors by randomly selecting rgb values.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>size</code></strong> :&ensp;<code>int</code></dt>
+<dd>The number of colors to generate.</dd>
+<dt><strong><code>seed</code></strong> :&ensp;<code>int</code></dt>
+<dd>The seed to use for random generation.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>colors</code></strong> :&ensp;<code>list[size]</code></dt>
+<dd>A list of hex codes for colors.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def genRandomColors(size, seed=21):
+    &#34;&#34;&#34;
+    Generate colors by randomly selecting rgb values.
+
+    Parameters
+    ----------
+
+    size : int
+        The number of colors to generate.
+
+    seed : int
+        The seed to use for random generation.
+
+
+    Returns
+    -------
+    
+    colors : list[size]
+        A list of hex codes for colors.
+    &#34;&#34;&#34;
     np.random.seed(seed)
 
     randomColors = [f&#34;#{rgbToHex(tuple(np.random.choice(range(256), size=3).flatten()))}&#34; for i in range(size)]
@@ -176,12 +321,57 @@ def rgbToLab(inputColor):
 <span>def <span class="ident">genRandomDistancedColors</span></span>(<span>size, seed=21)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Generate colors by sampling from the list of CSS named colors,
+where the first color will be randomly selected, and each subsequent
+one will be chosen to maximize it's distance from previously selected
+colors in LAB color space (using a kd-tree).</p>
+<p>If the number of requested colors is greater than the number of named
+colors, the remaining ones will be randomly generated.</p>
+<p>Maybe a bit overkill&hellip;</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>size</code></strong> :&ensp;<code>int</code></dt>
+<dd>The number of colors to generate.</dd>
+<dt><strong><code>seed</code></strong> :&ensp;<code>int</code></dt>
+<dd>The seed to use for random generation.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>colors</code></strong> :&ensp;<code>list[size]</code></dt>
+<dd>A list of hex codes for colors.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def genRandomDistancedColors(size, seed=21):
+    &#34;&#34;&#34;
+    Generate colors by sampling from the list of CSS named colors,
+    where the first color will be randomly selected, and each subsequent
+    one will be chosen to maximize it&#39;s distance from previously selected
+    colors in LAB color space (using a kd-tree).
+
+    If the number of requested colors is greater than the number of named
+    colors, the remaining ones will be randomly generated.
+
+    Maybe a bit overkill...
+
+    Parameters
+    ----------
+
+    size : int
+        The number of colors to generate.
+
+    seed : int
+        The seed to use for random generation.
+
+
+    Returns
+    -------
+    
+    colors : list[size]
+        A list of hex codes for colors.
+    &#34;&#34;&#34;
     allCSSColors = list(mcolors.CSS4_COLORS.values())
 
     if size &gt; len(allCSSColors):
@@ -345,6 +535,7 @@ colors is maximized.</p>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="pepe.visualize.Colors.genColors" href="#pepe.visualize.Colors.genColors">genColors</a></code></li>
 <li><code><a title="pepe.visualize.Colors.genRandomColors" href="#pepe.visualize.Colors.genRandomColors">genRandomColors</a></code></li>
 <li><code><a title="pepe.visualize.Colors.genRandomDistancedColors" href="#pepe.visualize.Colors.genRandomDistancedColors">genRandomDistancedColors</a></code></li>
 <li><code><a title="pepe.visualize.Colors.hexToRgb" href="#pepe.visualize.Colors.hexToRgb">hexToRgb</a></code></li>

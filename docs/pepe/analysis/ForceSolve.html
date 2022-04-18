@@ -34,7 +34,7 @@ Methods to solve for vector contact forces from a photoelastic image.
 
 import numpy as np
 
-from pepe.preprocess import circularMask, rectMask, ellipticalMask, mergeMasks
+from pepe.preprocess import circularMask, rectMask, ellipticalMask, mergeMasks, upsample, downsample
 from pepe.analysis import gSquared, adjacencyMatrix
 from pepe.simulate import genSyntheticResponse
 from pepe.utils import outerSubtract
@@ -42,6 +42,8 @@ from pepe.utils import outerSubtract
 import numba
 
 from lmfit import minimize, Parameters, fit_report
+from lmfit.minimizer import AbortFitException
+
 from scipy.signal import find_peaks
 
 import matplotlib.pyplot as plt
@@ -281,7 +283,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, localizeAlphaOptimization=True, debug=False):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(-np.pi, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, imageScaleFactor=1, localizeAlphaOptimization=True, debug=False):
     &#34;&#34;&#34;
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -323,9 +325,16 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         will use the Nelder-Mead optimization scheme on the first pass, and then COBYLA on the second one. If
         a single value is provided for any of these parameters, that will be used for all optimizations.
 
-    method : [&#39;nelder&#39;, &#39;bfgsb&#39;, &#39;powell&#39;, &#39;cobyla&#39;]
+    method : str
         The method to use for optimization. See wiki page on Force Solver for more information on selecting
-        an appropriate one. If in doubt, &#39;nelder&#39; is usually a safe bet.
+        an appropriate one. Generally any method from [lmfit](https://lmfit.github.io/lmfit-py/fitting.html#the-minimize-function)
+        can be used, but the following tend to give the best results:
+
+        - `lm` - Levenberg-Marquardt
+
+        - `least_squares` - Trust region reflective
+
+        - `nelder` - Nelder-Mead
 
         Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
 
@@ -422,11 +431,18 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         optimizations only for alpha (done by passing `parametersToFit=[&#39;a&#39;]`, or similar)
         will mask the particle except for a small region around the contact.
 
+    imageScaleFactor : int &gt; 1 or positive float &lt; 1
+       Factor by which to scale the real image when optimizating. Integer larger than 1 will
+       lead to the image being upsampled, and float less than 1 (but greater than 0) will lead
+       to the image being downsampled.
+
+       Must lead to an integer up- or downscale factor; for upscaling this is not an issue, but
+       downscale factors may be rounded in not the exact inverse of an integer. eg. a value of `.35`
+       will result in a downscale by a factor of 3, not 2.85.
+
     debug : bool
         Whether or not to print out status statements as the optimization is performed.
     &#34;&#34;&#34;
-
-    residuals = []
 
     # If we are passed a 2d list of parametersToFit, that means we 
     # are to perform multiple minimizations, likely with different
@@ -482,25 +498,65 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     assert len(betaTolList) == numFits, &#39;Invalid betaTol provided&#39;
     assert len(alphaTolList) == numFits, &#39;Invalid alphaTol provided&#39;
 
+    # We need to keep track of the best set of parameters externally from
+    # the optimization routine, in the case that the minimize() function
+    # fails.
+    global residuals, bestResidual, bestParams
+    residuals = []
+    bestResidual = 1e16 # Arbitrary large number that will be overwritten
+    bestParams = None
+
+
+    if imageScaleFactor &gt; 1:
+        # Make sure we have an integer factor
+        realScaleFactor = int(imageScaleFactor)
+        scaledImage = upsample(realImage, realScaleFactor)
+    elif imageScaleFactor &lt; 1:
+        # Make sure we have the inverse of an integer factor
+        realScaleFactor = 1/float(int(1/imageScaleFactor))
+        scaledImage = downsample(realImage, int(1/imageScaleFactor))
+    else:
+        scaledImage = realImage
+        realScaleFactor = 1
+
+    scaledRadius = np.int64(radius * realScaleFactor)
+    scaledCenter = np.array(center * realScaleFactor, dtype=np.int64)
+    scaledPxPerMeter = np.int64(pxPerMeter * realScaleFactor)
+    scaledContactMaskRadius = np.int64(contactMaskRadius * realScaleFactor)
+
     # Setup our function based on what parameters we are fitting
     # We want to avoid any if statements within the function itself, since
     # that will be evaluated many many times.
     # lmfit has a nice setup in that you can denote whether a variable can be
     # changed or not, which means we don&#39;t actually have to change which variables
     # are passed to the function.
-    def objectiveFunction(params, trueImage, z, radius, center, mask):
+    def objectiveFunction(params, trueImage, z, radius, center, mask, sumReturn):
+        global residuals, bestResidual, bestParams
+
         forceArr = np.array([params[f&#34;f{j}&#34;] for j in range(z)])
         betaArr = np.array([params[f&#34;b{j}&#34;] for j in range(z)])
         alphaArr = np.array([params[f&#34;a{j}&#34;] for j in range(z)])
 
-        synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter, brightfield, imageSize=trueImage.shape, center=center)
-        residuals.append(np.sum(np.abs(synImage - trueImage) * mask))
-        return np.sum(np.abs(synImage - trueImage))
+        synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, scaledRadius, scaledPxPerMeter, brightfield, imageSize=scaledImage.shape, center=scaledCenter, mask=mask)
+
+        # Save residual for tracking error
+        residuals.append(np.sum((synImage - trueImage)**2))
+        # Save best configuration outside of minimization
+        if residuals[-1] &lt; bestResidual:
+            bestResidual = residuals[-1]
+            bestParams = params
+    
+        # Levenberg marquardt requires the full difference matrix,
+        # not just the sum
+        if sumReturn:
+            return residuals[-1]
+        else:
+            return (synImage - trueImage)**2
 
 
     # Mask our real image
-    particleMask = circularMask(realImage.shape, center, radius)[:,:,0]
-    maskedImage = realImage * particleMask
+    particleMask = circularMask(scaledImage.shape, scaledCenter, scaledRadius)[:,:,0]
+    maskedImage = scaledImage * particleMask
 
     # Since we may be doing multiple fits, we want to set up the initial conditions
     # such that each fit uses the result of the previous one (and the first one
@@ -512,6 +568,9 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     # Now that we have all of that bookkeeping done, we can actually get on
     # to doing the minimization
     result = None
+    # Whether we should vary beta only for the next run, in case
+    # we have added a force
+    tempVaryBeta = False
     i = 0
     # We use a while loop here because we may want to repeat a fit if
     # we add a new force, which isn&#39;t possible in a for loop
@@ -533,13 +592,15 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
                 # Have to make sure that certain values aren&#39;t allowed to go negative, but
                 # otherwise the bounds are just the initial value +/- the tolerances
                 params.add(f&#39;f{j}&#39;, value=forceArr[j], vary=&#39;f&#39; in parametersToFitList[i], min=max(forceArr[j]-forceTolList[i], 0), max=forceArr[j]+forceTolList[i])
-                params.add(f&#39;b{j}&#39;, value=betaArr[j], vary=&#39;b&#39; in parametersToFitList[i], min=max(betaArr[j]-betaTolList[i], -np.pi), max=min(betaArr[j]+betaTolList[i], np.pi))
+                params.add(f&#39;b{j}&#39;, value=betaArr[j], vary=&#39;b&#39; in parametersToFitList[i] or tempVaryBeta, min=max(betaArr[j]-betaTolList[i], -np.pi), max=min(betaArr[j]+betaTolList[i], np.pi))
                 params.add(f&#39;a{j}&#39;, value=alphaArr[j], vary=&#39;a&#39; in parametersToFitList[i], min=alphaArr[j]-alphaTolList[i], max=alphaArr[j]+alphaTolList[i])
             else:
                 params.add(f&#39;f{j}&#39;, value=forceArr[j], vary=&#39;f&#39; in parametersToFitList[i], min=forceBounds[0], max=forceBounds[1])
-                params.add(f&#39;b{j}&#39;, value=betaArr[j], vary=&#39;b&#39; in parametersToFitList[i], min=betaBounds[0], max=betaBounds[1])
+                params.add(f&#39;b{j}&#39;, value=betaArr[j], vary=&#39;b&#39; in parametersToFitList[i] or tempVaryBeta, min=betaBounds[0], max=betaBounds[1])
                 params.add(f&#39;a{j}&#39;, value=alphaArr[j], vary=&#39;a&#39; in parametersToFitList[i], min=alphaBounds[0], max=alphaBounds[1])
 
+        # Reset the vary beta bool so we only do it this round
+        tempVaryBeta = False
 
         # If alpha is the only parameter being adjusted, it can help to look only in a
         # localized region around each contact, since changing alpha has such a subtle
@@ -551,35 +612,74 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
             localizedMask = np.copy(particleMask) * 10
 
             for j in range(len(betaArr)):
-                contactPoint = center + radius * np.array([np.cos(betaArr[j]), np.sin(betaArr[j])])
+                contactPoint = scaledCenter + scaledRadius * np.array([np.cos(betaArr[j]), np.sin(betaArr[j])])
                 
                 # Create a mask just over the small area inside of the particle
-                localizedMask += circularMask(realImage.shape, contactPoint, contactMaskRadius)[:,:,0]
+                localizedMask += circularMask(scaledImage.shape, contactPoint, scaledContactMaskRadius)[:,:,0]
 
             # &gt;= 10 + 1 such that the points must be inside the
             # The value 10 is mostly arbitrary, but makes it very unlikely
             # that 10 separate contacts would overlap.
-            localizedMask = localizedMask &gt;= 11 
+            localizedMask = (localizedMask &gt;= 11).astype(np.uint8)
         else:
-            # Otherwise we just multiply by 1, which doesn&#39;t affect our optimization at all
-            localizedMask = 1
+            # Otherwise we just set value to none, which will be handled by pepe.simulate.genSyntheticResponse()
+            localizedMask = None
 
-        # Now do the optimization
-        result = minimize(objectiveFunction, params,
-                         args=(maskedImage, z, radius, center, localizedMask),
-                         method=methodList[i], max_nfev=maxEvalsList[i])
+        # This is the callback function after each minimization step
+        # There seems to be an error where sometimes the optimization
+        # will raise an error if the max number of iterations is reached
+        # (and sometimes it doesn&#39;t care) so we use this to make sure
+        # we get the best set of parameters out, even if this error
+        # comes up
+        #def iterCallback(params, iter, resid, *args, **kwargs):
+        #    if iter &gt;= maxEvalsList[i]:
 
-        # Copy over the new values of the forces, alphas, and betas
-        for j in range(z):
-            forceArr[j] = result.params[f&#34;f{j}&#34;] 
-            betaArr[j] = result.params[f&#34;b{j}&#34;] 
-            alphaArr[j] = result.params[f&#34;a{j}&#34;] 
+        # Just kidding, I&#39;ll just use a try and ignore the error, since I
+        # am pretty sure that the params variable is constantly updated, not just
+        # at the end.
+
+        # Levenberg-Marquardt algorithm (&#39;leastsq&#39;) requires that we return the
+        # full difference array
+        sumReturn = not methodList[i] == &#39;leastsq&#39;
+    
+        try:
+            # Now do the optimization
+            result = minimize(objectiveFunction, params,
+                             args=(maskedImage, z, scaledRadius, scaledCenter, localizedMask, sumReturn),
+                             method=methodList[i], max_nfev=maxEvalsList[i], nan_policy=&#39;omit&#39;)
+
+            # Copy over the new values of the forces, alphas, and betas
+            for j in range(z):
+                forceArr[j] = result.params[f&#34;f{j}&#34;] 
+                betaArr[j] = result.params[f&#34;b{j}&#34;] 
+                alphaArr[j] = result.params[f&#34;a{j}&#34;] 
+
+        # If we run out of function evaluations, that not too huge a deal,
+        # so we just grab the best value and move on. If we run into an actual error,
+        # that shouldn&#39;t be caught here, since that might be serious.
+        except AbortFitException as e:
+            if debug:
+                print(e)
+
+            # Otherwise, the we take the last good value (since we kept track outside of
+            # the optimization function)
+            if bestParams is not None:
+                for j in range(z):
+                    forceArr[j] = bestParams[f&#34;f{j}&#34;] 
+                    betaArr[j] = bestParams[f&#34;b{j}&#34;] 
+                    alphaArr[j] = bestParams[f&#34;a{j}&#34;] 
+            else:
+                # If we don&#39;t have any good parameter values, just return the initial
+                # guess. The arrays are initialized as this value, so we don&#39;t need
+                # to do anything in this case.
+                pass
+
 
         # ---------------------
         # Detect missing forces
         # ---------------------
         # If the code detects there is a missing force (no idea how yet)
-        if result.chisqr &gt; missingForceChiSqrThreshold and allowAddForces:
+        if result is not None and result.chisqr &gt; missingForceChiSqrThreshold and allowAddForces:
             # We sweep around the edge of the particle to see if there
             # are any regions that look like they could have a force
             # (denoted by a particularly high g2 value, or rather a peak)
@@ -588,12 +688,12 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
             newBetaArr = np.linspace(-np.pi, np.pi, testBetaCount)
 
             # Calculate all of the g2s around the edge of the particle
-            gSqr = gSquared(realImage)
+            gSqr = gSquared(scaledImage)
             for j in range(testBetaCount):
-                contactPoint = center + radius * np.array([np.cos(newBetaArr[j]), np.sin(newBetaArr[j])])
+                contactPoint = scaledCenter + scaledRadius * np.array([np.cos(newBetaArr[j]), np.sin(newBetaArr[j])])
                 
                 # Create a mask just over the small area inside of the particle
-                contactMask = circularMask(realImage.shape, contactPoint, contactMaskRadius)[:,:,0]
+                contactMask = circularMask(scaledImage.shape, contactPoint, scaledContactMaskRadius)[:,:,0]
                 contactMask = (contactMask + particleMask) == 2
 
                 avgG2Arr[j] = np.sum(contactMask * gSqr) / np.sum(contactMask)
@@ -631,8 +731,8 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
                 if debug:
                     print(f&#39;Added {len(forceArr) - z} force(s).&#39;)
                 # We also want to make sure we&#39;re allowed to vary beta on the next iteration
-                if &#39;b&#39; not in parametersToFitList[i]:
-                    parametersToFitList[i] += [&#39;b&#39;]
+                tempVaryBeta = True
+
                 # This skips the i += 1 at the end of the loop, and makes the optimization run again
                 continue
 
@@ -1562,7 +1662,7 @@ multiplied by the g2 calibration value to get the initial force magnitude guess.
 </details>
 </dd>
 <dt id="pepe.analysis.ForceSolve.forceOptimize"><code class="name flex">
-<span>def <span class="ident">forceOptimize</span></span>(<span>forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-3.141592653589793, 3.141592653589793), alphaBounds=(0, 3.141592653589793), forceTolerance=0.5, betaTolerance=0.2, alphaTolerance=0.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=0.01, contactMaskRadius=30, newBetaMinSeparation=0.4, newBetaG2Height=0.0005, missingForceChiSqrThreshold=210000000.0, localizeAlphaOptimization=True, debug=False)</span>
+<span>def <span class="ident">forceOptimize</span></span>(<span>forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-3.141592653589793, 3.141592653589793), alphaBounds=(-3.141592653589793, 3.141592653589793), forceTolerance=0.5, betaTolerance=0.2, alphaTolerance=0.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=0.01, contactMaskRadius=30, newBetaMinSeparation=0.4, newBetaG2Height=0.0005, missingForceChiSqrThreshold=210000000.0, imageScaleFactor=1, localizeAlphaOptimization=True, debug=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Optimize an initial guess for the forces acting on a particle using
@@ -1596,10 +1696,22 @@ acceptable values to specify different options for each optimization e.g. <code>
 will use the Nelder-Mead optimization scheme on the first pass, and then COBYLA on the second one. If
 a single value is provided for any of these parameters, that will be used for all optimizations.</p>
 </dd>
-<dt><strong><code>method</code></strong> :&ensp;<code>['nelder', 'bfgsb', 'powell', 'cobyla']</code></dt>
+<dt><strong><code>method</code></strong> :&ensp;<code>str</code></dt>
 <dd>
 <p>The method to use for optimization. See wiki page on Force Solver for more information on selecting
-an appropriate one. If in doubt, 'nelder' is usually a safe bet.</p>
+an appropriate one. Generally any method from <a href="https://lmfit.github.io/lmfit-py/fitting.html#the-minimize-function">lmfit</a>
+can be used, but the following tend to give the best results:</p>
+<ul>
+<li>
+<p><code>lm</code> - Levenberg-Marquardt</p>
+</li>
+<li>
+<p><code>least_squares</code> - Trust region reflective</p>
+</li>
+<li>
+<p><code>nelder</code> - Nelder-Mead</p>
+</li>
+</ul>
 <p>Can be provided as a list of values when performing multiple optimizations; see <code>parametersToFit</code>.</p>
 </dd>
 <dt><strong><code>maxEvals</code></strong> :&ensp;<code>int</code></dt>
@@ -1683,6 +1795,16 @@ this value can be very subtle across the entire particle. This parameter will ha
 the largest effect in a small region around the contact. If this value is <code>True</code>,
 optimizations only for alpha (done by passing <code>parametersToFit=['a']</code>, or similar)
 will mask the particle except for a small region around the contact.</dd>
+<dt><strong><code>imageScaleFactor</code></strong> :&ensp;<code>int &gt; 1</code> or <code>positive float &lt; 1</code></dt>
+<dd>&nbsp;</dd>
+</dl>
+<p>Factor by which to scale the real image when optimizating. Integer larger than 1 will
+lead to the image being upsampled, and float less than 1 (but greater than 0) will lead
+to the image being downsampled.</p>
+<p>Must lead to an integer up- or downscale factor; for upscaling this is not an issue, but
+downscale factors may be rounded in not the exact inverse of an integer. eg. a value of <code>.35</code>
+will result in a downscale by a factor of 3, not 2.85.</p>
+<dl>
 <dt><strong><code>debug</code></strong> :&ensp;<code>bool</code></dt>
 <dd>Whether or not to print out status statements as the optimization is performed.</dd>
 </dl></div>
@@ -1690,7 +1812,7 @@ will mask the particle except for a small region around the contact.</dd>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(0, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, localizeAlphaOptimization=True, debug=False):
+<pre><code class="python">def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(-np.pi, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, imageScaleFactor=1, localizeAlphaOptimization=True, debug=False):
     &#34;&#34;&#34;
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -1732,9 +1854,16 @@ will mask the particle except for a small region around the contact.</dd>
         will use the Nelder-Mead optimization scheme on the first pass, and then COBYLA on the second one. If
         a single value is provided for any of these parameters, that will be used for all optimizations.
 
-    method : [&#39;nelder&#39;, &#39;bfgsb&#39;, &#39;powell&#39;, &#39;cobyla&#39;]
+    method : str
         The method to use for optimization. See wiki page on Force Solver for more information on selecting
-        an appropriate one. If in doubt, &#39;nelder&#39; is usually a safe bet.
+        an appropriate one. Generally any method from [lmfit](https://lmfit.github.io/lmfit-py/fitting.html#the-minimize-function)
+        can be used, but the following tend to give the best results:
+
+        - `lm` - Levenberg-Marquardt
+
+        - `least_squares` - Trust region reflective
+
+        - `nelder` - Nelder-Mead
 
         Can be provided as a list of values when performing multiple optimizations; see `parametersToFit`.
 
@@ -1831,11 +1960,18 @@ will mask the particle except for a small region around the contact.</dd>
         optimizations only for alpha (done by passing `parametersToFit=[&#39;a&#39;]`, or similar)
         will mask the particle except for a small region around the contact.
 
+    imageScaleFactor : int &gt; 1 or positive float &lt; 1
+       Factor by which to scale the real image when optimizating. Integer larger than 1 will
+       lead to the image being upsampled, and float less than 1 (but greater than 0) will lead
+       to the image being downsampled.
+
+       Must lead to an integer up- or downscale factor; for upscaling this is not an issue, but
+       downscale factors may be rounded in not the exact inverse of an integer. eg. a value of `.35`
+       will result in a downscale by a factor of 3, not 2.85.
+
     debug : bool
         Whether or not to print out status statements as the optimization is performed.
     &#34;&#34;&#34;
-
-    residuals = []
 
     # If we are passed a 2d list of parametersToFit, that means we 
     # are to perform multiple minimizations, likely with different
@@ -1891,25 +2027,65 @@ will mask the particle except for a small region around the contact.</dd>
     assert len(betaTolList) == numFits, &#39;Invalid betaTol provided&#39;
     assert len(alphaTolList) == numFits, &#39;Invalid alphaTol provided&#39;
 
+    # We need to keep track of the best set of parameters externally from
+    # the optimization routine, in the case that the minimize() function
+    # fails.
+    global residuals, bestResidual, bestParams
+    residuals = []
+    bestResidual = 1e16 # Arbitrary large number that will be overwritten
+    bestParams = None
+
+
+    if imageScaleFactor &gt; 1:
+        # Make sure we have an integer factor
+        realScaleFactor = int(imageScaleFactor)
+        scaledImage = upsample(realImage, realScaleFactor)
+    elif imageScaleFactor &lt; 1:
+        # Make sure we have the inverse of an integer factor
+        realScaleFactor = 1/float(int(1/imageScaleFactor))
+        scaledImage = downsample(realImage, int(1/imageScaleFactor))
+    else:
+        scaledImage = realImage
+        realScaleFactor = 1
+
+    scaledRadius = np.int64(radius * realScaleFactor)
+    scaledCenter = np.array(center * realScaleFactor, dtype=np.int64)
+    scaledPxPerMeter = np.int64(pxPerMeter * realScaleFactor)
+    scaledContactMaskRadius = np.int64(contactMaskRadius * realScaleFactor)
+
     # Setup our function based on what parameters we are fitting
     # We want to avoid any if statements within the function itself, since
     # that will be evaluated many many times.
     # lmfit has a nice setup in that you can denote whether a variable can be
     # changed or not, which means we don&#39;t actually have to change which variables
     # are passed to the function.
-    def objectiveFunction(params, trueImage, z, radius, center, mask):
+    def objectiveFunction(params, trueImage, z, radius, center, mask, sumReturn):
+        global residuals, bestResidual, bestParams
+
         forceArr = np.array([params[f&#34;f{j}&#34;] for j in range(z)])
         betaArr = np.array([params[f&#34;b{j}&#34;] for j in range(z)])
         alphaArr = np.array([params[f&#34;a{j}&#34;] for j in range(z)])
 
-        synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter, brightfield, imageSize=trueImage.shape, center=center)
-        residuals.append(np.sum(np.abs(synImage - trueImage) * mask))
-        return np.sum(np.abs(synImage - trueImage))
+        synImage = genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, scaledRadius, scaledPxPerMeter, brightfield, imageSize=scaledImage.shape, center=scaledCenter, mask=mask)
+
+        # Save residual for tracking error
+        residuals.append(np.sum((synImage - trueImage)**2))
+        # Save best configuration outside of minimization
+        if residuals[-1] &lt; bestResidual:
+            bestResidual = residuals[-1]
+            bestParams = params
+    
+        # Levenberg marquardt requires the full difference matrix,
+        # not just the sum
+        if sumReturn:
+            return residuals[-1]
+        else:
+            return (synImage - trueImage)**2
 
 
     # Mask our real image
-    particleMask = circularMask(realImage.shape, center, radius)[:,:,0]
-    maskedImage = realImage * particleMask
+    particleMask = circularMask(scaledImage.shape, scaledCenter, scaledRadius)[:,:,0]
+    maskedImage = scaledImage * particleMask
 
     # Since we may be doing multiple fits, we want to set up the initial conditions
     # such that each fit uses the result of the previous one (and the first one
@@ -1921,6 +2097,9 @@ will mask the particle except for a small region around the contact.</dd>
     # Now that we have all of that bookkeeping done, we can actually get on
     # to doing the minimization
     result = None
+    # Whether we should vary beta only for the next run, in case
+    # we have added a force
+    tempVaryBeta = False
     i = 0
     # We use a while loop here because we may want to repeat a fit if
     # we add a new force, which isn&#39;t possible in a for loop
@@ -1942,13 +2121,15 @@ will mask the particle except for a small region around the contact.</dd>
                 # Have to make sure that certain values aren&#39;t allowed to go negative, but
                 # otherwise the bounds are just the initial value +/- the tolerances
                 params.add(f&#39;f{j}&#39;, value=forceArr[j], vary=&#39;f&#39; in parametersToFitList[i], min=max(forceArr[j]-forceTolList[i], 0), max=forceArr[j]+forceTolList[i])
-                params.add(f&#39;b{j}&#39;, value=betaArr[j], vary=&#39;b&#39; in parametersToFitList[i], min=max(betaArr[j]-betaTolList[i], -np.pi), max=min(betaArr[j]+betaTolList[i], np.pi))
+                params.add(f&#39;b{j}&#39;, value=betaArr[j], vary=&#39;b&#39; in parametersToFitList[i] or tempVaryBeta, min=max(betaArr[j]-betaTolList[i], -np.pi), max=min(betaArr[j]+betaTolList[i], np.pi))
                 params.add(f&#39;a{j}&#39;, value=alphaArr[j], vary=&#39;a&#39; in parametersToFitList[i], min=alphaArr[j]-alphaTolList[i], max=alphaArr[j]+alphaTolList[i])
             else:
                 params.add(f&#39;f{j}&#39;, value=forceArr[j], vary=&#39;f&#39; in parametersToFitList[i], min=forceBounds[0], max=forceBounds[1])
-                params.add(f&#39;b{j}&#39;, value=betaArr[j], vary=&#39;b&#39; in parametersToFitList[i], min=betaBounds[0], max=betaBounds[1])
+                params.add(f&#39;b{j}&#39;, value=betaArr[j], vary=&#39;b&#39; in parametersToFitList[i] or tempVaryBeta, min=betaBounds[0], max=betaBounds[1])
                 params.add(f&#39;a{j}&#39;, value=alphaArr[j], vary=&#39;a&#39; in parametersToFitList[i], min=alphaBounds[0], max=alphaBounds[1])
 
+        # Reset the vary beta bool so we only do it this round
+        tempVaryBeta = False
 
         # If alpha is the only parameter being adjusted, it can help to look only in a
         # localized region around each contact, since changing alpha has such a subtle
@@ -1960,35 +2141,74 @@ will mask the particle except for a small region around the contact.</dd>
             localizedMask = np.copy(particleMask) * 10
 
             for j in range(len(betaArr)):
-                contactPoint = center + radius * np.array([np.cos(betaArr[j]), np.sin(betaArr[j])])
+                contactPoint = scaledCenter + scaledRadius * np.array([np.cos(betaArr[j]), np.sin(betaArr[j])])
                 
                 # Create a mask just over the small area inside of the particle
-                localizedMask += circularMask(realImage.shape, contactPoint, contactMaskRadius)[:,:,0]
+                localizedMask += circularMask(scaledImage.shape, contactPoint, scaledContactMaskRadius)[:,:,0]
 
             # &gt;= 10 + 1 such that the points must be inside the
             # The value 10 is mostly arbitrary, but makes it very unlikely
             # that 10 separate contacts would overlap.
-            localizedMask = localizedMask &gt;= 11 
+            localizedMask = (localizedMask &gt;= 11).astype(np.uint8)
         else:
-            # Otherwise we just multiply by 1, which doesn&#39;t affect our optimization at all
-            localizedMask = 1
+            # Otherwise we just set value to none, which will be handled by pepe.simulate.genSyntheticResponse()
+            localizedMask = None
 
-        # Now do the optimization
-        result = minimize(objectiveFunction, params,
-                         args=(maskedImage, z, radius, center, localizedMask),
-                         method=methodList[i], max_nfev=maxEvalsList[i])
+        # This is the callback function after each minimization step
+        # There seems to be an error where sometimes the optimization
+        # will raise an error if the max number of iterations is reached
+        # (and sometimes it doesn&#39;t care) so we use this to make sure
+        # we get the best set of parameters out, even if this error
+        # comes up
+        #def iterCallback(params, iter, resid, *args, **kwargs):
+        #    if iter &gt;= maxEvalsList[i]:
 
-        # Copy over the new values of the forces, alphas, and betas
-        for j in range(z):
-            forceArr[j] = result.params[f&#34;f{j}&#34;] 
-            betaArr[j] = result.params[f&#34;b{j}&#34;] 
-            alphaArr[j] = result.params[f&#34;a{j}&#34;] 
+        # Just kidding, I&#39;ll just use a try and ignore the error, since I
+        # am pretty sure that the params variable is constantly updated, not just
+        # at the end.
+
+        # Levenberg-Marquardt algorithm (&#39;leastsq&#39;) requires that we return the
+        # full difference array
+        sumReturn = not methodList[i] == &#39;leastsq&#39;
+    
+        try:
+            # Now do the optimization
+            result = minimize(objectiveFunction, params,
+                             args=(maskedImage, z, scaledRadius, scaledCenter, localizedMask, sumReturn),
+                             method=methodList[i], max_nfev=maxEvalsList[i], nan_policy=&#39;omit&#39;)
+
+            # Copy over the new values of the forces, alphas, and betas
+            for j in range(z):
+                forceArr[j] = result.params[f&#34;f{j}&#34;] 
+                betaArr[j] = result.params[f&#34;b{j}&#34;] 
+                alphaArr[j] = result.params[f&#34;a{j}&#34;] 
+
+        # If we run out of function evaluations, that not too huge a deal,
+        # so we just grab the best value and move on. If we run into an actual error,
+        # that shouldn&#39;t be caught here, since that might be serious.
+        except AbortFitException as e:
+            if debug:
+                print(e)
+
+            # Otherwise, the we take the last good value (since we kept track outside of
+            # the optimization function)
+            if bestParams is not None:
+                for j in range(z):
+                    forceArr[j] = bestParams[f&#34;f{j}&#34;] 
+                    betaArr[j] = bestParams[f&#34;b{j}&#34;] 
+                    alphaArr[j] = bestParams[f&#34;a{j}&#34;] 
+            else:
+                # If we don&#39;t have any good parameter values, just return the initial
+                # guess. The arrays are initialized as this value, so we don&#39;t need
+                # to do anything in this case.
+                pass
+
 
         # ---------------------
         # Detect missing forces
         # ---------------------
         # If the code detects there is a missing force (no idea how yet)
-        if result.chisqr &gt; missingForceChiSqrThreshold and allowAddForces:
+        if result is not None and result.chisqr &gt; missingForceChiSqrThreshold and allowAddForces:
             # We sweep around the edge of the particle to see if there
             # are any regions that look like they could have a force
             # (denoted by a particularly high g2 value, or rather a peak)
@@ -1997,12 +2217,12 @@ will mask the particle except for a small region around the contact.</dd>
             newBetaArr = np.linspace(-np.pi, np.pi, testBetaCount)
 
             # Calculate all of the g2s around the edge of the particle
-            gSqr = gSquared(realImage)
+            gSqr = gSquared(scaledImage)
             for j in range(testBetaCount):
-                contactPoint = center + radius * np.array([np.cos(newBetaArr[j]), np.sin(newBetaArr[j])])
+                contactPoint = scaledCenter + scaledRadius * np.array([np.cos(newBetaArr[j]), np.sin(newBetaArr[j])])
                 
                 # Create a mask just over the small area inside of the particle
-                contactMask = circularMask(realImage.shape, contactPoint, contactMaskRadius)[:,:,0]
+                contactMask = circularMask(scaledImage.shape, contactPoint, scaledContactMaskRadius)[:,:,0]
                 contactMask = (contactMask + particleMask) == 2
 
                 avgG2Arr[j] = np.sum(contactMask * gSqr) / np.sum(contactMask)
@@ -2040,8 +2260,8 @@ will mask the particle except for a small region around the contact.</dd>
                 if debug:
                     print(f&#39;Added {len(forceArr) - z} force(s).&#39;)
                 # We also want to make sure we&#39;re allowed to vary beta on the next iteration
-                if &#39;b&#39; not in parametersToFitList[i]:
-                    parametersToFitList[i] += [&#39;b&#39;]
+                tempVaryBeta = True
+
                 # This skips the i += 1 at the end of the loop, and makes the optimization run again
                 continue
 

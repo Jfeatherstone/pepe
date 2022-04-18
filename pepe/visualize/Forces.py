@@ -60,9 +60,6 @@ def visForces(forceArr, alphaArr, betaArr, centerArr=None, angleArr=None, fps=No
         The list of 3 (or 4, if centers are provided) axes that the quantities are plotted on.
     """
 
-    # TODO: As of now, if you pass the angles arr, the plotting will break unless centers are also
-    # passed; fix this.
-
     fig, ax = plt.subplots(1, 3 + int(centerArr is not None) + int(angleArr is not None), figsize=(3.6*(3+int(centerArr is not None)+int(angleArr is not None)),4))
     
     if len(forceArr) == 0:
@@ -74,12 +71,16 @@ def visForces(forceArr, alphaArr, betaArr, centerArr=None, angleArr=None, fps=No
         fps = 1
    
     if centerArr is not None:
-        ax[3].plot(tArr/fps, centerArr[:,1], label='X')
-        ax[3].plot(tArr/fps, centerArr[:,0], label='Y')
+        ax[-1 - int(angleArr is not None)].plot(tArr/fps, centerArr[:,1], label='X')
+        ax[-1 - int(angleArr is not None)].plot(tArr/fps, centerArr[:,0], label='Y')
+        ax[-1 - int(angleArr is not None)].set_ylabel('Position [px]')
+        ax[-1 - int(angleArr is not None)].legend()
 
     if angleArr is not None:
-        ax[4].plot(tArr/fps, angleArr)
-        ax[4].set_ylabel('Angle [rad]')
+        # The weird ax indexing is to make sure it works regardless of
+        # whether centerArr is passed or not
+        ax[-1].plot(tArr/fps, angleArr)
+        ax[-1].set_ylabel('Angle [rad]')
 
     for i in range(len(forceArr)):
         ax[0].plot(tArr/fps, forceArr[i])
@@ -89,9 +90,6 @@ def visForces(forceArr, alphaArr, betaArr, centerArr=None, angleArr=None, fps=No
     ax[0].set_ylabel('Force [N]')
     ax[1].set_ylabel('Alpha [rad]')
     ax[2].set_ylabel('Beta [rad]')
-    if centerArr is not None:
-        ax[3].set_ylabel('Position [px]')
-        ax[3].legend()
 
     for i in range(3 + int(centerArr is not None) + int(angleArr is not None)):
         if fps == 1:

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>pepe API documentation</title>
-<meta name="description" content="&lt;ins&gt;P&lt;/ins&gt;hoto&lt;ins&gt;e&lt;/ins&gt;lastic &lt;ins&gt;P&lt;/ins&gt;ython &lt;ins&gt;E&lt;/ins&gt;nvironment …" />
+<meta name="description" content="&lt;u&gt;P&lt;/u&gt;hoto&lt;u&gt;e&lt;/u&gt;lastic &lt;u&gt;P&lt;/u&gt;ython &lt;u&gt;E&lt;/u&gt;nvironment …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -23,7 +23,7 @@
 <h1 class="title">Package <code>pepe</code></h1>
 </header>
 <section id="section-intro">
-<h1 id="photoelastic-python-environment"><ins>P</ins>hoto<ins>e</ins>lastic <ins>P</ins>ython <ins>E</ins>nvironment</h1>
+<h1 id="photoelastic-python-environment"><u>P</u>hoto<u>e</u>lastic <u>P</u>ython <u>E</u>nvironment</h1>
 <p>This is a collection of tools for working with photoelastic particle images, including common analysis methods like particle tracking and community analysis.</p>
 <p>The vast majority of these methods are either derivative or directly sourced from previous works (see, e.g., [1] for a nice review of techniques); therefore the value of this library, as I see it, is not in novel implementations of methods, but as a single toolbox containing consistent and compatable implementations of a wide selection of tools.</p>
 <h2 id="features">Features</h2>
@@ -36,7 +36,7 @@
 </ul>
 <h2 id="installation">Installation</h2>
 <p>The library will (soon) be available on PyPi, meaning the package and dependencies can be installed via:</p>
-<pre><code>pip install pepe
+<pre><code>pip install pepe-granular
 </code></pre>
 <p>Theoretically, this should work for any Python &gt;3, but Python 3.7 is the recommended version (primarily because OpenCV has some issues with newer versions).</p>
 <p>Other than the usual scientific computing packages (<code>numpy</code>, <code>scipy</code>, <code>matplotlib</code>) this library makes use of:</p>
@@ -73,7 +73,7 @@ sys.path.append('/absolute/path/to/clone/folder/pepe/')
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 
-# &lt;ins&gt;P&lt;/ins&gt;hoto&lt;ins&gt;e&lt;/ins&gt;lastic &lt;ins&gt;P&lt;/ins&gt;ython &lt;ins&gt;E&lt;/ins&gt;nvironment
+# &lt;u&gt;P&lt;/u&gt;hoto&lt;u&gt;e&lt;/u&gt;lastic &lt;u&gt;P&lt;/u&gt;ython &lt;u&gt;E&lt;/u&gt;nvironment
 
 This is a collection of tools for working with photoelastic particle images, including common analysis methods like particle tracking and community analysis.
 
@@ -91,7 +91,7 @@ The vast majority of these methods are either derivative or directly sourced fro
 
 The library will (soon) be available on PyPi, meaning the package and dependencies can be installed via:
 ```
-pip install pepe
+pip install pepe-granular
 ```
 
 Theoretically, this should work for any Python &gt;3, but Python 3.7 is the recommended version (primarily because OpenCV has some issues with newer versions).
@@ -142,7 +142,7 @@ See the `pepe.examples` submodule for some common uses of the toolbox. Many psed
 [3] Photoelastic methods wiki. https://git-xen.lmgc.univ-montp2.fr/PhotoElasticity/Main/-/wikis/home
 &#34;&#34;&#34;
 
-__version__ = &#39;0.1.0&#39;
+__version__ = &#39;0.3.0&#39;
 __author__ = &#39;Jack Featherstone&#39;
 __credits__ = &#39;North Carolina State University&#39; </code></pre>
 </details>
@@ -156,13 +156,18 @@ __credits__ = &#39;North Carolina State University&#39; </code></pre>
 </dd>
 <dt><code class="name"><a title="pepe.auto" href="auto/index.html">pepe.auto</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>This submodule generally contains pipelines that implement numerous methods from the rest
+of the toolbox.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.preprocess" href="preprocess/index.html">pepe.preprocess</a></code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
 <dt><code class="name"><a title="pepe.simulate" href="simulate/index.html">pepe.simulate</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="pepe.test" href="test/index.html">pepe.test</a></code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
@@ -180,7 +185,8 @@ __credits__ = &#39;North Carolina State University&#39; </code></pre>
 </dd>
 <dt><code class="name"><a title="pepe.visualize" href="visualize/index.html">pepe.visualize</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Visualization
+…</p></div>
 </dd>
 </dl>
 </section>
@@ -211,6 +217,7 @@ __credits__ = &#39;North Carolina State University&#39; </code></pre>
 <li><code><a title="pepe.auto" href="auto/index.html">pepe.auto</a></code></li>
 <li><code><a title="pepe.preprocess" href="preprocess/index.html">pepe.preprocess</a></code></li>
 <li><code><a title="pepe.simulate" href="simulate/index.html">pepe.simulate</a></code></li>
+<li><code><a title="pepe.test" href="test/index.html">pepe.test</a></code></li>
 <li><code><a title="pepe.topology" href="topology/index.html">pepe.topology</a></code></li>
 <li><code><a title="pepe.tracking" href="tracking/index.html">pepe.tracking</a></code></li>
 <li><code><a title="pepe.utils" href="utils/index.html">pepe.utils</a></code></li>

@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>pepe.visualize API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="Visualization
+…" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -23,11 +24,104 @@
 <h1 class="title">Module <code>pepe.visualize</code></h1>
 </header>
 <section id="section-intro">
+<h2 id="visualization">Visualization</h2>
+<p>This submodule contains several methods for visualizing the
+results of various analyses, including displaying particle
+positions over time, forces, contact angles, etc.</p>
+<p>Listed below are some important tips and conventions that are
+used (both within this submodule and externally) that will be
+helpful to keep in mind as you are working with this library.</p>
+<h2 id="visualization-tips">Visualization Tips</h2>
+<h3 id="coordinate-order">Coordinate Order</h3>
+<p>Nearly every part of this library will return coordinates as <code>[y,x]</code>,
+which is the reverse of the typical order <code>[x,y]</code>. This is done because
+the majority of image processing techniques/analysis methods utilize the
+<code>[y,x]</code> ordering, and so we stick to it as well. You will also be expected to
+input most quantities in this order eg. the center coordinates for a circular
+mask created with <code>pepe.preprocess.circularMask()</code>.</p>
+<p>Matplotlib, on the other hand, normally assumes <code>[x,y]</code> ordering, and so it
+may be necessary to flip the order upon graphing any positions. This is very
+easy to do with array slicing:</p>
+<pre><code>a = np.array([[1, 2], [3, 4], [5, 6]])
+
+# Normal order
+print(a) # Output: [[1, 2], [3, 4], [5, 6]]
+
+# Flipped order
+print(a[:,::-1]) # Output: [[2, 1], [4, 3], [6, 5]]
+</code></pre>
+<h3 id="flipped-y-axis">Flipped Y-Axis</h3>
+<p>Another convention of images is to invert the y-axis when displaying an
+image, such that <code>[0,0]</code> is in the top-left corner of the plot. This is
+the case whenever you display something with <code>plt.imshow()</code>, but will not
+be implemented if you simply plot circles with <code>plt.Circle()</code> (or similar).</p>
+<p>As a result, it may be necessary to flip the axis manually with:</p>
+<pre><code>ax.invert_yaxis()
+</code></pre>
+<p>If this is not done, the positions of contact points may look inverted, which
+can be especially hard to notice if you system has vertical symmetry (since
+it won't be obvious by just the positions of the particles).</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">from .Colors import *
+<pre><code class="python">&#34;&#34;&#34;
+Visualization
+-------------
+
+This submodule contains several methods for visualizing the
+results of various analyses, including displaying particle
+positions over time, forces, contact angles, etc.
+
+Listed below are some important tips and conventions that are
+used (both within this submodule and externally) that will be
+helpful to keep in mind as you are working with this library.
+
+Visualization Tips
+------------------
+
+### Coordinate Order
+
+Nearly every part of this library will return coordinates as `[y,x]`,
+which is the reverse of the typical order `[x,y]`. This is done because
+the majority of image processing techniques/analysis methods utilize the
+`[y,x]` ordering, and so we stick to it as well. You will also be expected to
+input most quantities in this order eg. the center coordinates for a circular
+mask created with `pepe.preprocess.circularMask()`.
+
+Matplotlib, on the other hand, normally assumes `[x,y]` ordering, and so it
+may be necessary to flip the order upon graphing any positions. This is very
+easy to do with array slicing:
+
+```
+a = np.array([[1, 2], [3, 4], [5, 6]])
+
+# Normal order
+print(a) # Output: [[1, 2], [3, 4], [5, 6]]
+
+# Flipped order
+print(a[:,::-1]) # Output: [[2, 1], [4, 3], [6, 5]]
+```
+
+### Flipped Y-Axis
+
+Another convention of images is to invert the y-axis when displaying an
+image, such that `[0,0]` is in the top-left corner of the plot. This is
+the case whenever you display something with `plt.imshow()`, but will not
+be implemented if you simply plot circles with `plt.Circle()` (or similar).
+
+As a result, it may be necessary to flip the axis manually with:
+
+```
+ax.invert_yaxis()
+```
+
+If this is not done, the positions of contact points may look inverted, which
+can be especially hard to notice if you system has vertical symmetry (since
+it won&#39;t be obvious by just the positions of the particles).
+&#34;&#34;&#34;
+
+from .Colors import *
 from .Circles import *
 from .Forces import *</code></pre>
 </details>
@@ -59,7 +153,14 @@ from .Forces import *</code></pre>
 <nav id="sidebar">
 <h1>Index</h1>
 <div class="toc">
-<ul></ul>
+<ul>
+<li><a href="#visualization">Visualization</a></li>
+<li><a href="#visualization-tips">Visualization Tips</a><ul>
+<li><a href="#coordinate-order">Coordinate Order</a></li>
+<li><a href="#flipped-y-axis">Flipped Y-Axis</a></li>
+</ul>
+</li>
+</ul>
 </div>
 <ul id="index">
 <li><h3>Super-module</h3>

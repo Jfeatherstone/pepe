@@ -31,7 +31,7 @@
 
 from pepe.utils import preserveOrderArgsort
 
-def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr, maxBetaDisplacement=.3, forcePadValue=np.nan, continuousBetas=False):
+def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr, angleArr, maxBetaDisplacement=.3, forcePadValue=np.nan, continuousBetas=False):
     &#34;&#34;&#34;
     Take the ragged arrays representing particles and forces and convert them to
     particle-wise rectangular arrays.
@@ -98,6 +98,9 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
     radiusArr : list[T,P]
         List of particle radii for T timesteps, with P(T) particles per timestep.
 
+    angleArr : list[T,P]
+        List of particle rotations for T timesteps, with P(T) particles per timestep.
+
     maxBetaDisplacement : float
         The maximum difference of beta angle between timesteps for which a force will
         still be identified with the previous step. The difference is calculated between
@@ -136,33 +139,49 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
     rectRadiusArr : np.ndarray[P,T]
         Particle radii for each timestep. Elements take on a value of `np.nan` if the particle
         does not exist for a given timestep.
+
+    rectAngleArr : np.ndarray[P,T]
+        Particle angles for each timestep. Elements take on a value of `np.nan` if the particle
+        does not exist for a given timestep.
     &#34;&#34;&#34;
     rectForceArr = []
     rectBetaArr = []
     rectAlphaArr = []
 
     # Scalar
+    # TODO Make this capable of following same process as for forces, where
+    # identities are maintained even if multiple particles appear/disappear
     maxNumParticles = np.max([len(betaArr[i]) for i in range(len(betaArr))])
     numTimesteps = len(forceArr)
     # First, make the centers array look nice, which we then use to identify
     # particles
     rectCenterArr = np.zeros((maxNumParticles, numTimesteps, 2))
     rectRadiusArr = np.zeros((maxNumParticles, numTimesteps))
+    rectAngleArr = np.zeros((maxNumParticles, numTimesteps))
 
     # We have to initialize the first element so that we can then use the
     # preserveOrderSort function to make sure the identities stay
     # consistent
     rectCenterArr[:,0] = list(centerArr[0]) + [[np.nan, np.nan]]*(maxNumParticles - len(centerArr[0]))
     rectRadiusArr[:,0] = list(radiusArr[0]) + [np.nan]*(maxNumParticles - len(centerArr[0]))
+    rectAngleArr[:,0] = list(angleArr[0]) + [np.nan]*(maxNumParticles - len(centerArr[0]))
 
     particleOrder = np.zeros((numTimesteps, maxNumParticles), dtype=np.int16)
     particleOrder[0] = np.arange(len(particleOrder[0]))
     particleExists = np.zeros((numTimesteps, maxNumParticles), dtype=np.int16)
 
     for i in range(1, numTimesteps):
-        particleOrder[i] = preserveOrderArgsort(rectCenterArr[:,i-1][np.isnan(rectCenterArr[:,i-1])[:,0] == False], centerArr[i], padMissingValues=True)
-        rectCenterArr[:,i] = [centerArr[i][particleOrder[i,j]] if particleOrder[i,j] is not None else [np.nan, np.nan] for j in range(len(particleOrder[i]))]
-        rectRadiusArr[:,i] = [radiusArr[i][particleOrder[i,j]] if particleOrder[i,j] is not None else np.nan for j in range(len(particleOrder[i]))]
+        currOrder = preserveOrderArgsort(rectCenterArr[:,i-1], centerArr[i], padMissingValues=True, fillNanSpots=True)
+        # Convert all None to -1 (since None can&#39;t be turned into an integer)
+        particleOrder[i] = [ci if ci is not None else -1 for ci in currOrder]
+        rectCenterArr[:,i] = [centerArr[i][particleOrder[i,j]] if particleOrder[i,j] &gt;= 0 else [np.nan, np.nan] for j in range(len(particleOrder[i]))]
+        rectRadiusArr[:,i] = [radiusArr[i][particleOrder[i,j]] if particleOrder[i,j] &gt;= 0 else np.nan for j in range(len(particleOrder[i]))]
+        rectAngleArr[:,i] = [angleArr[i][particleOrder[i,j]] if particleOrder[i,j] &gt;= 0 else np.nan for j in range(len(particleOrder[i]))]
+
+    # The angles were actually just changes in angle, so we should do a cumulative sum
+    # using arange because we want to go backwards
+    for i in np.arange(1, numTimesteps)[::-1]:
+        rectAngleArr[:,i] = np.sum(rectAngleArr[:,:i], axis=-1)
 
     # We now have linked the particles from frame to frame, and can
     # rectangularize the other quantities on a particle-by-particle basis
@@ -173,11 +192,30 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
 
         # This will be triangular array representing the indices of each force in the final
         # rectangular array
-        triSortedBetaArr = [betaArr[0][particleOrder[0,i]]]
-        triSortedForceOrderArr = [list(np.arange(len(triSortedBetaArr[0])))]
+        # We have to make sure this particle exists at the first timestep as well
+        #print(particleOrder[0])
+        #print(betaArr[0])
+        if particleOrder[0,i] &gt;= 0 and particleOrder[0,i] &lt; len(betaArr[0]):
+            triSortedBetaArr = [betaArr[0][particleOrder[0,i]]]
+            triSortedForceOrderArr = [list(np.arange(len(triSortedBetaArr[0])))]
+        else:
+            # Otherwise, we just use an empty list
+            triSortedBetaArr = [[]]
+            triSortedForceOrderArr = [[]]
+
 
         for j in range(1, numTimesteps):
             particleIndex = particleOrder[j,i]
+   
+            # If less than 0, that means this particle is not actually present in this
+            # frame, so we just continue. Note that we do have to carry forward the
+            # beta values from the previous frame, since otherwise we will run into
+            # issues later on.
+            if particleIndex &lt; 0:
+                triSortedBetaArr.append(triSortedBetaArr[-1])
+                triSortedForceOrderArr.append([None for i in range(len(triSortedBetaArr[-1]))])
+                continue
+
             # Correlate the particles between this frame and the last
             #print(triSortedBetaArr[-1])
             order = preserveOrderArgsort(triSortedBetaArr[-1], betaArr[j][particleIndex], padMissingValues=True, maxDistance=maxBetaDisplacement, periodic=True)
@@ -191,7 +229,7 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
 
         # Since the triangular array is only allowed to grow, the length of the last
         # entry will be the maximum number of *unique* forces.
-        #plt.plot([len(ele) for ele in triSortedBetaArr])
+        #plt.plot([len(ele) for ele in triSortedBetaArr]) # Check that it only grows
         #plt.show()
         maxNumForces = len(triSortedBetaArr[-1])
 
@@ -201,6 +239,16 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
         singleParticleAlphaArr = np.zeros((maxNumForces, numTimesteps))
 
         for j in range(numTimesteps):
+            particleIndex = particleOrder[j,i]
+
+            # If particle doesn&#39;t exist for this frame, fill with nan values and move
+            # on
+            if particleIndex &lt; 0:
+                singleParticleBetaArr[:,j] = np.repeat(np.nan, maxNumForces)
+                singleParticleForceArr[:,j] = np.repeat(forcePadValue, maxNumForces)
+                singleParticleAlphaArr[:,j] = np.repeat(np.nan, maxNumForces)
+                continue
+
             # We want to remove the carry over beta values for forces that aren&#39;t actually there
             # now, and then pad with nan values for forces that haven&#39;t appeared yet
 
@@ -221,7 +269,7 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
         rectAlphaArr.append(singleParticleAlphaArr)
         rectBetaArr.append(singleParticleBetaArr)
 
-    return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr</code></pre>
+    return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr, rectAngleArr</code></pre>
 </details>
 </section>
 <section>
@@ -232,7 +280,7 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="pepe.utils.RectArr.rectangularizeForceArrays"><code class="name flex">
-<span>def <span class="ident">rectangularizeForceArrays</span></span>(<span>forceArr, alphaArr, betaArr, centerArr, radiusArr, maxBetaDisplacement=0.3, forcePadValue=nan, continuousBetas=False)</span>
+<span>def <span class="ident">rectangularizeForceArrays</span></span>(<span>forceArr, alphaArr, betaArr, centerArr, radiusArr, angleArr, maxBetaDisplacement=0.3, forcePadValue=nan, continuousBetas=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Take the ragged arrays representing particles and forces and convert them to
@@ -287,6 +335,8 @@ per particle.</dd>
 <dd>List of particle centers (y,x) for T timesteps, with P(T) particles per timestep.</dd>
 <dt><strong><code>radiusArr</code></strong> :&ensp;<code>list[T,P]</code></dt>
 <dd>List of particle radii for T timesteps, with P(T) particles per timestep.</dd>
+<dt><strong><code>angleArr</code></strong> :&ensp;<code>list[T,P]</code></dt>
+<dd>List of particle rotations for T timesteps, with P(T) particles per timestep.</dd>
 <dt><strong><code>maxBetaDisplacement</code></strong> :&ensp;<code>float</code></dt>
 <dd>The maximum difference of beta angle between timesteps for which a force will
 still be identified with the previous step. The difference is calculated between
@@ -318,12 +368,15 @@ if the particle does not exist for a given timestep.</dd>
 <dt><strong><code>rectRadiusArr</code></strong> :&ensp;<code>np.ndarray[P,T]</code></dt>
 <dd>Particle radii for each timestep. Elements take on a value of <code>np.nan</code> if the particle
 does not exist for a given timestep.</dd>
+<dt><strong><code>rectAngleArr</code></strong> :&ensp;<code>np.ndarray[P,T]</code></dt>
+<dd>Particle angles for each timestep. Elements take on a value of <code>np.nan</code> if the particle
+does not exist for a given timestep.</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr, maxBetaDisplacement=.3, forcePadValue=np.nan, continuousBetas=False):
+<pre><code class="python">def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr, angleArr, maxBetaDisplacement=.3, forcePadValue=np.nan, continuousBetas=False):
     &#34;&#34;&#34;
     Take the ragged arrays representing particles and forces and convert them to
     particle-wise rectangular arrays.
@@ -390,6 +443,9 @@ does not exist for a given timestep.</dd>
     radiusArr : list[T,P]
         List of particle radii for T timesteps, with P(T) particles per timestep.
 
+    angleArr : list[T,P]
+        List of particle rotations for T timesteps, with P(T) particles per timestep.
+
     maxBetaDisplacement : float
         The maximum difference of beta angle between timesteps for which a force will
         still be identified with the previous step. The difference is calculated between
@@ -428,33 +484,49 @@ does not exist for a given timestep.</dd>
     rectRadiusArr : np.ndarray[P,T]
         Particle radii for each timestep. Elements take on a value of `np.nan` if the particle
         does not exist for a given timestep.
+
+    rectAngleArr : np.ndarray[P,T]
+        Particle angles for each timestep. Elements take on a value of `np.nan` if the particle
+        does not exist for a given timestep.
     &#34;&#34;&#34;
     rectForceArr = []
     rectBetaArr = []
     rectAlphaArr = []
 
     # Scalar
+    # TODO Make this capable of following same process as for forces, where
+    # identities are maintained even if multiple particles appear/disappear
     maxNumParticles = np.max([len(betaArr[i]) for i in range(len(betaArr))])
     numTimesteps = len(forceArr)
     # First, make the centers array look nice, which we then use to identify
     # particles
     rectCenterArr = np.zeros((maxNumParticles, numTimesteps, 2))
     rectRadiusArr = np.zeros((maxNumParticles, numTimesteps))
+    rectAngleArr = np.zeros((maxNumParticles, numTimesteps))
 
     # We have to initialize the first element so that we can then use the
     # preserveOrderSort function to make sure the identities stay
     # consistent
     rectCenterArr[:,0] = list(centerArr[0]) + [[np.nan, np.nan]]*(maxNumParticles - len(centerArr[0]))
     rectRadiusArr[:,0] = list(radiusArr[0]) + [np.nan]*(maxNumParticles - len(centerArr[0]))
+    rectAngleArr[:,0] = list(angleArr[0]) + [np.nan]*(maxNumParticles - len(centerArr[0]))
 
     particleOrder = np.zeros((numTimesteps, maxNumParticles), dtype=np.int16)
     particleOrder[0] = np.arange(len(particleOrder[0]))
     particleExists = np.zeros((numTimesteps, maxNumParticles), dtype=np.int16)
 
     for i in range(1, numTimesteps):
-        particleOrder[i] = preserveOrderArgsort(rectCenterArr[:,i-1][np.isnan(rectCenterArr[:,i-1])[:,0] == False], centerArr[i], padMissingValues=True)
-        rectCenterArr[:,i] = [centerArr[i][particleOrder[i,j]] if particleOrder[i,j] is not None else [np.nan, np.nan] for j in range(len(particleOrder[i]))]
-        rectRadiusArr[:,i] = [radiusArr[i][particleOrder[i,j]] if particleOrder[i,j] is not None else np.nan for j in range(len(particleOrder[i]))]
+        currOrder = preserveOrderArgsort(rectCenterArr[:,i-1], centerArr[i], padMissingValues=True, fillNanSpots=True)
+        # Convert all None to -1 (since None can&#39;t be turned into an integer)
+        particleOrder[i] = [ci if ci is not None else -1 for ci in currOrder]
+        rectCenterArr[:,i] = [centerArr[i][particleOrder[i,j]] if particleOrder[i,j] &gt;= 0 else [np.nan, np.nan] for j in range(len(particleOrder[i]))]
+        rectRadiusArr[:,i] = [radiusArr[i][particleOrder[i,j]] if particleOrder[i,j] &gt;= 0 else np.nan for j in range(len(particleOrder[i]))]
+        rectAngleArr[:,i] = [angleArr[i][particleOrder[i,j]] if particleOrder[i,j] &gt;= 0 else np.nan for j in range(len(particleOrder[i]))]
+
+    # The angles were actually just changes in angle, so we should do a cumulative sum
+    # using arange because we want to go backwards
+    for i in np.arange(1, numTimesteps)[::-1]:
+        rectAngleArr[:,i] = np.sum(rectAngleArr[:,:i], axis=-1)
 
     # We now have linked the particles from frame to frame, and can
     # rectangularize the other quantities on a particle-by-particle basis
@@ -465,11 +537,30 @@ does not exist for a given timestep.</dd>
 
         # This will be triangular array representing the indices of each force in the final
         # rectangular array
-        triSortedBetaArr = [betaArr[0][particleOrder[0,i]]]
-        triSortedForceOrderArr = [list(np.arange(len(triSortedBetaArr[0])))]
+        # We have to make sure this particle exists at the first timestep as well
+        #print(particleOrder[0])
+        #print(betaArr[0])
+        if particleOrder[0,i] &gt;= 0 and particleOrder[0,i] &lt; len(betaArr[0]):
+            triSortedBetaArr = [betaArr[0][particleOrder[0,i]]]
+            triSortedForceOrderArr = [list(np.arange(len(triSortedBetaArr[0])))]
+        else:
+            # Otherwise, we just use an empty list
+            triSortedBetaArr = [[]]
+            triSortedForceOrderArr = [[]]
+
 
         for j in range(1, numTimesteps):
             particleIndex = particleOrder[j,i]
+   
+            # If less than 0, that means this particle is not actually present in this
+            # frame, so we just continue. Note that we do have to carry forward the
+            # beta values from the previous frame, since otherwise we will run into
+            # issues later on.
+            if particleIndex &lt; 0:
+                triSortedBetaArr.append(triSortedBetaArr[-1])
+                triSortedForceOrderArr.append([None for i in range(len(triSortedBetaArr[-1]))])
+                continue
+
             # Correlate the particles between this frame and the last
             #print(triSortedBetaArr[-1])
             order = preserveOrderArgsort(triSortedBetaArr[-1], betaArr[j][particleIndex], padMissingValues=True, maxDistance=maxBetaDisplacement, periodic=True)
@@ -483,7 +574,7 @@ does not exist for a given timestep.</dd>
 
         # Since the triangular array is only allowed to grow, the length of the last
         # entry will be the maximum number of *unique* forces.
-        #plt.plot([len(ele) for ele in triSortedBetaArr])
+        #plt.plot([len(ele) for ele in triSortedBetaArr]) # Check that it only grows
         #plt.show()
         maxNumForces = len(triSortedBetaArr[-1])
 
@@ -493,6 +584,16 @@ does not exist for a given timestep.</dd>
         singleParticleAlphaArr = np.zeros((maxNumForces, numTimesteps))
 
         for j in range(numTimesteps):
+            particleIndex = particleOrder[j,i]
+
+            # If particle doesn&#39;t exist for this frame, fill with nan values and move
+            # on
+            if particleIndex &lt; 0:
+                singleParticleBetaArr[:,j] = np.repeat(np.nan, maxNumForces)
+                singleParticleForceArr[:,j] = np.repeat(forcePadValue, maxNumForces)
+                singleParticleAlphaArr[:,j] = np.repeat(np.nan, maxNumForces)
+                continue
+
             # We want to remove the carry over beta values for forces that aren&#39;t actually there
             # now, and then pad with nan values for forces that haven&#39;t appeared yet
 
@@ -513,7 +614,7 @@ does not exist for a given timestep.</dd>
         rectAlphaArr.append(singleParticleAlphaArr)
         rectBetaArr.append(singleParticleBetaArr)
 
-    return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr</code></pre>
+    return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr, rectAngleArr</code></pre>
 </details>
 </dd>
 </dl>

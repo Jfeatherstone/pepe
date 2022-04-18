@@ -37,8 +37,8 @@ from pepe.preprocess import circularMask
 # and leads to an accumulated error of around 1e-10
 # It doesn&#39;t speed up a ton, but this error is so small that
 # any amount of speed up is worth it (I think it&#39;s about 5ms/evaluation)
-@numba.njit(parallel=True, fastmath=True)
-def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter=1, brightfield=True, imageSize=None, center=None):
+@numba.njit(parallel=False, fastmath=True)
+def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter=1, brightfield=True, imageSize=None, center=None, mask=None):
     &#34;&#34;&#34;
     Generate the theoretical photoelastic response given the material
     properties and a set of forces.
@@ -86,6 +86,14 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
         Where the center of the particle should be position in on the image canvas. Useful for
         creating a composite image of many particles, as the final image can be made just by
         adding each individual matrix together. Set to None to center the particle automatically.
+
+    mask : np.uint8[H,W]
+        Array of values representing which points, within the circle, to calculate the intensity
+        for. Points with non-zero value represented desired points, and locations with value of
+        0 will not be calculated.
+
+        Points with value of 1 outside of the circular particle will be ignored.
+
     &#34;&#34;&#34;
 
     # Deal with parameters about the image
@@ -98,6 +106,9 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
     if center is None:
         center = np.array([imageSize[0]/2, imageSize[1]/2], dtype=np.int64)
 
+    if mask is None:
+        mask = circularMask(imageSize, center, radius)[:,:,0]
+
     # Create a mask representing the particle, to find the points we need
     # to simulate
     particleMask = circularMask(imageSize, center, radius)[:,:,0]
@@ -107,8 +118,8 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
     #points = np.transpose(np.where(cMask &gt; 0))
     # but numba doesn&#39;t quite like this way, so we have to be 
     # a little more creative
-
-    whereIndices = np.where(particleMask &gt; 0)
+    fullMask = particleMask + mask
+    whereIndices = np.where(fullMask &gt; 1)
     points = np.zeros((len(whereIndices[0]), 2), dtype=np.int16)
     # There is a chance that these indices are backwards, but
     # because we have rotational symmetry, it doesn&#39;t really matter...
@@ -120,7 +131,7 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
     intensityArr = np.zeros((imageSize[0], imageSize[1]))
 
     # As per conventions through the rest of the library, order of points is y,x
-    for i in range(points.shape[0]):
+    for i in numba.prange(points.shape[0]):
         # While we index for the points on the entire grid,
         # we have to pass the stress evaluation method the position relative
         # to the center of the partice
@@ -414,7 +425,7 @@ def evaluateStress(yInd, xInd, forceArr, alphaArr, betaArr, fSigma, radius, pxPe
 </details>
 </dd>
 <dt id="pepe.simulate.SyntheticPE.genSyntheticResponse"><code class="name flex">
-<span>def <span class="ident">genSyntheticResponse</span></span>(<span>forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter=1, brightfield=True, imageSize=None, center=None)</span>
+<span>def <span class="ident">genSyntheticResponse</span></span>(<span>forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter=1, brightfield=True, imageSize=None, center=None, mask=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Generate the theoretical photoelastic response given the material
@@ -451,13 +462,20 @@ determine this based on the radius.</dd>
 <dd>Where the center of the particle should be position in on the image canvas. Useful for
 creating a composite image of many particles, as the final image can be made just by
 adding each individual matrix together. Set to None to center the particle automatically.</dd>
+<dt><strong><code>mask</code></strong> :&ensp;<code>np.uint8[H,W]</code></dt>
+<dd>
+<p>Array of values representing which points, within the circle, to calculate the intensity
+for. Points with non-zero value represented desired points, and locations with value of
+0 will not be calculated.</p>
+<p>Points with value of 1 outside of the circular particle will be ignored.</p>
+</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">@numba.njit(parallel=True, fastmath=True)
-def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter=1, brightfield=True, imageSize=None, center=None):
+<pre><code class="python">@numba.njit(parallel=False, fastmath=True)
+def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter=1, brightfield=True, imageSize=None, center=None, mask=None):
     &#34;&#34;&#34;
     Generate the theoretical photoelastic response given the material
     properties and a set of forces.
@@ -505,6 +523,14 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
         Where the center of the particle should be position in on the image canvas. Useful for
         creating a composite image of many particles, as the final image can be made just by
         adding each individual matrix together. Set to None to center the particle automatically.
+
+    mask : np.uint8[H,W]
+        Array of values representing which points, within the circle, to calculate the intensity
+        for. Points with non-zero value represented desired points, and locations with value of
+        0 will not be calculated.
+
+        Points with value of 1 outside of the circular particle will be ignored.
+
     &#34;&#34;&#34;
 
     # Deal with parameters about the image
@@ -517,6 +543,9 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
     if center is None:
         center = np.array([imageSize[0]/2, imageSize[1]/2], dtype=np.int64)
 
+    if mask is None:
+        mask = circularMask(imageSize, center, radius)[:,:,0]
+
     # Create a mask representing the particle, to find the points we need
     # to simulate
     particleMask = circularMask(imageSize, center, radius)[:,:,0]
@@ -526,8 +555,8 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
     #points = np.transpose(np.where(cMask &gt; 0))
     # but numba doesn&#39;t quite like this way, so we have to be 
     # a little more creative
-
-    whereIndices = np.where(particleMask &gt; 0)
+    fullMask = particleMask + mask
+    whereIndices = np.where(fullMask &gt; 1)
     points = np.zeros((len(whereIndices[0]), 2), dtype=np.int16)
     # There is a chance that these indices are backwards, but
     # because we have rotational symmetry, it doesn&#39;t really matter...
@@ -539,7 +568,7 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
     intensityArr = np.zeros((imageSize[0], imageSize[1]))
 
     # As per conventions through the rest of the library, order of points is y,x
-    for i in range(points.shape[0]):
+    for i in numba.prange(points.shape[0]):
         # While we index for the points on the entire grid,
         # we have to pass the stress evaluation method the position relative
         # to the center of the partice

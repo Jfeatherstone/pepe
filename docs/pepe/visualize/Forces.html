@@ -30,12 +30,66 @@
 <pre><code class="python">import numpy as np
 import matplotlib.pyplot as plt
 
-from pepe.visualize import visCircles, genRandomDistancedColors
+from pepe.visualize import visCircles, genRandomDistancedColors, genColors
 
 
-def visForces(forceArr, alphaArr, betaArr, fps=None):
+def visForces(forceArr, alphaArr, betaArr, centerArr=None, angleArr=None, fps=None):
+    &#34;&#34;&#34;
+    Visualize all of the forces acting on a single particle, by plotting
+    the magnitudes, alphas, and betas (and optionally center position).
 
-    fig, ax = plt.subplots(1, 3, figsize=(12,3))
+    Requires that `forceArr`, `alphaArr`, `betaArr`, and `centerArr` have
+    indices of `forceArr[forceIndex][timeIndex]`, as would be given by
+    rectangularizing via `pepe.utils.rectangularizeForceArrays()` and 
+    indexing a single value in the first dimension.
+
+    Examples
+    --------
+
+    ```
+    # Solve for some forces
+    forceArr, alphaArr, betaArr, centerArr, radiusArr = forceOptimize(...)
+
+    # Particle index
+    pI = 0
+
+    fig, ax = visForces(forceArr[pI], alphaArr[pI], betaArr[pI], centerArr[pI])
+    plt.show()
+    ```
+
+    Parameters
+    ----------
+
+    forceArr : np.ndarray[F,T]
+        Array containing magnitudes of F forces for T timesteps.
+
+    alphaArr : np.ndarray[F,T]
+        Array containing alpha angles of F forces for T timesteps.
+
+    betaArr : np.ndarray[F,T]
+        Array containing beta angles of F forces for T timesteps.
+
+    centerArr : np.ndarray[T,2] or None
+        Array containing center position in form [y,x] of the particle for T timesteps.
+
+    angleArr : np.ndarray[T] or None
+        Array containing angles in radians of the particle for T timesteps.
+
+    fps : float or None
+        The number of frames per second of the capture video, used to convert the x-axis
+        units from frame number to proper seconds.
+
+    Returns
+    -------
+
+    fig : plt.figure()
+        The figure object the quantities are plotted on.
+
+    ax : plt.axis()
+        The list of 3 (or 4, if centers are provided) axes that the quantities are plotted on.
+    &#34;&#34;&#34;
+
+    fig, ax = plt.subplots(1, 3 + int(centerArr is not None) + int(angleArr is not None), figsize=(3.6*(3+int(centerArr is not None)+int(angleArr is not None)),4))
     
     if len(forceArr) == 0:
         return fig, ax
@@ -44,19 +98,31 @@ def visForces(forceArr, alphaArr, betaArr, fps=None):
    
     if fps is None:
         fps = 1
+   
+    if centerArr is not None:
+        ax[-1 - int(angleArr is not None)].plot(tArr/fps, centerArr[:,1], label=&#39;X&#39;)
+        ax[-1 - int(angleArr is not None)].plot(tArr/fps, centerArr[:,0], label=&#39;Y&#39;)
+        ax[-1 - int(angleArr is not None)].set_ylabel(&#39;Position [px]&#39;)
+        ax[-1 - int(angleArr is not None)].legend()
 
-    for i in range(len(tArr)):
+    if angleArr is not None:
+        # The weird ax indexing is to make sure it works regardless of
+        # whether centerArr is passed or not
+        ax[-1].plot(tArr/fps, angleArr)
+        ax[-1].set_ylabel(&#39;Angle [rad]&#39;)
+
+    for i in range(len(forceArr)):
         ax[0].plot(tArr/fps, forceArr[i])
         ax[1].plot(tArr/fps, alphaArr[i], &#39;o&#39;)
-        ax[2].plot(tArr/fps, betaArr[i])
+        ax[2].plot(tArr/fps, betaArr[i], &#39;o&#39;)
 
     ax[0].set_ylabel(&#39;Force [N]&#39;)
     ax[1].set_ylabel(&#39;Alpha [rad]&#39;)
     ax[2].set_ylabel(&#39;Beta [rad]&#39;)
 
-    for i in range(3):
+    for i in range(3 + int(centerArr is not None) + int(angleArr is not None)):
         if fps == 1:
-            ax[i].set_xlabel(&#39;Time [step]&#39;)
+            ax[i].set_xlabel(&#39;Time [frame]&#39;)
         else:
             ax[i].set_xlabel(&#39;Time [s]&#39;)
 
@@ -66,6 +132,15 @@ def visForces(forceArr, alphaArr, betaArr, fps=None):
 
 
 def visContacts(center, radius, betaArr, alphaArr=None, forceArr=None, ax=None, setBounds=False, circleColor=None, forceColors=None, drawCircle=False):
+    &#34;&#34;&#34;
+    Visualize the contacts for a system of particles, indicating either positions
+    of contacts, or positions and contact angles (if `alphaArr` is provided).
+
+    Returns
+    -------
+
+    ax : plt.axis()
+    &#34;&#34;&#34;
 
     npCenter = np.array(center)
 
@@ -73,12 +148,14 @@ def visContacts(center, radius, betaArr, alphaArr=None, forceArr=None, ax=None, 
         fig, ax = plt.subplots()
 
     if forceColors is None:
-        colors = genRandomDistancedColors(len(betaArr), 1000)
+        colors = genColors(len(betaArr), 1000)
+    elif type(forceColors) is str:
+        colors = [forceColors for i in range(len(betaArr))]
     else:
         colors = forceColors
     
     if drawCircle:
-        visCircles([npCenter], [radius], ax, setBounds=setBounds, colors=circleColor)
+        visCircles([npCenter], [radius], ax, setBounds=setBounds, colors=colors[0])
 
     if len(betaArr) == 0:
         return ax
@@ -205,12 +282,27 @@ def fullVisContacts(outputDir, centerArr, radiusArr, betaArr, alphaArr=None, for
 <span>def <span class="ident">visContacts</span></span>(<span>center, radius, betaArr, alphaArr=None, forceArr=None, ax=None, setBounds=False, circleColor=None, forceColors=None, drawCircle=False)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Visualize the contacts for a system of particles, indicating either positions
+of contacts, or positions and contact angles (if <code>alphaArr</code> is provided).</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>ax</code></strong> :&ensp;<code>plt.axis()</code></dt>
+<dd>&nbsp;</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def visContacts(center, radius, betaArr, alphaArr=None, forceArr=None, ax=None, setBounds=False, circleColor=None, forceColors=None, drawCircle=False):
+    &#34;&#34;&#34;
+    Visualize the contacts for a system of particles, indicating either positions
+    of contacts, or positions and contact angles (if `alphaArr` is provided).
+
+    Returns
+    -------
+
+    ax : plt.axis()
+    &#34;&#34;&#34;
 
     npCenter = np.array(center)
 
@@ -218,12 +310,14 @@ def fullVisContacts(outputDir, centerArr, radiusArr, betaArr, alphaArr=None, for
         fig, ax = plt.subplots()
 
     if forceColors is None:
-        colors = genRandomDistancedColors(len(betaArr), 1000)
+        colors = genColors(len(betaArr), 1000)
+    elif type(forceColors) is str:
+        colors = [forceColors for i in range(len(betaArr))]
     else:
         colors = forceColors
     
     if drawCircle:
-        visCircles([npCenter], [radius], ax, setBounds=setBounds, colors=circleColor)
+        visCircles([npCenter], [radius], ax, setBounds=setBounds, colors=colors[0])
 
     if len(betaArr) == 0:
         return ax
@@ -251,17 +345,109 @@ def fullVisContacts(outputDir, centerArr, radiusArr, betaArr, alphaArr=None, for
 </details>
 </dd>
 <dt id="pepe.visualize.Forces.visForces"><code class="name flex">
-<span>def <span class="ident">visForces</span></span>(<span>forceArr, alphaArr, betaArr, fps=None)</span>
+<span>def <span class="ident">visForces</span></span>(<span>forceArr, alphaArr, betaArr, centerArr=None, angleArr=None, fps=None)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Visualize all of the forces acting on a single particle, by plotting
+the magnitudes, alphas, and betas (and optionally center position).</p>
+<p>Requires that <code>forceArr</code>, <code>alphaArr</code>, <code>betaArr</code>, and <code>centerArr</code> have
+indices of <code>forceArr[forceIndex][timeIndex]</code>, as would be given by
+rectangularizing via <code>pepe.utils.rectangularizeForceArrays()</code> and
+indexing a single value in the first dimension.</p>
+<h2 id="examples">Examples</h2>
+<pre><code># Solve for some forces
+forceArr, alphaArr, betaArr, centerArr, radiusArr = forceOptimize(...)
+
+# Particle index
+pI = 0
+
+fig, ax = visForces(forceArr[pI], alphaArr[pI], betaArr[pI], centerArr[pI])
+plt.show()
+</code></pre>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>forceArr</code></strong> :&ensp;<code>np.ndarray[F,T]</code></dt>
+<dd>Array containing magnitudes of F forces for T timesteps.</dd>
+<dt><strong><code>alphaArr</code></strong> :&ensp;<code>np.ndarray[F,T]</code></dt>
+<dd>Array containing alpha angles of F forces for T timesteps.</dd>
+<dt><strong><code>betaArr</code></strong> :&ensp;<code>np.ndarray[F,T]</code></dt>
+<dd>Array containing beta angles of F forces for T timesteps.</dd>
+<dt><strong><code>centerArr</code></strong> :&ensp;<code>np.ndarray[T,2]</code> or <code>None</code></dt>
+<dd>Array containing center position in form [y,x] of the particle for T timesteps.</dd>
+<dt><strong><code>angleArr</code></strong> :&ensp;<code>np.ndarray[T]</code> or <code>None</code></dt>
+<dd>Array containing angles in radians of the particle for T timesteps.</dd>
+<dt><strong><code>fps</code></strong> :&ensp;<code>float</code> or <code>None</code></dt>
+<dd>The number of frames per second of the capture video, used to convert the x-axis
+units from frame number to proper seconds.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>fig</code></strong> :&ensp;<code>plt.figure()</code></dt>
+<dd>The figure object the quantities are plotted on.</dd>
+<dt><strong><code>ax</code></strong> :&ensp;<code>plt.axis()</code></dt>
+<dd>The list of 3 (or 4, if centers are provided) axes that the quantities are plotted on.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def visForces(forceArr, alphaArr, betaArr, fps=None):
+<pre><code class="python">def visForces(forceArr, alphaArr, betaArr, centerArr=None, angleArr=None, fps=None):
+    &#34;&#34;&#34;
+    Visualize all of the forces acting on a single particle, by plotting
+    the magnitudes, alphas, and betas (and optionally center position).
 
-    fig, ax = plt.subplots(1, 3, figsize=(12,3))
+    Requires that `forceArr`, `alphaArr`, `betaArr`, and `centerArr` have
+    indices of `forceArr[forceIndex][timeIndex]`, as would be given by
+    rectangularizing via `pepe.utils.rectangularizeForceArrays()` and 
+    indexing a single value in the first dimension.
+
+    Examples
+    --------
+
+    ```
+    # Solve for some forces
+    forceArr, alphaArr, betaArr, centerArr, radiusArr = forceOptimize(...)
+
+    # Particle index
+    pI = 0
+
+    fig, ax = visForces(forceArr[pI], alphaArr[pI], betaArr[pI], centerArr[pI])
+    plt.show()
+    ```
+
+    Parameters
+    ----------
+
+    forceArr : np.ndarray[F,T]
+        Array containing magnitudes of F forces for T timesteps.
+
+    alphaArr : np.ndarray[F,T]
+        Array containing alpha angles of F forces for T timesteps.
+
+    betaArr : np.ndarray[F,T]
+        Array containing beta angles of F forces for T timesteps.
+
+    centerArr : np.ndarray[T,2] or None
+        Array containing center position in form [y,x] of the particle for T timesteps.
+
+    angleArr : np.ndarray[T] or None
+        Array containing angles in radians of the particle for T timesteps.
+
+    fps : float or None
+        The number of frames per second of the capture video, used to convert the x-axis
+        units from frame number to proper seconds.
+
+    Returns
+    -------
+
+    fig : plt.figure()
+        The figure object the quantities are plotted on.
+
+    ax : plt.axis()
+        The list of 3 (or 4, if centers are provided) axes that the quantities are plotted on.
+    &#34;&#34;&#34;
+
+    fig, ax = plt.subplots(1, 3 + int(centerArr is not None) + int(angleArr is not None), figsize=(3.6*(3+int(centerArr is not None)+int(angleArr is not None)),4))
     
     if len(forceArr) == 0:
         return fig, ax
@@ -270,19 +456,31 @@ def fullVisContacts(outputDir, centerArr, radiusArr, betaArr, alphaArr=None, for
    
     if fps is None:
         fps = 1
+   
+    if centerArr is not None:
+        ax[-1 - int(angleArr is not None)].plot(tArr/fps, centerArr[:,1], label=&#39;X&#39;)
+        ax[-1 - int(angleArr is not None)].plot(tArr/fps, centerArr[:,0], label=&#39;Y&#39;)
+        ax[-1 - int(angleArr is not None)].set_ylabel(&#39;Position [px]&#39;)
+        ax[-1 - int(angleArr is not None)].legend()
 
-    for i in range(len(tArr)):
+    if angleArr is not None:
+        # The weird ax indexing is to make sure it works regardless of
+        # whether centerArr is passed or not
+        ax[-1].plot(tArr/fps, angleArr)
+        ax[-1].set_ylabel(&#39;Angle [rad]&#39;)
+
+    for i in range(len(forceArr)):
         ax[0].plot(tArr/fps, forceArr[i])
         ax[1].plot(tArr/fps, alphaArr[i], &#39;o&#39;)
-        ax[2].plot(tArr/fps, betaArr[i])
+        ax[2].plot(tArr/fps, betaArr[i], &#39;o&#39;)
 
     ax[0].set_ylabel(&#39;Force [N]&#39;)
     ax[1].set_ylabel(&#39;Alpha [rad]&#39;)
     ax[2].set_ylabel(&#39;Beta [rad]&#39;)
 
-    for i in range(3):
+    for i in range(3 + int(centerArr is not None) + int(angleArr is not None)):
         if fps == 1:
-            ax[i].set_xlabel(&#39;Time [step]&#39;)
+            ax[i].set_xlabel(&#39;Time [frame]&#39;)
         else:
             ax[i].set_xlabel(&#39;Time [s]&#39;)
 

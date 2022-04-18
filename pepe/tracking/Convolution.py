@@ -223,10 +223,6 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
     if debug:
         plt.show()
 
-    # TODO: Not sure if this needs to be here
-    #if negativeHalo and negativeInside:
-    #    convArr = np.max(convArr) - convArr
-
     # Downsample data by 5-10x and run peak detection
     downsampledConvArr = cv2.resize(cv2.blur(convArr, (peakDownsample,peakDownsample)), (0,0),
                                     fx=1/peakDownsample, fy=1/peakDownsample, interpolation=cv2.INTER_CUBIC)

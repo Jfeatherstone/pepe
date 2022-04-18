@@ -1,6 +1,6 @@
 """
 
-# <ins>P</ins>hoto<ins>e</ins>lastic <ins>P</ins>ython <ins>E</ins>nvironment
+# <u>P</u>hoto<u>e</u>lastic <u>P</u>ython <u>E</u>nvironment
 
 This is a collection of tools for working with photoelastic particle images, including common analysis methods like particle tracking and community analysis.
 
@@ -18,7 +18,7 @@ The vast majority of these methods are either derivative or directly sourced fro
 
 The library will (soon) be available on PyPi, meaning the package and dependencies can be installed via:
 ```
-pip install pepe
+pip install pepe-granular
 ```
 
 Theoretically, this should work for any Python >3, but Python 3.7 is the recommended version (primarily because OpenCV has some issues with newer versions).

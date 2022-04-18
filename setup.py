@@ -4,8 +4,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-     name='pepe',  
-     version='0.2.0',
+     name='pepe-granular',  
+     version='0.3.0',
      author="Jack Featherstone",
      author_email="jdfeathe@ncsu.edu",
      license='MIT',
