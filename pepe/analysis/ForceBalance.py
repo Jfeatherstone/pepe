@@ -1,3 +1,8 @@
+"""
+Methods to gauge how well force balance is satisfied for an ensemble,
+and to convert between polar and cartesian systems.
+"""
+
 import numpy as np
 
 import numba

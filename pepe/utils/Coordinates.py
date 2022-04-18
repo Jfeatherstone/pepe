@@ -1,3 +1,6 @@
+"""
+Coordinate transformation from discrete cartesian space to discrete polar space.
+"""
 import numpy as np
 
 # I honestly don't think this will ever be used, but can't hurt to

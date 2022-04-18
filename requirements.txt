@@ -1,0 +1,7 @@
+numpy
+numba
+matplotlib
+python-opencv
+scikit-learn
+lmfit
+Pillow

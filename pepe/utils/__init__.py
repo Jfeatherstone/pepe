@@ -1,3 +1,6 @@
+"""
+Miscellaneous functions, like coordinate transformations, function parsing, and proximity sorting.
+"""
 from .Outer import *
 from .Sort import *
 from .RectArr import *

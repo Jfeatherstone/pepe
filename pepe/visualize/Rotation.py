@@ -1,3 +1,6 @@
+"""
+Methods to visualize rotational motion of a particle.
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 

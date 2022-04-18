@@ -1,3 +1,6 @@
+"""
+Image loading and light gradient correction.
+"""
 import numpy as np
 
 from PIL import Image

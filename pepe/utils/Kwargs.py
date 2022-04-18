@@ -1,3 +1,6 @@
+"""
+Decorator functions to simplify how kwargs are passed to pipline functions.
+"""
 from functools import wraps
 
 def explicitKwargs():

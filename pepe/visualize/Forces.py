@@ -1,3 +1,6 @@
+"""
+Methods to visualize forces acting on a particle.
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 

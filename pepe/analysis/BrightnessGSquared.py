@@ -1,5 +1,5 @@
 """
-Basic methods for computing metrics based on the pixel intensity of images.
+Basic methods for computing metrics based on the pixel intensity within images.
 """
 
 import numpy as np

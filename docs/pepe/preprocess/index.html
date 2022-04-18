@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>pepe.preprocess API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="Image loading, masking, filtering, and rescaling." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -23,11 +23,15 @@
 <h1 class="title">Module <code>pepe.preprocess</code></h1>
 </header>
 <section id="section-intro">
+<p>Image loading, masking, filtering, and rescaling.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">from .Mask import *
+<pre><code class="python">&#34;&#34;&#34;
+Image loading, masking, filtering, and rescaling.
+&#34;&#34;&#34;
+from .Mask import *
 from .Image import *
 from .Filter import *
 from .Rescale import *</code></pre>
@@ -38,20 +42,19 @@ from .Rescale import *</code></pre>
 <dl>
 <dt><code class="name"><a title="pepe.preprocess.Filter" href="Filter.html">pepe.preprocess.Filter</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Filter application and edge detection.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.preprocess.Image" href="Image.html">pepe.preprocess.Image</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Image loading and light gradient correction.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.preprocess.Mask" href="Mask.html">pepe.preprocess.Mask</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Image mask creation and manipulation.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.preprocess.Rescale" href="Rescale.html">pepe.preprocess.Rescale</a></code></dt>
 <dd>
-<div class="desc"><p>Methods to upsample or downsample an image. Upsampling is done via DNN Super-resolution
-implemented in OpenCV, downsampling is done via various …</p></div>
+<div class="desc"><p>Methods to upsample or downsample an image via DNN super-resolution or pyramid scheme, respectively …</p></div>
 </dd>
 </dl>
 </section>

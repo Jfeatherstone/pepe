@@ -1,3 +1,6 @@
+"""
+String-to-list parsing used in reading settings files.
+"""
 import numpy as np
 import ast
 

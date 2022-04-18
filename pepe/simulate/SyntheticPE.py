@@ -1,3 +1,6 @@
+"""
+Generate a synthetic photoelastic response.
+"""
 import numpy as np
 
 import numba

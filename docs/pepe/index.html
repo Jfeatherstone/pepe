@@ -28,39 +28,45 @@
 <p>The vast majority of these methods are either derivative or directly sourced from previous works (see, e.g., [1] for a nice review of techniques); therefore the value of this library, as I see it, is not in novel implementations of methods, but as a single toolbox containing consistent and compatable implementations of a wide selection of tools.</p>
 <h2 id="features">Features</h2>
 <ul>
-<li>Common analysis techniques (G<sup>2</sup>, D2min, etc.)</li>
-<li>Particle tracking</li>
+<li>Common analysis techniques (G<sup>2</sup>, D<sup>2</sup><sub>min</sub>, etc.)</li>
+<li>Particle position and orientation tracking</li>
 <li>Masking and other preprocessing tools</li>
 <li>Synthetic photoelastic response generation</li>
-<li>Force solving (as in [2])</li>
+<li>Inverse force solving (as in [2])</li>
 </ul>
 <h2 id="installation">Installation</h2>
 <p>The library will (soon) be available on PyPi, meaning the package and dependencies can be installed via:</p>
 <pre><code>pip install pepe-granular
 </code></pre>
+<p>For now, the easiest way to install is from the Github repository:</p>
+<pre><code>git clone https://github.com/Jfeatherstone/pepe
+cd pepe
+pip install .
+</code></pre>
 <p>Theoretically, this should work for any Python &gt;3, but Python 3.7 is the recommended version (primarily because OpenCV has some issues with newer versions).</p>
-<p>Other than the usual scientific computing packages (<code>numpy</code>, <code>scipy</code>, <code>matplotlib</code>) this library makes use of:</p>
+<p>Dependencies:</p>
 <ul>
+<li><a href="https://numpy.org/">numpy</a></li>
+<li><a href="https://matplotlib.org/">matplotlib</a></li>
 <li><a href="https://lmfit.github.io/lmfit-py/index.html">lmfit</a></li>
 <li><a href="https://scikit-learn.org/stable/">scikit-learn</a></li>
 <li><a href="https://opencv.org/">OpenCV</a></li>
 <li><a href="https://pillow.readthedocs.io/en/stable/">Pillow</a></li>
+<li><a href="https://numba.pydata.org/">Numba</a></li>
 </ul>
 <p>These can all be installed (alongside their dependencies) via <code>pip</code>:</p>
-<pre><code>pip intsall python-opencv scikit-learn lmfit Pillow
+<pre><code>git clone https://github.com/Jfeatherstone/pepe
+cd pepe
+pip install -r requirements.txt
 </code></pre>
 <p>Some of the test notebooks may also make use of the Matlab API to compare against Jonathan Kollmer's implementation, but this is not required to use any functions in the library itself. Installing the Matlab API requires a local installation of Matlab proper; see <a href="https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html">here</a> for more information.</p>
-<p>If you'd rather build from source, the following sequence should do it on most systems:</p>
-<pre><code>git clone https://github.com/jfeatherstone/pepe
-cd pepe
-python setup.py install
-</code></pre>
 <p>If you'd rather not install systemwide (say, to run just a simple example), you can also just manually add the package to your path at the top of a Jupyter notebook/python file with (after cloning the repo as above):</p>
 <pre><code>import sys
 sys.path.append('/absolute/path/to/clone/folder/pepe/')
 </code></pre>
+<p>Many of the notebooks in the main directory follow this process, since they are used to test the development versions of the packages.</p>
 <h2 id="usage">Usage</h2>
-<p>See the <code>pepe.examples</code> submodule for some common uses of the toolbox. Many pseduo-unit-tests can be found in the repo's <a href="https://github.com/Jfeatherstone/pepe/tree/master/tests"><code>tests</code></a> folder, which may also help determine how to use a certain function. Note that these latter examples are more made for my own benefit, and won't be as heavily commented as the proper examples.</p>
+<p>See the <code>pepe.examples</code> submodule for some common uses of the toolbox. Many pseudo-unit-tests can be found in the repo's <a href="https://github.com/Jfeatherstone/pepe/tree/master/notebooks"><code>notebooks</code></a> folder, which may also help determine how to use a certain function. Note that these latter examples are more made for my own benefit, and won't be as heavily commented as the proper examples.</p>
 <h2 id="further-reading-and-references">Further Reading and References</h2>
 <p>[1] Abed Zadeh, A., Barés, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N., Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., &amp; Zheng, H. (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular Matter, 21(4), 83. <a href="https://doi.org/10.1007/s10035-019-0942-2">https://doi.org/10.1007/s10035-019-0942-2</a></p>
 <p>[2] Daniels, K. E., Kollmer, J. E., &amp; Puckett, J. G. (2017). Photoelastic force measurements in granular materials. Review of Scientific Instruments, 88(5), 051808. <a href="https://doi.org/10.1063/1.4983049">https://doi.org/10.1063/1.4983049</a></p>
@@ -81,11 +87,11 @@ The vast majority of these methods are either derivative or directly sourced fro
 
 ## Features
 
-- Common analysis techniques (G&lt;sup&gt;2&lt;/sup&gt;, D2min, etc.)
-- Particle tracking
+- Common analysis techniques (G&lt;sup&gt;2&lt;/sup&gt;, D&lt;sup&gt;2&lt;/sup&gt;&lt;sub&gt;min&lt;/sub&gt;, etc.)
+- Particle position and orientation tracking
 - Masking and other preprocessing tools
 - Synthetic photoelastic response generation
-- Force solving (as in [2])
+- Inverse force solving (as in [2])
 
 ## Installation
 
@@ -94,28 +100,34 @@ The library will (soon) be available on PyPi, meaning the package and dependenci
 pip install pepe-granular
 ```
 
+For now, the easiest way to install is from the Github repository:
+
+```
+git clone https://github.com/Jfeatherstone/pepe
+cd pepe
+pip install .
+```
+
 Theoretically, this should work for any Python &gt;3, but Python 3.7 is the recommended version (primarily because OpenCV has some issues with newer versions).
 
-Other than the usual scientific computing packages (`numpy`, `scipy`, `matplotlib`) this library makes use of:
+Dependencies:
 
+- [numpy](https://numpy.org/)
+- [matplotlib](https://matplotlib.org/)
 - [lmfit](https://lmfit.github.io/lmfit-py/index.html)
 - [scikit-learn](https://scikit-learn.org/stable/)
 - [OpenCV](https://opencv.org/)
 - [Pillow](https://pillow.readthedocs.io/en/stable/)
+- [Numba](https://numba.pydata.org/)
 
 These can all be installed (alongside their dependencies) via `pip`:
 ```
-pip intsall python-opencv scikit-learn lmfit Pillow
+git clone https://github.com/Jfeatherstone/pepe
+cd pepe
+pip install -r requirements.txt
 ```
 
 Some of the test notebooks may also make use of the Matlab API to compare against Jonathan Kollmer&#39;s implementation, but this is not required to use any functions in the library itself. Installing the Matlab API requires a local installation of Matlab proper; see [here](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html) for more information.
-
-If you&#39;d rather build from source, the following sequence should do it on most systems:
-```
-git clone https://github.com/jfeatherstone/pepe
-cd pepe
-python setup.py install
-```
 
 If you&#39;d rather not install systemwide (say, to run just a simple example), you can also just manually add the package to your path at the top of a Jupyter notebook/python file with (after cloning the repo as above):
 
@@ -124,9 +136,11 @@ import sys
 sys.path.append(&#39;/absolute/path/to/clone/folder/pepe/&#39;)
 ```
 
+Many of the notebooks in the main directory follow this process, since they are used to test the development versions of the packages.
+
 ## Usage
 
-See the `pepe.examples` submodule for some common uses of the toolbox. Many pseduo-unit-tests can be found in the repo&#39;s [`tests`](https://github.com/Jfeatherstone/pepe/tree/master/tests) folder, which may also help determine how to use a certain function. Note that these latter examples are more made for my own benefit, and won&#39;t be as heavily commented as the proper examples.
+See the `pepe.examples` submodule for some common uses of the toolbox. Many pseudo-unit-tests can be found in the repo&#39;s [`notebooks`](https://github.com/Jfeatherstone/pepe/tree/master/notebooks) folder, which may also help determine how to use a certain function. Note that these latter examples are more made for my own benefit, and won&#39;t be as heavily commented as the proper examples.
 
 ## Further Reading and References
 
@@ -152,41 +166,40 @@ __credits__ = &#39;North Carolina State University&#39; </code></pre>
 <dl>
 <dt><code class="name"><a title="pepe.analysis" href="analysis/index.html">pepe.analysis</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Granular analysis methods (eg. D<sup>2</sup><sub>min</sub>), network analysis methods (eg. adjacency matrices), and inverse force solving.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.auto" href="auto/index.html">pepe.auto</a></code></dt>
 <dd>
-<div class="desc"><p>This submodule generally contains pipelines that implement numerous methods from the rest
-of the toolbox.</p></div>
+<div class="desc"><p>Pipelines that perform many operations at once (eg. tracking all particles from a directory of images), and help scripts.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.preprocess" href="preprocess/index.html">pepe.preprocess</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Image loading, masking, filtering, and rescaling.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.simulate" href="simulate/index.html">pepe.simulate</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Generating synthetic responses of photoelastic particles from an ensemble of forces.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.test" href="test/index.html">pepe.test</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Unit tests.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.topology" href="topology/index.html">pepe.topology</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Peak finding via persistent homology.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.tracking" href="tracking/index.html">pepe.tracking</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Circle finding via Hough or convolutional techniques, and orientation tracking.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.utils" href="utils/index.html">pepe.utils</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Miscellaneous functions, like coordinate transformations, function parsing, and proximity sorting.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.visualize" href="visualize/index.html">pepe.visualize</a></code></dt>
 <dd>
-<div class="desc"><p>Visualization
-…</p></div>
+<div class="desc"><p>Methods for visualizing the results of other submodules, like displaying particle
+positions, forces, or contact angles …</p></div>
 </dd>
 </dl>
 </section>

@@ -1,3 +1,6 @@
+"""
+Methods to generate good color schemes for visualization.
+"""
 import numpy as np
 import matplotlib.colors as mcolors
 

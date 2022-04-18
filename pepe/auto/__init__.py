@@ -1,6 +1,5 @@
 """
-This submodule generally contains pipelines that implement numerous methods from the rest
-of the toolbox.
+Pipelines that perform many operations at once (eg. tracking all particles from a directory of images), and help scripts.
 """
 
 from .ForceSolve import *

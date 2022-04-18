@@ -1,3 +1,6 @@
+"""
+Filter application and edge detection.
+"""
 import numpy as np
 
 from scipy.ndimage import filters

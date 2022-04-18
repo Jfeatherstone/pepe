@@ -1,3 +1,6 @@
+"""
+Proximity sort, in which a list of items is sorted to most closely match another list.
+"""
 import numpy as np
 from sklearn.neighbors import KDTree
 
