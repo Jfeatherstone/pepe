@@ -1,6 +1,5 @@
 """
-Methods to upsample or downsample an image. Upsampling is done via DNN Super-resolution 
-implemented in OpenCV, downsampling is done via various averaging/blurring techniques.
+Methods to upsample or downsample an image via DNN super-resolution or pyramid scheme, respectively.
 
 Note that the super-resolution models need to be downloaded separately, as they are not
 my own original work. Four methods are compatible with this package:

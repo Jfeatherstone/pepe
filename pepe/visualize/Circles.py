@@ -1,3 +1,6 @@
+"""
+Methods to visualize the positions of particles.
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 

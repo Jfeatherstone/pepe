@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>pepe.analysis API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="Granular analysis methods (eg. D&lt;sup&gt;2&lt;/sup&gt;&lt;sub&gt;min&lt;/sub&gt;), network analysis methods (eg. adjacency matrices), and inverse force solving." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -23,11 +23,16 @@
 <h1 class="title">Module <code>pepe.analysis</code></h1>
 </header>
 <section id="section-intro">
+<p>Granular analysis methods (eg. D<sup>2</sup><sub>min</sub>), network analysis methods (eg. adjacency matrices), and inverse force solving.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">from .BrightnessGSquared import *
+<pre><code class="python">&#34;&#34;&#34;
+Granular analysis methods (eg. D&lt;sup&gt;2&lt;/sup&gt;&lt;sub&gt;min&lt;/sub&gt;), network analysis methods (eg. adjacency matrices), and inverse force solving.
+&#34;&#34;&#34;
+
+from .BrightnessGSquared import *
 from .NetworkAnalysis import *
 from .ForceBalance import *
 from .ForceSolve import *
@@ -39,16 +44,17 @@ from .D2Min import *</code></pre>
 <dl>
 <dt><code class="name"><a title="pepe.analysis.BrightnessGSquared" href="BrightnessGSquared.html">pepe.analysis.BrightnessGSquared</a></code></dt>
 <dd>
-<div class="desc"><p>Basic methods for computing metrics based on the pixel intensity of images.</p></div>
+<div class="desc"><p>Basic methods for computing metrics based on the pixel intensity within images.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.analysis.D2Min" href="D2Min.html">pepe.analysis.D2Min</a></code></dt>
 <dd>
-<div class="desc"><p>Copied directly from my standalone repo:
-<a href="https://github.com/Jfeatherstone/D2min">https://github.com/Jfeatherstone/D2min</a> …</p></div>
+<div class="desc"><p>Method to solve D2min field between two different particle states,
+and calculate the von Mises strain …</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.analysis.ForceBalance" href="ForceBalance.html">pepe.analysis.ForceBalance</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Methods to gauge how well force balance is satisfied for an ensemble,
+and to convert between polar and cartesian systems.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.analysis.ForceSolve" href="ForceSolve.html">pepe.analysis.ForceSolve</a></code></dt>
 <dd>

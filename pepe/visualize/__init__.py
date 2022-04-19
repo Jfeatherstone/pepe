@@ -1,10 +1,7 @@
 """
-Visualization
--------------
 
-This submodule contains several methods for visualizing the
-results of various analyses, including displaying particle
-positions over time, forces, contact angles, etc.
+Methods for visualizing the results of other submodules, like displaying particle
+positions, forces, or contact angles.
 
 Listed below are some important tips and conventions that are
 used (both within this submodule and externally) that will be

@@ -1,3 +1,6 @@
+"""
+Peak finding in arbitrary dimensional spaces via persistent homology.
+"""
 import numpy as np
 
 import numba

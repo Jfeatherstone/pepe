@@ -1,3 +1,6 @@
+"""
+Tracking particles and forces across timesteps to turn triangular arrays into rectangular ones.
+"""
 import numpy as np
 
 from pepe.utils import preserveOrderArgsort

@@ -1,3 +1,6 @@
+"""
+Image mask creation and manipulation.
+"""
 import numpy as np
 
 import numba

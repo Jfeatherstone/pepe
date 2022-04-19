@@ -1,8 +1,9 @@
 """
+Method to solve D2min field between two different particle states,
+and calculate the von Mises strain.
+
 Copied directly from my standalone repo:
 https://github.com/Jfeatherstone/D2min
-
-A script to solve D2min field between two different particle states.
 
 Originally forked from:
 https://github.com/Binxu-Stack/D2min

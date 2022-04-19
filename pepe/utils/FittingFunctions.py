@@ -1,3 +1,6 @@
+"""
+Common functional forms to fit to.
+"""
 import numpy as np
 
 def cone(p, center, halfAngle, offset, roundness):

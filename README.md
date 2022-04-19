@@ -38,7 +38,7 @@ Python 3.7 is the recommended version to use, with the following packages:
 
 These can all be installed (alongside their dependencies) via `pip`:
 ```
-pip install numpy matplotlib python-opencv scikit-learn lmfit Pillow numba
+tip install numpy matplotlib python-opencv scikit-learn lmfit Pillow numba
 ```
 
 Some of the test notebooks may also make use of the Matlab API to compare against Jonathan Kollmer's implementation [1a], but this is not required to use any functions in the library itself. Installing the Matlab API requires a local installation of Matlab proper; see [here](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html) for more information.

@@ -1,3 +1,7 @@
+"""
+Start from a directory of images and solve for all of the particle positions, orientations, and forces.
+"""
+
 import numpy as np
 import os
 import cv2

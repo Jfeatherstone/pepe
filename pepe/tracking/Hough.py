@@ -1,3 +1,6 @@
+"""
+Particle position tracking via Hough transform.
+"""
 import numpy as np
 
 import cv2

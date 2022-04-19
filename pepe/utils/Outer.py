@@ -1,3 +1,6 @@
+"""
+Outer products defined in a `numba`-friendly way.
+"""
 import numpy as np
 
 import numba

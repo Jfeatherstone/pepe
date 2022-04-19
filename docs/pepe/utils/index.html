@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>pepe.utils API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="Miscellaneous functions, like coordinate transformations, function parsing, and proximity sorting." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -23,11 +23,15 @@
 <h1 class="title">Module <code>pepe.utils</code></h1>
 </header>
 <section id="section-intro">
+<p>Miscellaneous functions, like coordinate transformations, function parsing, and proximity sorting.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">from .Outer import *
+<pre><code class="python">&#34;&#34;&#34;
+Miscellaneous functions, like coordinate transformations, function parsing, and proximity sorting.
+&#34;&#34;&#34;
+from .Outer import *
 from .Sort import *
 from .RectArr import *
 from .Kwargs import *
@@ -41,31 +45,31 @@ from .Coordinates import *</code></pre>
 <dl>
 <dt><code class="name"><a title="pepe.utils.Coordinates" href="Coordinates.html">pepe.utils.Coordinates</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Coordinate transformation from discrete cartesian space to discrete polar space.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.utils.FittingFunctions" href="FittingFunctions.html">pepe.utils.FittingFunctions</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Common functional forms to fit to.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.utils.Kwargs" href="Kwargs.html">pepe.utils.Kwargs</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Decorator functions to simplify how kwargs are passed to pipline functions.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.utils.Outer" href="Outer.html">pepe.utils.Outer</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Outer products defined in a <code>numba</code>-friendly way.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.utils.Parse" href="Parse.html">pepe.utils.Parse</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>String-to-list parsing used in reading settings files.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.utils.RectArr" href="RectArr.html">pepe.utils.RectArr</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Tracking particles and forces across timesteps to turn triangular arrays into rectangular ones.</p></div>
 </dd>
 <dt><code class="name"><a title="pepe.utils.Sort" href="Sort.html">pepe.utils.Sort</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Proximity sort, in which a list of items is sorted to most closely match another list.</p></div>
 </dd>
 </dl>
 </section>
