@@ -51,9 +51,9 @@ def polarToCartesian(force, alpha, beta, collapse=True):
         # Rev. Sci. Inst. 88 (2017). There is an extra negative on the alphas, since mine
         # appear to be defined backwards.
         # F_y
-        cartesianForceArr[i,0] = forceMagArr[i] * np.cos(-alphaArr[i] + betaArr[i]) #(np.cos(betaArr[i,j]) * np.cos(alphaArr[i,j]) + np.sin(betaArr[i,j]) * np.sin(alphaArr[i,j]))
+        cartesianForceArr[i,0] = forceArr[i] * np.cos(-alphaArr[i] + betaArr[i]) #(np.cos(betaArr[i,j]) * np.cos(alphaArr[i,j]) + np.sin(betaArr[i,j]) * np.sin(alphaArr[i,j]))
         # F_x
-        cartesianForceArr[i,1] = -forceMagArr[i] * np.sin(-alphaArr[i] + betaArr[i]) #(-np.sin(betaArr[i,j]) * np.cos(alphaArr[i,j]) + np.cos(betaArr[i,j]) * np.sin(alphaArr[i,j]))
+        cartesianForceArr[i,1] = -forceArr[i] * np.sin(-alphaArr[i] + betaArr[i]) #(-np.sin(betaArr[i,j]) * np.cos(alphaArr[i,j]) + np.cos(betaArr[i,j]) * np.sin(alphaArr[i,j]))
        
 
     # If we only have a single force, we should collapse that first dimension
@@ -108,13 +108,13 @@ def testForceBalance(forceArr, alphaArr, betaArr, collapse=True):
 
     forceSumArr = np.zeros((multiForceArr.shape[0], 2)) 
     # Sum up forces for each timestep
-    for i in range(len(multiForceArr.shape[0])):
+    for i in range(multiForceArr.shape[0]):
         cartForces = polarToCartesian(multiForceArr[i], multiAlphaArr[i], multiBetaArr[i], collapse=False)
 
         # sum_y
-        forceSumArr[0] = np.sum(cartForces[:,0])
+        forceSumArr[i,0] = np.sum(cartForces[:,0])
         # sum_x
-        forceSumArr[1] = np.sum(cartForces[:,1])
+        forceSumArr[i,1] = np.sum(cartForces[:,1])
 
     if singleTimestep and collapse:
         return forceSumArr[0]

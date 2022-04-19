@@ -497,7 +497,8 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     scaledCenter = np.array(center * realScaleFactor, dtype=np.int64)
     scaledPxPerMeter = np.int64(pxPerMeter * realScaleFactor)
     scaledContactMaskRadius = np.int64(contactMaskRadius * realScaleFactor)
-    scaledParticleArea = scaledradius**2 * np.pi
+    scaledParticleArea = scaledRadius**2 * np.pi
+
     # Setup our function based on what parameters we are fitting
     # We want to avoid any if statements within the function itself, since
     # that will be evaluated many many times.
@@ -638,12 +639,15 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
 
         # If we run out of function evaluations, that not too huge a deal,
         # so we just grab the best value and move on. If we run into an actual error,
-        # that shouldn't be caught here, since that might be serious.
-        except AbortFitException as e:
+        # that shouldn't be caught here, since that might be serious, so we re-trhow it.
+        except Exception as e:
+            if not isinstance(e, AbortFitException):
+                raise e
+
             if debug:
                 print(e)
 
-            # Otherwise, the we take the last good value (since we kept track outside of
+            # Otherwise, we take the last good value (since we kept track outside of
             # the optimization function)
             if bestParams is not None:
                 for j in range(z):

@@ -25,7 +25,7 @@ from pepe.topology import findPeaksMulti
 # passed to the function, and which were left as default values. See beginning
 # of method code for more information/motivation.
 @explicitKwargs()
-def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, cropXMin=None, cropXMax=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, performOptimization=True, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
+def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, cropXMin=None, cropXMax=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, forceBalanceWeighting=1., imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, performOptimization=True, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
     """
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be returned and potentially written to various files.
@@ -136,6 +136,10 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         the optimization process as they are (`False`).
 
         Currently WIP, and does not do anything.
+
+    forceBalanceWeighting : float
+        If a non-zero positive value, adds a contribution to the optimization cost
+        pertaining to how well the ensemble of forces satisfy force balance.
 
     imageStartIndex : int or None
         The index of which image to start at when analyzing the files in `imageDirectory`. Value
@@ -288,6 +292,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 "contactMaskRadius": contactMaskRadius,
                 "peBlurKernel": peBlurKernel,
                 "requireForceBalance": requireForceBalance,
+                "forceBalanceWeighting": forceBalanceWeighting,
                 "circleTrackingChannel": circleTrackingChannel,
                 "photoelasticChannel": photoelasticChannel,
                 "maxBetaDisplacement": maxBetaDisplacement,
@@ -380,6 +385,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                           "missingForceChiSqrThreshold": float,
                           "imageScaleFactor": float,
                           "localizeAlphaOptimization": bool,
+                          "forceBalanceWeighting": float,
                           "debug": bool}
 
     # Now add all the dictionaries together
