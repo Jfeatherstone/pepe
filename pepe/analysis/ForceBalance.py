@@ -107,14 +107,15 @@ def testForceBalance(forceArr, alphaArr, betaArr, collapse=True):
         multiBetaArr = np.array(betaArr)
     else:
         singleTimestep = True
+        # TODO: Might need a transpose here
         multiForceArr = np.array([forceArr])
         multiAlphaArr = np.array([alphaArr])
         multiBetaArr = np.array([betaArr])
 
-    forceSumArr = np.zeros((multiForceArr.shape[0], 2)) 
+    forceSumArr = np.zeros((multiForceArr.shape[1], 2)) 
     # Sum up forces for each timestep
-    for i in range(multiForceArr.shape[0]):
-        cartForces = polarToCartesian(multiForceArr[i], multiAlphaArr[i], multiBetaArr[i], collapse=False)
+    for i in range(multiForceArr.shape[1]):
+        cartForces = polarToCartesian(multiForceArr[:,i], multiAlphaArr[:,i], multiBetaArr[:,i], collapse=False)
 
         # sum_y
         forceSumArr[i,0] = np.sum(cartForces[:,0])

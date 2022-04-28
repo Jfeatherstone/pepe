@@ -18,18 +18,60 @@ from IPython.display import clear_output
 
 import pepe
 from pepe.preprocess import checkImageType, lightCorrectionDiff, circularMask
-from pepe.analysis import initialForceSolve, forceOptimize, gSquared, g2ForceCalibration, singleParticleForceBalance
-from pepe.tracking import houghCircle, convCircle, angularConvolution
+from pepe.analysis import initialForceSolve, forceOptimize, gSquared, g2ForceCalibration, singleParticleForceBalance, forceOptimizeArgDTypes
+from pepe.tracking import houghCircle, convCircle, angularConvolution, circleTrackArgDTypes
 from pepe.simulate import genSyntheticResponse
 from pepe.utils import preserveOrderArgsort, rectangularizeForceArrays, explicitKwargs, parseList
 from pepe.visualize import genColors, visCircles, visForces, visContacts, visRotation
 from pepe.topology import findPeaksMulti
 
+# All of the dtypes of the args for the below method
+forceSolveArgDTypes  = {"imageDirectory": str,
+            "imageExtension": str,
+            "imageEndIndex": int,
+            "imageStartIndex": int,
+            "carryOverAlpha": bool,
+            "carryOverForce": bool,
+            "showProgressBar": bool,
+            "lightCorrectionImage": str,
+            "lightCorrectionVerticalMask": str,
+            "lightCorrectionHorizontalMask": str,
+            "g2CalibrationImage": str,
+            "g2CalibrationCutoffFactor": float,
+            "maskImage": str,
+            "cropXMin": int,
+            "cropXMax": int,
+            "circleDetectionMethod": str,
+            "guessRadius": float,
+            "fSigma": float,
+            "pxPerMeter": float,
+            "brightfield": bool,
+            "contactPadding": int,
+            "g2MaskPadding": int,
+            "contactMaskRadius": int,
+            "peBlurKernel": int,
+            "requireForceBalance": bool,
+            "circleTrackingChannel": int,
+            "circleTrackingKwargs": dict,
+            "photoelasticChannel": int,
+            "optimizationKwargs": dict,
+            "maxBetaDisplacement": float,
+            "forceNoiseWidth": float,
+            "alphaNoiseWidth": float,
+            "saveMovie": bool,
+            "pickleArrays": bool,
+            "outputRootFolder": str,
+            "outputExtension": str,
+            "genFitReport": bool,
+            "performOptimization": bool,
+            "inputSettingsFile": str,
+            "debug": bool}
+
 # Decorator that allows us to identify which keyword arguments were explicitly
 # passed to the function, and which were left as default values. See beginning
 # of method code for more information/motivation.
 @explicitKwargs()
-def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, cropXMin=None, cropXMax=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, forceBalanceWeighting=1., imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, performOptimization=True, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
+def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, cropXMin=None, cropXMax=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, performOptimization=True, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
     """
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be returned and potentially written to various files.
@@ -296,7 +338,6 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 "contactMaskRadius": contactMaskRadius,
                 "peBlurKernel": peBlurKernel,
                 "requireForceBalance": requireForceBalance,
-                "forceBalanceWeighting": forceBalanceWeighting,
                 "circleTrackingChannel": circleTrackingChannel,
                 "photoelasticChannel": photoelasticChannel,
                 "maxBetaDisplacement": maxBetaDisplacement,
@@ -313,88 +354,20 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # For the next step, we will need to know all of the data types of each
     # argument (to properly cast). Because certain arguments have None as a default
     # value, we can't automatically generate this information.
-    argDTypes  = {"imageDirectory": str,
-                "imageExtension": str,
-                "imageEndIndex": int,
-                "imageStartIndex": int,
-                "carryOverAlpha": bool,
-                "carryOverForce": bool,
-                "showProgressBar": bool,
-                "lightCorrectionImage": str,
-                "lightCorrectionVerticalMask": str,
-                "lightCorrectionHorizontalMask": str,
-                "g2CalibrationImage": str,
-                "g2CalibrationCutoffFactor": float,
-                "maskImage": str,
-                "cropXMin": int,
-                "cropXMax": int,
-                "circleDetectionMethod": str,
-                "guessRadius": float,
-                "fSigma": float,
-                "pxPerMeter": float,
-                "brightfield": bool,
-                "contactPadding": int,
-                "g2MaskPadding": int,
-                "contactMaskRadius": int,
-                "peBlurKernel": int,
-                "requireForceBalance": bool,
-                "circleTrackingChannel": int,
-                "photoelasticChannel": int,
-                "maxBetaDisplacement": float,
-                "forceNoiseWidth": float,
-                "alphaNoiseWidth": float,
-                "saveMovie": bool,
-                "pickleArrays": bool,
-                "outputRootFolder": str,
-                "outputExtension": str,
-                "genFitReport": bool,
-                "performOptimization": bool,
-                "debug": bool}
+    # See above this method for the list of these, since they are also used
+    # in the TrialObject file
 
     # We need to do the same thing for the kwargs for both
     # circle tracking and optimization
-    circleTrackDTypes = {"radiusTolerance": int,
-                         "offscreenParticles": bool,
-                         "outlineOnly": bool,
-                         "outlineThickness": float,
-                         "negativeHalo": bool,
-                         "haloThickness": float,
-                         "negativeInside": bool,
-                         "peakDownsample": int,
-                         "minPeakPrevalence": float,
-                         "intensitySoftmax": float,
-                         "intensitySoftmin": float,
-                         "invert": bool,
-                         "allowOverlap": bool,
-                         "fitPeaks": bool,
-                         "debug": bool}
 
-    optimizationDTypes = {"parametersToFit": list,
-                          "method": str,
-                          "maxEvals": int,
-                          "forceBounds": tuple,
-                          "betaBounds": tuple,
-                          "alphaBounds": tuple,
-                          "forceTolerance": float,
-                          "betaTolerance": float,
-                          "alphaTolerance": float,
-                          "useTolerance": bool,
-                          "returnOptResult": bool,
-                          "allowAddForces": bool,
-                          "allowRemoveForces": bool,
-                          "minForceThreshold": float,
-                          "contactMaskRadius": int,
-                          "newBetaMinSeparation": float,
-                          "newBetaG2Height": float,
-                          "missingForceChiSqrThreshold": float,
-                          "imageScaleFactor": float,
-                          "localizeAlphaOptimization": bool,
-                          "forceBalanceWeighting": float,
-                          "debug": bool}
+    # These have both been moved to either the tracking/DTypes.py
+    # or the analysis/ForceSolve.py files, respectively
 
     # Now add all the dictionaries together
-    argDTypes.update(circleTrackDTypes)
-    argDTypes.update(optimizationDTypes)
+    argDTypes = forceSolveArgDTypes.copy()
+
+    argDTypes.update(circleTrackArgDTypes)
+    argDTypes.update(forceOptimizeArgDTypes)
 
     # 2. Anything read in from a settings file
     # Note that it works to our advantage that we already have values for most entries,
@@ -492,6 +465,14 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
     # This will calculation the light correction across the images 
     if settings["lightCorrectionImage"] is not None:
+        # Convert to absolute paths if they are paths
+        if type(settings["lightCorrectionImage"]) is str:
+            settings["lightCorrectionImage"] = os.path.abspath(settings["lightCorrectionImage"])
+        if type(settings["lightCorrectionVerticalMask"]) is str:
+            settings["lightCorrectionVerticalMask"] = os.path.abspath(settings["lightCorrectionVerticalMask"])
+        if type(settings["lightCorrectionHorizontalMask"]) is str:
+            settings["lightCorrectionHorizontalMask"] = os.path.abspath(settings["lightCorrectionHorizontalMask"])
+            
         cImageProper = checkImageType(settings["lightCorrectionImage"])[:,xB[0]:xB[1]]
         vMask = checkImageType(settings["lightCorrectionVerticalMask"])[:,xB[0]:xB[1]]
         hMask = checkImageType(settings["lightCorrectionHorizontalMask"])[:,xB[0]:xB[1]]

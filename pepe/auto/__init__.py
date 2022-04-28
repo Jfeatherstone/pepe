@@ -3,3 +3,4 @@ Pipelines that perform many operations at once (eg. tracking all particles from 
 """
 
 from .ForceSolve import *
+from .TrialObject import *

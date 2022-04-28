@@ -18,6 +18,32 @@ from scipy.signal import find_peaks
 
 import matplotlib.pyplot as plt
 
+# This dictionary defines the argument data types for
+# forceOptimize(), which is used for reading in settings
+# from a file
+forceOptimizeArgDTypes = {"parametersToFit": list,
+                      "method": str,
+                      "maxEvals": int,
+                      "forceBounds": tuple,
+                      "betaBounds": tuple,
+                      "alphaBounds": tuple,
+                      "forceTolerance": float,
+                      "betaTolerance": float,
+                      "alphaTolerance": float,
+                      "useTolerance": bool,
+                      "returnOptResult": bool,
+                      "allowAddForces": bool,
+                      "allowRemoveForces": bool,
+                      "minForceThreshold": float,
+                      "contactMaskRadius": int,
+                      "newBetaMinSeparation": float,
+                      "newBetaG2Height": float,
+                      "missingForceChiSqrThreshold": float,
+                      "imageScaleFactor": float,
+                      "localizeAlphaOptimization": bool,
+                      "forceBalanceWeighting": float,
+                      "debug": bool}
+
 def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={}, g2Cal=None):
     """
     Calculate the approximate forces on each particle based on the photoelastic response.
