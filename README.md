@@ -32,13 +32,16 @@ Python 3.7 is the recommended version to use, with the following packages:
 - [matplotlib](https://matplotlib.org/)
 - [lmfit](https://lmfit.github.io/lmfit-py/index.html)
 - [scikit-learn](https://scikit-learn.org/stable/)
-- [OpenCV](https://opencv.org/)
+- [opencv](https://opencv.org/)
 - [Pillow](https://pillow.readthedocs.io/en/stable/)
-- [Numba](https://numba.pydata.org/)
+- [numba](https://numba.pydata.org/)
+- [tqdm](https://github.com/tqdm/tqdm)
 
 These can all be installed (alongside their dependencies) via `pip`:
 ```
-tip install numpy matplotlib python-opencv scikit-learn lmfit Pillow numba
+git clone https://github.com/jfeatherstone/pepe
+cd pepe
+pip install -r requirements.txt
 ```
 
 Some of the test notebooks may also make use of the Matlab API to compare against Jonathan Kollmer's implementation [1a], but this is not required to use any functions in the library itself. Installing the Matlab API requires a local installation of Matlab proper; see [here](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html) for more information.

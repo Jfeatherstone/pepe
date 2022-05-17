@@ -8,3 +8,4 @@ from .ForceBalance import *
 from .ForceSolve import *
 from .D2Min import *
 from .Derivative import *
+from .LinearRegions import *

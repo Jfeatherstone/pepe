@@ -129,6 +129,152 @@ class Trial():
             self.numForces = [len(f) for f in self.forceArr]
             self.numTimesteps = [f[0].shape[-1] for f in self.forceArr if len(f) > 0][0]
 
+    def fixAllNan(self, interpolateForce=True):
+        """
+        Replaces all nan values in all data arrays with physically inspired
+        values.
+
+        Enacts the following behavior on each data type:
+
+            forceArr: replaces with 0
+            angleArr: interpolates
+            alphaArr: interpolates
+            betaArr: interpolates
+            radiusArr: interpolates
+            centerArr: interpolates
+        """
+        for i in range(self.numParticles):
+
+            if not interpolateForce:
+                # Forces
+                # Just replace all nan values with 0
+                self.forceArr[i] = np.where(np.isnan(self.forceArr[i]), 0, self.forceArr[i])
+
+            # Interpolate for the rest
+            # In theory, when one is nan, the others should be as well, but
+            # this isn't guaranteed, so it is safest just to go through each
+            # separately
+
+            # Angles
+            angleNanIndices = np.where(np.isnan(self.angleArr[i]))[0]
+
+            for j in range(len(angleNanIndices)):
+                previousGoodPoint = [ind for ind in np.arange(angleNanIndices[j]) if not ind in angleNanIndices]
+                previousGoodPoint = previousGoodPoint[-1] if len(previousGoodPoint) > 0 else -1
+                nextGoodPoint = [ind for ind in np.arange(angleNanIndices[j], self.numTimesteps) if not ind in angleNanIndices]
+                nextGoodPoint = nextGoodPoint[0] if len(nextGoodPoint) > 0 else -1
+               
+                # If one of the points before or after doesn't exist, just copy over the
+                # one that does. We should never have a case in which both points don't
+                # exist, because that would mean we have an entire array of nan values
+                if previousGoodPoint < 0:
+                    self.angleArr[i][angleNanIndices[j]] = self.angleArr[i][nextGoodPoint]
+                elif nextGoodPoint < 0:
+                    self.angleArr[i][angleNanIndices[j]] = self.angleArr[i][previousGoodPoint]
+                else:
+                    self.angleArr[i][angleNanIndices[j]] = (self.angleArr[i][previousGoodPoint] * (angleNanIndices[j] - previousGoodPoint) + self.angleArr[i][nextGoodPoint] * (nextGoodPoint - angleNanIndices[j])) / (nextGoodPoint - previousGoodPoint)
+
+
+            # Centers
+            centerNanIndices = np.where(np.isnan(self.centerArr[i][:,0]))[0]
+
+            for j in range(len(centerNanIndices)):
+                previousGoodPoint = [ind for ind in np.arange(centerNanIndices[j]) if not ind in centerNanIndices]
+                previousGoodPoint = previousGoodPoint[-1] if len(previousGoodPoint) > 0 else -1
+                nextGoodPoint = [ind for ind in np.arange(centerNanIndices[j], self.numTimesteps) if not ind in centerNanIndices]
+                nextGoodPoint = nextGoodPoint[0] if len(nextGoodPoint) > 0 else -1
+              
+                # If one of the points before or after doesn't exist, just copy over the
+                # one that does. We should never have a case in which both points don't
+                # exist, because that would mean we have an entire array of nan values
+                if previousGoodPoint < 0:
+                    self.centerArr[i][centerNanIndices[j]] = self.centerArr[i][nextGoodPoint]
+                elif nextGoodPoint < 0:
+                    self.centerArr[i][centerNanIndices[j]] = self.centerArr[i][previousGoodPoint]
+                else:
+                    # Loop over y and x
+                    for k in range(2):
+                        self.centerArr[i][angleNanIndices[j]][k] = (self.centerArr[i][previousGoodPoint][k] * (centerNanIndices[j] - previousGoodPoint) + self.centerArr[i][nextGoodPoint][k] * (nextGoodPoint - centerNanIndices[j])) / (nextGoodPoint - previousGoodPoint)
+
+            # Radii
+            radiusNanIndices = np.where(np.isnan(self.radiusArr[i]))[0]
+
+            for j in range(len(radiusNanIndices)):
+                previousGoodPoint = [ind for ind in np.arange(radiusNanIndices[j]) if not ind in radiusNanIndices]
+                previousGoodPoint = previousGoodPoint[-1] if len(previousGoodPoint) > 0 else -1
+                nextGoodPoint = [ind for ind in np.arange(radiusNanIndices[j], self.numTimesteps) if not ind in radiusNanIndices]
+                nextGoodPoint = nextGoodPoint[0] if len(nextGoodPoint) > 0 else -1
+
+                # If one of the points before or after doesn't exist, just copy over the
+                # one that does. We should never have a case in which both points don't
+                # exist, because that would mean we have an entire array of nan values
+                if previousGoodPoint < 0:
+                    self.radiusArr[i][radiusNanIndices[j]] = self.radiusArr[i][nextGoodPoint]
+                elif nextGoodPoint < 0:
+                    self.radiusArr[i][radiusNanIndices[j]] = self.radiusArr[i][previousGoodPoint]
+                else:  
+                    self.radiusArr[i][angleNanIndices[j]] = (self.radiusArr[i][previousGoodPoint] * (radiusNanIndices[j] - previousGoodPoint) + self.radiusArr[i][nextGoodPoint] * (nextGoodPoint - radiusNanIndices[j])) / (nextGoodPoint - previousGoodPoint)
+
+            # For the last two, we have to iterate over each force
+            for j in range(self.numForces[i]):
+
+                # Alphas
+                alphaNanIndices = np.where(np.isnan(self.alphaArr[i][j]))[0]
+
+                for k in range(len(alphaNanIndices)):
+                    previousGoodPoint = [ind for ind in np.arange(alphaNanIndices[k]) if not ind in alphaNanIndices]
+                    previousGoodPoint = previousGoodPoint[-1] if len(previousGoodPoint) > 0 else -1
+                    nextGoodPoint = [ind for ind in np.arange(alphaNanIndices[k], self.numTimesteps) if not ind in alphaNanIndices]
+                    nextGoodPoint = nextGoodPoint[0] if len(nextGoodPoint) > 0 else -1
+
+                    # If one of the points before or after doesn't exist, just copy over the
+                    # one that does. We should never have a case in which both points don't
+                    # exist, because that would mean we have an entire array of nan values
+                    if previousGoodPoint < 0:
+                        self.alphaArr[i][j][alphaNanIndices[k]] = self.alphaArr[i][j][nextGoodPoint]
+                    elif nextGoodPoint < 0:
+                        self.alphaArr[i][j][alphaNanIndices[k]] = self.alphaArr[i][j][previousGoodPoint]
+                    else:   
+                        self.alphaArr[i][j][alphaNanIndices[k]] = (self.alphaArr[i][j][previousGoodPoint] * (alphaNanIndices[k] - previousGoodPoint) + self.alphaArr[i][j][nextGoodPoint] * (nextGoodPoint - alphaNanIndices[k])) / (nextGoodPoint - previousGoodPoint)
+
+                # Betas
+                betaNanIndices = np.where(np.isnan(self.betaArr[i][j]))[0]
+
+                for k in range(len(betaNanIndices)):
+                    previousGoodPoint = [ind for ind in np.arange(betaNanIndices[k]) if not ind in betaNanIndices]
+                    previousGoodPoint = previousGoodPoint[-1] if len(previousGoodPoint) > 0 else -1
+                    nextGoodPoint = [ind for ind in np.arange(betaNanIndices[k], self.numTimesteps) if not ind in betaNanIndices]
+                    nextGoodPoint = nextGoodPoint[0] if len(nextGoodPoint) > 0 else -1
+                    
+                    # If one of the points before or after doesn't exist, just copy over the
+                    # one that does. We should never have a case in which both points don't
+                    # exist, because that would mean we have an entire array of nan values
+                    if previousGoodPoint < 0:
+                        self.betaArr[i][j][betaNanIndices[k]] = self.betaArr[i][j][nextGoodPoint]
+                    elif nextGoodPoint < 0:
+                        self.betaArr[i][j][betaNanIndices[k]] = self.betaArr[i][j][previousGoodPoint]
+                    else:   
+                        self.betaArr[i][j][betaNanIndices[k]] = (self.betaArr[i][j][previousGoodPoint] * (alphaNanIndices[k] - previousGoodPoint) + self.alphaArr[i][j][nextGoodPoint] * (nextGoodPoint - alphaNanIndices[k])) / (nextGoodPoint - previousGoodPoint)
+
+                # Forces
+                if interpolateForce:
+                    forceNanIndices = np.where(np.isnan(self.forceArr[i][j]))[0]
+
+                    for k in range(len(forceNanIndices)):
+                        previousGoodPoint = [ind for ind in np.arange(forceNanIndices[k]) if not ind in forceNanIndices]
+                        previousGoodPoint = previousGoodPoint[-1] if len(previousGoodPoint) > 0 else -1
+                        nextGoodPoint = [ind for ind in np.arange(forceNanIndices[k], self.numTimesteps) if not ind in forceNanIndices]
+                        nextGoodPoint = nextGoodPoint[0] if len(nextGoodPoint) > 0 else -1
+                        
+                        # If one of the points before or after doesn't exist, just copy over the
+                        # one that does. We should never have a case in which both points don't
+                        # exist, because that would mean we have an entire array of nan values
+                        if previousGoodPoint < 0 or nextGoodPoint < 0:
+                            self.forceArr[i][j][forceNanIndices[k]] = 0
+                        else:   
+                            self.forceArr[i][j][forceNanIndices[k]] = (self.forceArr[i][j][previousGoodPoint] * (forceNanIndices[k] - previousGoodPoint) + self.forceArr[i][j][nextGoodPoint] * (nextGoodPoint - forceNanIndices[k])) / (nextGoodPoint - previousGoodPoint)
+
+
 
     def particleNear(self, point, timestep=0):
         distances = np.sum((self.centerArr[:,timestep,:] - np.array(point))**2, axis=-1)

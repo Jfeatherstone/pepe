@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from pepe.visualize import genColors
 
-def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColors=False, setBounds=False):
+def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColors=False, setBounds=False, linewidth=1):
     """
     Draw circles on an axis.
 
@@ -42,7 +42,7 @@ def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColor
         circleColorsList = colors
 
     for i in range(len(npCenters)):
-        c = plt.Circle(npCenters[i,::-1], npRadii[i], color=circleColorsList[i], fill=False, linewidth=1)
+        c = plt.Circle(npCenters[i,::-1], npRadii[i], color=circleColorsList[i], fill=False, linewidth=linewidth)
         ax.add_artist(c)
 
     if annotations is not None:

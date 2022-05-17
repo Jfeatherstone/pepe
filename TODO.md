@@ -7,4 +7,5 @@
 - Write up list of code conventions for the library
 - Make sure all methods follow said conventions
 - Implement faster method to track circles with convolution given initial guess of position
+- Implement and test subpixel circle tracking
 - Add force balance energy cost to optimization

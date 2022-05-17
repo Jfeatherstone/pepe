@@ -37,9 +37,10 @@ Dependencies:
 - [matplotlib](https://matplotlib.org/)
 - [lmfit](https://lmfit.github.io/lmfit-py/index.html)
 - [scikit-learn](https://scikit-learn.org/stable/)
-- [OpenCV](https://opencv.org/)
+- [opencv](https://opencv.org/)
 - [Pillow](https://pillow.readthedocs.io/en/stable/)
-- [Numba](https://numba.pydata.org/)
+- [numba](https://numba.pydata.org/)
+- [tqdm](https://github.com/tqdm/tqdm)
 
 These can all be installed (alongside their dependencies) via `pip`:
 ```

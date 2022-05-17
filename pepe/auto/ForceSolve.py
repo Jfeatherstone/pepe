@@ -6,10 +6,10 @@ import numpy as np
 import os
 import cv2
 import time
-import progressbar
 import pickle
 import inspect
 import ast
+import tqdm
 
 import matplotlib.pyplot as plt
 
@@ -26,6 +26,8 @@ from pepe.visualize import genColors, visCircles, visForces, visContacts, visRot
 from pepe.topology import findPeaksMulti
 
 # All of the dtypes of the args for the below method
+# The following args are not included, because they are not
+# important: progressBarOffset, progressBarTitle
 forceSolveArgDTypes  = {"imageDirectory": str,
             "imageExtension": str,
             "imageEndIndex": int,
@@ -71,7 +73,7 @@ forceSolveArgDTypes  = {"imageDirectory": str,
 # passed to the function, and which were left as default values. See beginning
 # of method code for more information/motivation.
 @explicitKwargs()
-def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, cropXMin=None, cropXMax=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, showProgressBar=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, performOptimization=True, debug=False, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
+def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, cropXMin=None, cropXMax=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, performOptimization=True, debug=False, showProgressBar=True, progressBarOffset=0, progressBarTitle=None, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
     """
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be returned and potentially written to various files.
@@ -195,10 +197,6 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         The index of which image to end at when analyzing the files in `imageDirectory`. Value
         of `None` will end at the last (alphabetically sorted) image.
 
-    showProgressBar : bool
-        Whether to show a progress bar throughout the analysis (`True`) or not (`False`). Uses
-        `progressbar2` library.
-
     circleDetectionMethod : ['convolution' or 'hough']
         Whether to use the convolution or hough circle detection method to identify particles.
 
@@ -246,6 +244,18 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
     debug : bool
         Whether to print progress updates for each frame to the screen (`True`) or not (`False`).
+
+    showProgressBar : bool
+        Whether to show a progress bar throughout the analysis (`True`) or not (`False`). Uses
+        `tqdm` library.
+
+    progressBarOffset : int
+        The number of lines to offset the progress bar by. Generally an internal variable
+        used when multiple threads are active.
+
+    progressBarTitle : str
+        The text to be written to the left of the progress bar. Generally an internal variable
+        controlled by some solving script.
 
     saveMovie : bool
         Whether to save a compiled gif of the reconstructed forces at each frame at the end (`True`)
@@ -313,13 +323,15 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # So we assign the elements of our settings dict in opposite order
 
     # 3. All of the default values
+    # The following variables are not present:
+    # progressBarOffset, progressBarTitle
+    # This is because we don't care about saving them
     settings = {"imageDirectory": os.path.abspath(imageDirectory) + '/', # Convert to absolute path
                 "imageExtension": imageExtension,
                 "imageEndIndex": imageEndIndex,
                 "imageStartIndex": imageStartIndex,
                 "carryOverAlpha": carryOverAlpha,
                 "carryOverForce": carryOverForce,
-                "showProgressBar": showProgressBar,
                 "lightCorrectionImage": lightCorrectionImage,
                 "lightCorrectionVerticalMask": lightCorrectionVerticalMask,
                 "lightCorrectionHorizontalMask": lightCorrectionHorizontalMask,
@@ -343,6 +355,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 "maxBetaDisplacement": maxBetaDisplacement,
                 "forceNoiseWidth": forceNoiseWidth,
                 "alphaNoiseWidth": alphaNoiseWidth,
+                "showProgressBar": showProgressBar,
                 "saveMovie": saveMovie,
                 "pickleArrays": pickleArrays,
                 "outputRootFolder": outputRootFolder,
@@ -429,9 +442,6 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     # yet know which circle tracking function we are using yet, so we'll carry
     # that over a bit later.
 
-    # TODO: Make this more robust
-    #centerColors = genColors(10)
-
     # Find all images in the directory
     imageFiles = os.listdir(settings["imageDirectory"])
 
@@ -454,10 +464,6 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     if len(imageFiles) < 1:
         print(f'Error: directory \'{settings["imageDirectory"]}\' contains no files with extension \'{settings["imageExtension"]}\'!')
         return None
-
-
-    if settings["showProgressBar"]:
-        bar = progressbar.ProgressBar(max_value=len(imageFiles))
 
     xB = [settings["cropXMin"], settings["cropXMax"]]
 
@@ -559,6 +565,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     totalFailedParticles = 0
 
     errorMsgs = []
+
+    if settings["showProgressBar"]:
+        bar = tqdm.tqdm(total=len(imageFiles)+1, position=progressBarOffset, desc=progressBarTitle)
 
     # Calculate the gradient-squared-to-force calibration value
     g2Cal = g2ForceCalibration(settings["fSigma"], settings["guessRadius"], settings["pxPerMeter"])
@@ -750,7 +759,7 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 color =  '#FF0000' if failed[j] else '#00AAAA'
                 drawObj.ellipse(twoPointList, outline=color, fill=None, width=3)
 
-        if debug:
+        if settings["debug"]:
 
             clear_output(wait=True)
             fig, ax = plt.subplots(1, 3, figsize=(12,4))
@@ -784,20 +793,20 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             fig.tight_layout()
             plt.show()
 
-        if saveMovie:
+        if settings["saveMovie"]:
             imageArr.append(img)
 
         miscTimes[i] = time.perf_counter() - optimizationTimes[i] - initialGuessTimes[i] - trackingTimes[i] - start 
 
-        if debug: 
+        if settings["debug"]: 
             print(f'Took {time.perf_counter() - start:.5}s to solve frame:')
             print(f'{5*" "}Tracking:         {trackingTimes[i]:.3}s')
             print(f'{5*" "}Initial guess:    {initialGuessTimes[i]:.3}s')
             print(f'{5*" "}Optimization:     {optimizationTimes[i]:.3}s')
             print(f'{5*" "}Misc. processes:  {miscTimes[i]:.3}s')
 
-        if showProgressBar:
-            bar.update(i)
+        if settings["showProgressBar"]:
+            bar.update()
    
     
     # Restructure the arrays to make them more friendly, and to track forces/particles across timesteps
@@ -852,27 +861,34 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
            
             # Which is the kernel and which is the reference image doesn't really matter
             # (as long as we are consistent)
-            thetaArr, convArr = angularConvolution(refImages[j], currImage, dTheta=.003, angleBounds=(-np.pi, np.pi))
+            # We can choose our bounds based on the previous value of the rotation
+            if i >= 1 and not np.isnan(rectAngleArr[j,i-1]):
+                rotationBounds = (rectAngleArr[j,i-1] - .1, rectAngleArr[j,i-1] + .1)
+            else:
+                # If either i=0 or the previous rotation value is nan, we should start around 0
+                # anyway (since we define 0 arbitrarily)
+                rotationBounds = (-.2, .2)
+
+            # .003 was chosen based on the data presented in the wiki
+            # https://github.com/Jfeatherstone/pepe/wiki/Angular-Convolution
+            thetaArr, convArr = angularConvolution(refImages[j], currImage, dTheta=.003, angleBounds=rotationBounds)
             rectAngleArr[j,i] = thetaArr[findPeaksMulti(convArr)[0][0][0]]
 
-
-    if showProgressBar:
-        bar.update(len(imageFiles))
 
     # Reuse the name of the folder the images come from as a part of
     # the output folder name
     # [-2] element for something of form 'path/to/final/folder/' will be 'folder'
     # If we are missing the final /, you have to take just the [-1] element
-    if imageDirectory[-1] == '/':
-        outputFolderPath = outputRootFolder + imageDirectory.split('/')[-2] + f'_Synthetic{settings["outputExtension"]}/'
+    if settings["imageDirectory"][-1] == '/':
+        outputFolderPath = outputRootFolder + settings["imageDirectory"].split('/')[-2] + f'_Synthetic{settings["outputExtension"]}/'
     else:
-        outputFolderPath = outputRootFolder + imageDirectory.split('/')[-1] + f'_Synthetic{settings["outputExtension"]}/'
+        outputFolderPath = outputRootFolder + settings["imageDirectory"].split('/')[-1] + f'_Synthetic{settings["outputExtension"]}/'
 
     if not os.path.exists(outputFolderPath):
         os.mkdir(outputFolderPath)
 
-    if saveMovie:
-        imageArr[0].save(outputFolderPath + 'Synthetic.gif', save_all=True, append_images=imageArr[1:], duration=30, optimize=False, loop=1)
+    if settings["saveMovie"]:
+        imageArr[0].save(outputFolderPath + 'Synthetic.gif', save_all=True, append_images=imageArr[1:], duration=30, optimize=False, loop=0)
 
     # Write a readme file that contains all of the parameters that the solving used
     lines = ['#####################\n',
@@ -1043,9 +1059,13 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             plt.close(fig)
 
         contactPointImages[0].save(outputFolderPath + 'FitReport_src/contact_points.gif', save_all=True,
-                                   append_images=contactPointImages[1:], duration=20, optimize=True, loop=True)
+                                   append_images=contactPointImages[1:], duration=20, optimize=True, loop=0)
 
         contactAngleImages[0].save(outputFolderPath + 'FitReport_src/contact_angles.gif', save_all=True,
-                                   append_images=contactAngleImages[1:], duration=20, optimize=True, loop=True)
+                                   append_images=contactAngleImages[1:], duration=20, optimize=True, loop=0)
+
+    if settings["showProgressBar"]:
+        bar.update()
+        bar.close()
 
     return rectForceArr, rectAlphaArr, rectBetaArr, rectCenterArr, rectRadiusArr, rectAngleArr
