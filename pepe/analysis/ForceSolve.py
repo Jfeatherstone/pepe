@@ -10,6 +10,7 @@ from pepe.simulate import genSyntheticResponse
 from pepe.utils import outerSubtract
 
 import numba
+import copy
 
 from lmfit import minimize, Parameters, fit_report
 from lmfit.minimizer import AbortFitException
@@ -531,7 +532,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     # lmfit has a nice setup in that you can denote whether a variable can be
     # changed or not, which means we don't actually have to change which variables
     # are passed to the function.
-    def objectiveFunction(params, trueImage, z, radius, center, mask, sumReturn):
+    def objectiveFunction(params, trueImage, z, radius, center, mask):
         global residuals, bestResidual, bestParams
 
         forceArr = np.array([params[f"f{j}"] for j in range(z)])
@@ -553,14 +554,10 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         # Save best configuration outside of minimization
         if residuals[-1] < bestResidual:
             bestResidual = residuals[-1]
-            bestParams = params
+            # Deep copy to make sure we aren't just assigning by reference
+            bestParams = copy.deepcopy(params)
     
-        # Levenberg marquardt requires the full difference matrix,
-        # not just the sum
-        if sumReturn:
-            return residuals[-1]
-        else:
-            raise Exception('Not implemented!')
+        return residuals[-1]
 
 
     # Mask our real image
@@ -647,15 +644,16 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         # am pretty sure that the params variable is constantly updated, not just
         # at the end.
 
-        # Levenberg-Marquardt algorithm ('leastsq') requires that we return the
-        # full difference array
-        sumReturn = not methodList[i] == 'leastsq'
-    
         try:
             # Now do the optimization
+
+            # The fatol kwarg is the minimum change between iterations before the
+            # fit is considered to have converged. I just choose this based on an educated guess,
+            # and it seems to work (worst case, you can just it really small and run the optimization
+            # for the max number of evals every time).
             result = minimize(objectiveFunction, params,
-                             args=(maskedImage, z, scaledRadius, scaledCenter, localizedMask, sumReturn),
-                             method=methodList[i], max_nfev=maxEvalsList[i], nan_policy='omit')
+                             args=(maskedImage, z, scaledRadius, scaledCenter, localizedMask),
+                              method=methodList[i], max_nfev=maxEvalsList[i], nan_policy='omit', options={"fatol": 1e-2})
 
             # Copy over the new values of the forces, alphas, and betas
             for j in range(z):

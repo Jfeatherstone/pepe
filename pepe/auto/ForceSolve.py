@@ -636,6 +636,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 # never move in a single frame, but is large enough to not lose a force if it
                 # moves because of noise/small fluctuations.
                 forceOrder = preserveOrderArgsort(betaGuessArr[j], betaArr[-1][oldCenterOrder[j]], padMissingValues=True, maxDistance=settings["maxBetaDisplacement"])
+
+                #print(f'frame {i}, particle {j}: {forceOrder}')
+
                 for k in range(len(forceGuessArr[j])):
                     if forceOrder[k] is not None:
                         if settings["carryOverForce"]:
@@ -947,6 +950,23 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
         with open(outputFolderPath + 'angles.pickle', 'wb') as f:
             pickle.dump(rectAngleArr, f)
+
+    # Save the raw arrays too, since I think I have a bug in my rectangularization process
+    if settings["pickleArrays"]:
+        with open(outputFolderPath + 'forces_raw.pickle', 'wb') as f:
+            pickle.dump(forceArr, f)
+
+        with open(outputFolderPath + 'alphas_raw.pickle', 'wb') as f:
+            pickle.dump(alphaArr, f)
+
+        with open(outputFolderPath + 'betas_raw.pickle', 'wb') as f:
+            pickle.dump(betaArr, f)
+
+        with open(outputFolderPath + 'centers_raw.pickle', 'wb') as f:
+            pickle.dump(centersArr, f)
+
+        with open(outputFolderPath + 'radii_raw.pickle', 'wb') as f:
+            pickle.dump(radiiArr, f)
 
     # Generate a fit report (optional)
     # This include informtaion about the error for each frame, all of the forces/alphas/betas/
