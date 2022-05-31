@@ -1,4 +1,8 @@
-# TODO List
+## High priority
+
+- Implement and test subpixel convolutional circle tracking
+
+## Low priority
 
 - Write up GenLouvain community detection algorithm
 - Create some examples
@@ -7,5 +11,8 @@
 - Write up list of code conventions for the library
 - Make sure all methods follow said conventions
 - Implement faster method to track circles with convolution given initial guess of position
-- Implement and test subpixel circle tracking
-- Add force balance energy cost to optimization
+
+## Bugs
+
+- Force musical chairs
+    - Forces will sometimes switch identities with each other, but otherwise maintaining consistency.

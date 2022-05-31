@@ -40,6 +40,7 @@ from pepe.simulate import genSyntheticResponse
 from pepe.utils import outerSubtract
 
 import numba
+import copy
 
 from lmfit import minimize, Parameters, fit_report
 from lmfit.minimizer import AbortFitException
@@ -47,6 +48,32 @@ from lmfit.minimizer import AbortFitException
 from scipy.signal import find_peaks
 
 import matplotlib.pyplot as plt
+
+# This dictionary defines the argument data types for
+# forceOptimize(), which is used for reading in settings
+# from a file
+forceOptimizeArgDTypes = {&#34;parametersToFit&#34;: list,
+                      &#34;method&#34;: str,
+                      &#34;maxEvals&#34;: int,
+                      &#34;forceBounds&#34;: tuple,
+                      &#34;betaBounds&#34;: tuple,
+                      &#34;alphaBounds&#34;: tuple,
+                      &#34;forceTolerance&#34;: float,
+                      &#34;betaTolerance&#34;: float,
+                      &#34;alphaTolerance&#34;: float,
+                      &#34;useTolerance&#34;: bool,
+                      &#34;returnOptResult&#34;: bool,
+                      &#34;allowAddForces&#34;: bool,
+                      &#34;allowRemoveForces&#34;: bool,
+                      &#34;minForceThreshold&#34;: float,
+                      &#34;contactMaskRadius&#34;: int,
+                      &#34;newBetaMinSeparation&#34;: float,
+                      &#34;newBetaG2Height&#34;: float,
+                      &#34;missingForceChiSqrThreshold&#34;: float,
+                      &#34;imageScaleFactor&#34;: float,
+                      &#34;localizeAlphaOptimization&#34;: bool,
+                      &#34;forceBalanceWeighting&#34;: float,
+                      &#34;debug&#34;: bool}
 
 def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMeter, contactPadding=10, g2EdgePadding=1, contactG2Threshold=.1, contactMaskRadius=40, neighborEvaluations=4, boundaryMask=None, ignoreBoundary=True, brightfield=False, boundaryDetectionOptions={}, g2Cal=None):
     &#34;&#34;&#34;
@@ -283,7 +310,7 @@ def initialForceSolve(photoelasticSingleChannel, centers, radii, fSigma, pxPerMe
     return forceGuessArr, alphaGuessArr, betaGuessArr
 
 
-def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(-np.pi, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, imageScaleFactor=1, localizeAlphaOptimization=True, forceBalanceWeighting=.2, debug=False):
+def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(-np.pi/2, np.pi/2), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, imageScaleFactor=1, localizeAlphaOptimization=True, forceBalanceWeighting=.2, debug=False):
     &#34;&#34;&#34;
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -527,14 +554,15 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
     scaledCenter = np.array(center * realScaleFactor, dtype=np.int64)
     scaledPxPerMeter = np.int64(pxPerMeter * realScaleFactor)
     scaledContactMaskRadius = np.int64(contactMaskRadius * realScaleFactor)
-    scaledParticleArea = scaledradius**2 * np.pi
+    scaledParticleArea = scaledRadius**2 * np.pi
+
     # Setup our function based on what parameters we are fitting
     # We want to avoid any if statements within the function itself, since
     # that will be evaluated many many times.
     # lmfit has a nice setup in that you can denote whether a variable can be
     # changed or not, which means we don&#39;t actually have to change which variables
     # are passed to the function.
-    def objectiveFunction(params, trueImage, z, radius, center, mask, sumReturn):
+    def objectiveFunction(params, trueImage, z, radius, center, mask):
         global residuals, bestResidual, bestParams
 
         forceArr = np.array([params[f&#34;f{j}&#34;] for j in range(z)])
@@ -556,14 +584,10 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         # Save best configuration outside of minimization
         if residuals[-1] &lt; bestResidual:
             bestResidual = residuals[-1]
-            bestParams = params
+            # Deep copy to make sure we aren&#39;t just assigning by reference
+            bestParams = copy.deepcopy(params)
     
-        # Levenberg marquardt requires the full difference matrix,
-        # not just the sum
-        if sumReturn:
-            return residuals[-1]
-        else:
-            raise Exception(&#39;Not implemented!&#39;)
+        return residuals[-1]
 
 
     # Mask our real image
@@ -650,15 +674,16 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         # am pretty sure that the params variable is constantly updated, not just
         # at the end.
 
-        # Levenberg-Marquardt algorithm (&#39;leastsq&#39;) requires that we return the
-        # full difference array
-        sumReturn = not methodList[i] == &#39;leastsq&#39;
-    
         try:
             # Now do the optimization
+
+            # The fatol kwarg is the minimum change between iterations before the
+            # fit is considered to have converged. I just choose this based on an educated guess,
+            # and it seems to work (worst case, you can just it really small and run the optimization
+            # for the max number of evals every time).
             result = minimize(objectiveFunction, params,
-                             args=(maskedImage, z, scaledRadius, scaledCenter, localizedMask, sumReturn),
-                             method=methodList[i], max_nfev=maxEvalsList[i], nan_policy=&#39;omit&#39;)
+                             args=(maskedImage, z, scaledRadius, scaledCenter, localizedMask),
+                              method=methodList[i], max_nfev=maxEvalsList[i], nan_policy=&#39;omit&#39;, options={&#34;fatol&#34;: 1e-2})
 
             # Copy over the new values of the forces, alphas, and betas
             for j in range(z):
@@ -668,12 +693,15 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
 
         # If we run out of function evaluations, that not too huge a deal,
         # so we just grab the best value and move on. If we run into an actual error,
-        # that shouldn&#39;t be caught here, since that might be serious.
-        except AbortFitException as e:
+        # that shouldn&#39;t be caught here, since that might be serious, so we re-trhow it.
+        except Exception as e:
+            if not isinstance(e, AbortFitException):
+                raise e
+
             if debug:
                 print(e)
 
-            # Otherwise, the we take the last good value (since we kept track outside of
+            # Otherwise, we take the last good value (since we kept track outside of
             # the optimization function)
             if bestParams is not None:
                 for j in range(z):
@@ -1582,7 +1610,7 @@ multiplied by the g2 calibration value to get the initial force magnitude guess.
 </details>
 </dd>
 <dt id="pepe.analysis.ForceSolve.forceOptimize"><code class="name flex">
-<span>def <span class="ident">forceOptimize</span></span>(<span>forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-3.141592653589793, 3.141592653589793), alphaBounds=(-3.141592653589793, 3.141592653589793), forceTolerance=0.5, betaTolerance=0.2, alphaTolerance=0.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=0.01, contactMaskRadius=30, newBetaMinSeparation=0.4, newBetaG2Height=0.0005, missingForceChiSqrThreshold=210000000.0, imageScaleFactor=1, localizeAlphaOptimization=True, forceBalanceWeighting=0.2, debug=False)</span>
+<span>def <span class="ident">forceOptimize</span></span>(<span>forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=['f', 'a'], method='nelder', maxEvals=300, forceBounds=(0, 5), betaBounds=(-3.141592653589793, 3.141592653589793), alphaBounds=(-1.5707963267948966, 1.5707963267948966), forceTolerance=0.5, betaTolerance=0.2, alphaTolerance=0.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=0.01, contactMaskRadius=30, newBetaMinSeparation=0.4, newBetaG2Height=0.0005, missingForceChiSqrThreshold=210000000.0, imageScaleFactor=1, localizeAlphaOptimization=True, forceBalanceWeighting=0.2, debug=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Optimize an initial guess for the forces acting on a particle using
@@ -1735,7 +1763,7 @@ contribution depending on how badly the ensemble of forces satisfy force balance
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(-np.pi, np.pi), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, imageScaleFactor=1, localizeAlphaOptimization=True, forceBalanceWeighting=.2, debug=False):
+<pre><code class="python">def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, realImage, fSigma, pxPerMeter, brightfield, parametersToFit=[&#39;f&#39;, &#39;a&#39;], method=&#39;nelder&#39;, maxEvals=300, forceBounds=(0, 5), betaBounds=(-np.pi, np.pi), alphaBounds=(-np.pi/2, np.pi/2), forceTolerance=.5, betaTolerance=.2, alphaTolerance=.1, useTolerance=True, returnOptResult=False, allowAddForces=True, allowRemoveForces=True, minForceThreshold=.01, contactMaskRadius=30, newBetaMinSeparation=.4, newBetaG2Height=.0005, missingForceChiSqrThreshold=2.1e8, imageScaleFactor=1, localizeAlphaOptimization=True, forceBalanceWeighting=.2, debug=False):
     &#34;&#34;&#34;
     Optimize an initial guess for the forces acting on a particle using
     a nonlinear minimization function.
@@ -1979,14 +2007,15 @@ contribution depending on how badly the ensemble of forces satisfy force balance
     scaledCenter = np.array(center * realScaleFactor, dtype=np.int64)
     scaledPxPerMeter = np.int64(pxPerMeter * realScaleFactor)
     scaledContactMaskRadius = np.int64(contactMaskRadius * realScaleFactor)
-    scaledParticleArea = scaledradius**2 * np.pi
+    scaledParticleArea = scaledRadius**2 * np.pi
+
     # Setup our function based on what parameters we are fitting
     # We want to avoid any if statements within the function itself, since
     # that will be evaluated many many times.
     # lmfit has a nice setup in that you can denote whether a variable can be
     # changed or not, which means we don&#39;t actually have to change which variables
     # are passed to the function.
-    def objectiveFunction(params, trueImage, z, radius, center, mask, sumReturn):
+    def objectiveFunction(params, trueImage, z, radius, center, mask):
         global residuals, bestResidual, bestParams
 
         forceArr = np.array([params[f&#34;f{j}&#34;] for j in range(z)])
@@ -2008,14 +2037,10 @@ contribution depending on how badly the ensemble of forces satisfy force balance
         # Save best configuration outside of minimization
         if residuals[-1] &lt; bestResidual:
             bestResidual = residuals[-1]
-            bestParams = params
+            # Deep copy to make sure we aren&#39;t just assigning by reference
+            bestParams = copy.deepcopy(params)
     
-        # Levenberg marquardt requires the full difference matrix,
-        # not just the sum
-        if sumReturn:
-            return residuals[-1]
-        else:
-            raise Exception(&#39;Not implemented!&#39;)
+        return residuals[-1]
 
 
     # Mask our real image
@@ -2102,15 +2127,16 @@ contribution depending on how badly the ensemble of forces satisfy force balance
         # am pretty sure that the params variable is constantly updated, not just
         # at the end.
 
-        # Levenberg-Marquardt algorithm (&#39;leastsq&#39;) requires that we return the
-        # full difference array
-        sumReturn = not methodList[i] == &#39;leastsq&#39;
-    
         try:
             # Now do the optimization
+
+            # The fatol kwarg is the minimum change between iterations before the
+            # fit is considered to have converged. I just choose this based on an educated guess,
+            # and it seems to work (worst case, you can just it really small and run the optimization
+            # for the max number of evals every time).
             result = minimize(objectiveFunction, params,
-                             args=(maskedImage, z, scaledRadius, scaledCenter, localizedMask, sumReturn),
-                             method=methodList[i], max_nfev=maxEvalsList[i], nan_policy=&#39;omit&#39;)
+                             args=(maskedImage, z, scaledRadius, scaledCenter, localizedMask),
+                              method=methodList[i], max_nfev=maxEvalsList[i], nan_policy=&#39;omit&#39;, options={&#34;fatol&#34;: 1e-2})
 
             # Copy over the new values of the forces, alphas, and betas
             for j in range(z):
@@ -2120,12 +2146,15 @@ contribution depending on how badly the ensemble of forces satisfy force balance
 
         # If we run out of function evaluations, that not too huge a deal,
         # so we just grab the best value and move on. If we run into an actual error,
-        # that shouldn&#39;t be caught here, since that might be serious.
-        except AbortFitException as e:
+        # that shouldn&#39;t be caught here, since that might be serious, so we re-trhow it.
+        except Exception as e:
+            if not isinstance(e, AbortFitException):
+                raise e
+
             if debug:
                 print(e)
 
-            # Otherwise, the we take the last good value (since we kept track outside of
+            # Otherwise, we take the last good value (since we kept track outside of
             # the optimization function)
             if bestParams is not None:
                 for j in range(z):

@@ -17,6 +17,33 @@ from pepe.preprocess import checkImageType
 class Trial():
 
     def __init__(self, datasetDir=None, fArr=None, aArr=None, bArr=None, cArr=None, rArr=None, thArr=None):
+        """
+        Helper class for reading in the output of `pepe.auto.forceSolve()`.
+
+        Parameters
+        ----------
+
+        datasetDir : str
+            Path to the directory containing readme and pickle files.
+
+        fArr : array_like or None
+            Force array, if Trial object is to be constructed manually.
+
+        aArr : array_like or None
+            Alpha array, if Trial object is to be constructed manually.
+
+        bArr : array_like or None
+            Beta array, if Trial object is to be constructed manually.
+
+        cArr : array_like or None
+            Center array, if Trial object is to be constructed manually.
+
+        rArr : array_like or None
+            Radius array, if Trial object is to be constructed manually.
+
+        thArr : array_like or None
+            Angle array, if Trial object is to be constructed manually.
+        """
 
         if datasetDir is not None:
             self.datasetPath = os.path.abspath(datasetDir) + '/'
@@ -136,7 +163,7 @@ class Trial():
 
         Enacts the following behavior on each data type:
 
-            forceArr: replaces with 0
+            forceArr: replaces with 0 or interpolates
             angleArr: interpolates
             alphaArr: interpolates
             betaArr: interpolates
@@ -277,11 +304,20 @@ class Trial():
 
 
     def particleNear(self, point, timestep=0):
+        """
+        Identifies the index of the particle closest to the provided point
+        at the provided timestep.
+        """
+
         distances = np.sum((self.centerArr[:,timestep,:] - np.array(point))**2, axis=-1)
         return np.argmin([d for d in distances if not np.isnan(d)])
 
 
     def averageForcePositions(self, particleIndex):
+        """
+        Calculates the time-averaged beta values of forces for the provided
+        particle.
+        """
         averageBetaArr = np.array([np.nanmean(self.betaArr[particleIndex][i,:]) for i in range(self.numForces[particleIndex])])
         return averageBetaArr
                                     

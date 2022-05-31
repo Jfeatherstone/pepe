@@ -186,8 +186,13 @@ def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistan
     # Convert all potential None values to np.nan (since they play nicer)
     # Numpy can only hold values of None in an array if the dtype is &#39;object&#39;,
     # which is inconvient for working with the kd tree
-    npNewValues = np.array(np.where(npNewValues, npNewValues, np.nan), dtype=np.float64)
-    npOldValues = np.array(np.where(npOldValues, npOldValues, np.nan), dtype=np.float64)
+    # A note, since I have now spent a *very* long time figuring out this bug:
+    # np.where(array) will give the indices of all values that are not None/np.nan
+    # AND all values that are not 0. so this line used to be
+    # ...np.where(npNewValues, npNewValues, np.nan)...
+    # but this will convert any values that are exactly 0 to np.nan as wel, which is very bad.
+    npNewValues = np.array(np.where(npNewValues != None, npNewValues, np.nan), dtype=np.float64)
+    npOldValues = np.array(np.where(npOldValues != None, npOldValues, np.nan), dtype=np.float64)
 
     # We want to have the longer list of items be the source points
     # for the kdtree, and the shorter be the query points. If they are
@@ -468,8 +473,13 @@ to the elements of <code>oldValues</code>.</dd>
     # Convert all potential None values to np.nan (since they play nicer)
     # Numpy can only hold values of None in an array if the dtype is &#39;object&#39;,
     # which is inconvient for working with the kd tree
-    npNewValues = np.array(np.where(npNewValues, npNewValues, np.nan), dtype=np.float64)
-    npOldValues = np.array(np.where(npOldValues, npOldValues, np.nan), dtype=np.float64)
+    # A note, since I have now spent a *very* long time figuring out this bug:
+    # np.where(array) will give the indices of all values that are not None/np.nan
+    # AND all values that are not 0. so this line used to be
+    # ...np.where(npNewValues, npNewValues, np.nan)...
+    # but this will convert any values that are exactly 0 to np.nan as wel, which is very bad.
+    npNewValues = np.array(np.where(npNewValues != None, npNewValues, np.nan), dtype=np.float64)
+    npOldValues = np.array(np.where(npOldValues != None, npOldValues, np.nan), dtype=np.float64)
 
     # We want to have the longer list of items be the source points
     # for the kdtree, and the shorter be the query points. If they are

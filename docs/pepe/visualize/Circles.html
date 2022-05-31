@@ -36,7 +36,7 @@ import matplotlib.pyplot as plt
 
 from pepe.visualize import genColors
 
-def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColors=False, setBounds=False):
+def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColors=False, setBounds=False, linewidth=1):
     &#34;&#34;&#34;
     Draw circles on an axis.
 
@@ -72,7 +72,7 @@ def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColor
         circleColorsList = colors
 
     for i in range(len(npCenters)):
-        c = plt.Circle(npCenters[i,::-1], npRadii[i], color=circleColorsList[i], fill=False, linewidth=1)
+        c = plt.Circle(npCenters[i,::-1], npRadii[i], color=circleColorsList[i], fill=False, linewidth=linewidth)
         ax.add_artist(c)
 
     if annotations is not None:
@@ -101,7 +101,7 @@ def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColor
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="pepe.visualize.Circles.visCircles"><code class="name flex">
-<span>def <span class="ident">visCircles</span></span>(<span>centers, radii, ax=None, colors=None, annotations=None, sameColors=False, setBounds=False)</span>
+<span>def <span class="ident">visCircles</span></span>(<span>centers, radii, ax=None, colors=None, annotations=None, sameColors=False, setBounds=False, linewidth=1)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Draw circles on an axis.</p>
@@ -116,7 +116,7 @@ def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColor
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColors=False, setBounds=False):
+<pre><code class="python">def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColors=False, setBounds=False, linewidth=1):
     &#34;&#34;&#34;
     Draw circles on an axis.
 
@@ -152,7 +152,7 @@ def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColor
         circleColorsList = colors
 
     for i in range(len(npCenters)):
-        c = plt.Circle(npCenters[i,::-1], npRadii[i], color=circleColorsList[i], fill=False, linewidth=1)
+        c = plt.Circle(npCenters[i,::-1], npRadii[i], color=circleColorsList[i], fill=False, linewidth=linewidth)
         ax.add_artist(c)
 
     if annotations is not None:

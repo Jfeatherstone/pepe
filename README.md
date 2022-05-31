@@ -1,4 +1,4 @@
-# <ins>P</ins>hoto<ins>e</ins>lastic <ins>P</ins>ython <ins>E</ins>nvironment
+# <u>P</u>hoto<u>e</u>lastic <u>P</u>ython <u>E</u>nvironment
 
 This is a collection of tools for working with photoelastic particle images, including common analysis methods like particle tracking and community analysis.
 
@@ -8,7 +8,7 @@ This is a collection of tools for working with photoelastic particle images, inc
 - Particle tracking
 - Masking and other preprocessing tools
 - Synthetic photoelastic response generation
-- Force solving (a la PeGS [1a, 1b])
+- Force solving (as in PeGS [1a, 1b])
 
 ## Installation
 
@@ -44,12 +44,12 @@ cd pepe
 pip install -r requirements.txt
 ```
 
-Some of the test notebooks may also make use of the Matlab API to compare against Jonathan Kollmer's implementation [1a], but this is not required to use any functions in the library itself. Installing the Matlab API requires a local installation of Matlab proper; see [here](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html) for more information.
-
 ## Usage
 
-The [wiki](https://github.com/Jfeatherstone/pepe/wiki) and [documentation](http://jfeatherstone.github.io/pepe/pepe) contain information about how to use the toolbox. All test notebooks can be
-found in the repo's [`notebooks`](https://github.com/Jfeatherstone/pepe/tree/master/tests) directory.
+The [wiki](https://github.com/Jfeatherstone/pepe/wiki) and [documentation](http://jfeatherstone.github.io/pepe/pepe) contain information about how to use the toolbox. Test notebooks can be
+found in the repo's [`notebooks`](https://github.com/Jfeatherstone/pepe/tree/master/tests) directory, and unit tests can be found in the `pepe.test` directory.
+
+Some of the test notebooks make use of the Matlab API to compare against Jonathan Kollmer's implementation [1a], but this is not required to use any functions in the library itself. Installing the Matlab API requires a local installation of Matlab proper; see [here](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html) for more information.
 
 ## Further Reading and References
 

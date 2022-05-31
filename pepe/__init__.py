@@ -16,12 +16,12 @@ The vast majority of these methods are either derivative or directly sourced fro
 
 ## Installation
 
-The library will (soon) be available on PyPi, meaning the package and dependencies can be installed via:
+The library is available on PyPi, meaning the package and dependencies can be installed via:
 ```
 pip install pepe-granular
 ```
 
-For now, the easiest way to install is from the Github repository:
+It can also be installed from the Github repository:
 
 ```
 git clone https://github.com/Jfeatherstone/pepe
@@ -78,6 +78,6 @@ See the `pepe.examples` submodule for some common uses of the toolbox. Many pseu
 [3] Photoelastic methods wiki. https://git-xen.lmgc.univ-montp2.fr/PhotoElasticity/Main/-/wikis/home
 """
 
-__version__ = '0.3.0'
+__version__ = '1.0.0'
 __author__ = 'Jack Featherstone'
 __credits__ = 'North Carolina State University' 
