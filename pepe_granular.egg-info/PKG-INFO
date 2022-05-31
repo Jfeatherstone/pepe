@@ -1,9 +1,19 @@
-# Photoelastic Python Environment
+Metadata-Version: 2.1
+Name: pepe-granular
+Version: 1.0.1
+Summary: Toolbox for granular analysis of photoelastic images
+Home-page: https://jfeatherstone.github.io/pepe/pepe
+Author: Jack Featherstone
+Author-email: jdfeathe@ncsu.edu
+License: MIT
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3.7
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown
+License-File: LICENSE.md
 
-<u>P</u>hoto-
-<u>e</u>lastic
-<u>P</u>ython
-<u>E</u>nvironment
+# <u>P</u>hoto<u>e</u>lastic <u>P</u>ython <u>E</u>nvironment
 
 This is a collection of tools for working with photoelastic particle images, including common analysis methods like particle tracking and community analysis.
 
@@ -73,3 +83,5 @@ Some of the test notebooks make use of the Matlab API to compare against Jonatha
 [2] Abed Zadeh, A., Barés, J., Brzinski, T. A., Daniels, K. E., Dijksman, J., Docquier, N., Everitt, H. O., Kollmer, J. E., Lantsoght, O., Wang, D., Workamp, M., Zhao, Y., & Zheng, H. (2019). Enlightening force chains: A review of photoelasticimetry in granular matter. Granular Matter, 21(4), 83. https://doi.org/10.1007/s10035-019-0942-2
 
 [3] Photoelastic methods wiki. https://git-xen.lmgc.univ-montp2.fr/PhotoElasticity/Main/-/wikis/home
+
+

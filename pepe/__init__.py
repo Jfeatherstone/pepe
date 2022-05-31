@@ -16,7 +16,7 @@ The vast majority of these methods are either derivative or directly sourced fro
 
 ## Installation
 
-The library is available on PyPi, meaning the package and dependencies can be installed via:
+The library is available on PyPi:
 ```
 pip install pepe-granular
 ```
@@ -49,7 +49,7 @@ cd pepe
 pip install -r requirements.txt
 ```
 
-Some of the test notebooks may also make use of the Matlab API to compare against Jonathan Kollmer's implementation, but this is not required to use any functions in the library itself. Installing the Matlab API requires a local installation of Matlab proper; see [here](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html) for more information.
+Some of the test notebooks may also make use of the Matlab API to compare against Jonathan Kollmer's code, but this is not required to use any functions in the library itself. Installing the Matlab API requires a local installation of Matlab proper; see [here](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html) for more information.
 
 If you'd rather not install systemwide (say, to run just a simple example), you can also just manually add the package to your path at the top of a Jupyter notebook/python file with (after cloning the repo as above):
 
