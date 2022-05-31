@@ -161,8 +161,8 @@ def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistan
     # AND all values that are not 0. so this line used to be
     # ...np.where(npNewValues, npNewValues, np.nan)...
     # but this will convert any values that are exactly 0 to np.nan as wel, which is very bad.
-    npNewValues = np.array(np.where(npNewValues == None, npNewValues, np.nan), dtype=np.float64)
-    npOldValues = np.array(np.where(npOldValues == None, npOldValues, np.nan), dtype=np.float64)
+    npNewValues = np.array(np.where(npNewValues != None, npNewValues, np.nan), dtype=np.float64)
+    npOldValues = np.array(np.where(npOldValues != None, npOldValues, np.nan), dtype=np.float64)
 
     # We want to have the longer list of items be the source points
     # for the kdtree, and the shorter be the query points. If they are

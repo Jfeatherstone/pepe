@@ -952,21 +952,21 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
             pickle.dump(rectAngleArr, f)
 
     # Save the raw arrays too, since I think I have a bug in my rectangularization process
-    if settings["pickleArrays"]:
-        with open(outputFolderPath + 'forces_raw.pickle', 'wb') as f:
-            pickle.dump(forceArr, f)
-
-        with open(outputFolderPath + 'alphas_raw.pickle', 'wb') as f:
-            pickle.dump(alphaArr, f)
-
-        with open(outputFolderPath + 'betas_raw.pickle', 'wb') as f:
-            pickle.dump(betaArr, f)
-
-        with open(outputFolderPath + 'centers_raw.pickle', 'wb') as f:
-            pickle.dump(centersArr, f)
-
-        with open(outputFolderPath + 'radii_raw.pickle', 'wb') as f:
-            pickle.dump(radiiArr, f)
+#    if settings["pickleArrays"]:
+#        with open(outputFolderPath + 'forces_raw.pickle', 'wb') as f:
+#            pickle.dump(forceArr, f)
+#
+#        with open(outputFolderPath + 'alphas_raw.pickle', 'wb') as f:
+#            pickle.dump(alphaArr, f)
+#
+#        with open(outputFolderPath + 'betas_raw.pickle', 'wb') as f:
+#            pickle.dump(betaArr, f)
+#
+#        with open(outputFolderPath + 'centers_raw.pickle', 'wb') as f:
+#            pickle.dump(centersArr, f)
+#
+#        with open(outputFolderPath + 'radii_raw.pickle', 'wb') as f:
+#            pickle.dump(radiiArr, f)
 
     # Generate a fit report (optional)
     # This include informtaion about the error for each frame, all of the forces/alphas/betas/

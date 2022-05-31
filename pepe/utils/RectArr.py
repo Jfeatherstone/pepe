@@ -2,6 +2,7 @@
 Tracking particles and forces across timesteps to turn triangular arrays into rectangular ones.
 """
 import numpy as np
+import matplotlib.pyplot as plt
 
 from pepe.utils import preserveOrderArgsort
 
@@ -125,29 +126,65 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
     # Scalar
     # TODO Make this capable of following same process as for forces, where
     # identities are maintained even if multiple particles appear/disappear
-    maxNumParticles = np.max([len(betaArr[i]) for i in range(len(betaArr))])
+    # To determine the maximum number of particles, we have to go through each frame
+    # and give unique identities to each one. We can't just take the max length of the
+    # list, since one frame could have 3 particles, and another 2 particles, but that
+    # could be a total of 5 unique particles (or it could be 3 unique particles).
+    
     numTimesteps = len(forceArr)
+
+    # We'll build this list as we go, which will be triangular (ie. a 2d list in which
+    # each sublist could have a different number of elements). That being said, by keeping
+    # placeholders for particles that disappear, we will ensure that this is upper triangular,
+    # meaning it will only every grow in size.
+
+    # Initialize the first step
+    triSortedParticleOrderArr = [[i for i in range(len(centerArr[0]))]]
+    triSortedCenterArr = [[c for c in centerArr[0]]]
+
+    for j in range(1, numTimesteps):
+
+        pOrder = preserveOrderArgsort(triSortedCenterArr[-1], centerArr[j], padMissingValues=True, fillNanSpots=True, maxDistance=np.mean(radiusArr[j]))
+        # If a particle disappears, we carry through the old center, so it can be identified again
+        # in the future
+        centers = [centerArr[j][pOrder[k]] if pOrder[k] is not None else triSortedCenterArr[-1][k] for k in range(len(pOrder))]
+
+        triSortedCenterArr.append(centers)
+        triSortedParticleOrderArr.append(pOrder)
+
+    #print(triSortedParticleOrderArr)
+
+    maxNumParticles = len(triSortedCenterArr[-1])
+
     # First, make the centers array look nice, which we then use to identify
     # particles
     rectCenterArr = np.zeros((maxNumParticles, numTimesteps, 2))
     rectRadiusArr = np.zeros((maxNumParticles, numTimesteps))
+    particleOrder = np.zeros((numTimesteps, maxNumParticles), dtype=np.int16)
+
+    for j in range(numTimesteps):
+        particleOrder[j] = [pI if pI is not None else -1 for pI in triSortedParticleOrderArr[j]] + [-1]*(maxNumParticles - len(triSortedParticleOrderArr[j]))
+        # Now just copy the triangular data into a rectangular array, padding at the end as necessary
+        # (and replacing invalid data with np.nan as necessary).
+        rectCenterArr[:,j] = [triSortedCenterArr[j][k] if triSortedParticleOrderArr[j][k] is not None else [np.nan, np.nan] for k in range(len(triSortedParticleOrderArr[j]))] + [[np.nan, np.nan] for k in range(maxNumParticles - len(triSortedParticleOrderArr[j]))]
+        rectRadiusArr[:,j] = [radiusArr[j][triSortedParticleOrderArr[j][k]] if triSortedParticleOrderArr[j][k] is not None else np.nan for k in range(len(triSortedParticleOrderArr[j]))] + [np.nan for k in range(maxNumParticles - len(triSortedParticleOrderArr[j]))]
 
     # We have to initialize the first element so that we can then use the
     # preserveOrderSort function to make sure the identities stay
     # consistent
-    rectCenterArr[:,0] = list(centerArr[0]) + [[np.nan, np.nan]]*(maxNumParticles - len(centerArr[0]))
-    rectRadiusArr[:,0] = list(radiusArr[0]) + [np.nan]*(maxNumParticles - len(centerArr[0]))
-
-    particleOrder = np.zeros((numTimesteps, maxNumParticles), dtype=np.int16)
-    particleOrder[0] = np.arange(len(particleOrder[0]))
-    particleExists = np.zeros((numTimesteps, maxNumParticles), dtype=np.int16)
-
-    for i in range(1, numTimesteps):
-        currOrder = preserveOrderArgsort(rectCenterArr[:,i-1], centerArr[i], padMissingValues=True, fillNanSpots=True)
-        # Convert all None to -1 (since None can't be turned into an integer)
-        particleOrder[i] = [ci if ci is not None else -1 for ci in currOrder]
-        rectCenterArr[:,i] = [centerArr[i][particleOrder[i,j]] if particleOrder[i,j] >= 0 else [np.nan, np.nan] for j in range(len(particleOrder[i]))]
-        rectRadiusArr[:,i] = [radiusArr[i][particleOrder[i,j]] if particleOrder[i,j] >= 0 else np.nan for j in range(len(particleOrder[i]))]
+#    rectCenterArr[:,0] = list(centerArr[0]) + [[np.nan, np.nan]]*(maxNumParticles - len(centerArr[0]))
+#    rectRadiusArr[:,0] = list(radiusArr[0]) + [np.nan]*(maxNumParticles - len(centerArr[0]))
+#
+#    particleOrder = np.zeros((numTimesteps, maxNumParticles), dtype=np.int16)
+#    particleOrder[0] = np.arange(len(particleOrder[0]))
+#    particleExists = np.zeros((numTimesteps, maxNumParticles), dtype=np.int16)
+#
+#    for i in range(1, numTimesteps):
+#        currOrder = preserveOrderArgsort(rectCenterArr[:,i-1], centerArr[i], padMissingValues=True, fillNanSpots=True, maxDistance=np.mean(rectRadiusArr[:,i-1]))
+#        # Convert all None to -1 (since None can't be turned into an integer)
+#        particleOrder[i] = [ci if ci is not None else -1 for ci in currOrder]
+#        rectCenterArr[:,i] = [centerArr[i][particleOrder[i,j]] if particleOrder[i,j] >= 0 else [np.nan, np.nan] for j in range(len(particleOrder[i]))]
+#        rectRadiusArr[:,i] = [radiusArr[i][particleOrder[i,j]] if particleOrder[i,j] >= 0 else np.nan for j in range(len(particleOrder[i]))]
 
 
     # We now have linked the particles from frame to frame, and can
@@ -189,10 +226,15 @@ def rectangularizeForceArrays(forceArr, alphaArr, betaArr, centerArr, radiusArr,
             # If we "lose" a force, carry the old beta value through to the new array, so
             # that we can identify it if it ever pops up again.
             betaValues = [betaArr[j][particleIndex][order[k]] if order[k] is not None else triSortedBetaArr[-1][k] for k in range(len(order))]
-            #print(betaValues)
+
+            #print(f'{betaValues}     {order}     {betaArr[j][particleIndex]}')
+
             triSortedBetaArr.append(betaValues)
             #triSortedForceOrderArr.append([i for i in order if i is not None])
             triSortedForceOrderArr.append(order)
+
+        #plt.plot([triSortedBetaArr[j][0] for j in range(len(triSortedBetaArr))])
+        #plt.show()
 
         # Since the triangular array is only allowed to grow, the length of the last
         # entry will be the maximum number of *unique* forces.

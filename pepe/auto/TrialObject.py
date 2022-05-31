@@ -40,41 +40,41 @@ class Trial():
                     print(f'Warning: dataset {datasetDir} is missing {f}.pickle file!\n {f[0].upper()}{f[1:]} will not be available for this object.')
 
             # Load in all of the pickle files
-            with open(self.datasetPath + 'forces.pickle', 'rb') as f:
-                if fileExists['forces']:
+            if fileExists['forces']:
+                with open(self.datasetPath + 'forces.pickle', 'rb') as f:
                     self.forceArr = pickle.load(f)
-                else:
-                    self.forceArr = None
+            else:
+                self.forceArr = None
 
-            with open(self.datasetPath + 'betas.pickle', 'rb') as f:
-                if fileExists['betas']:
+            if fileExists['betas']:
+                with open(self.datasetPath + 'betas.pickle', 'rb') as f:
                     self.betaArr = pickle.load(f)
-                else:
-                    self.betaArr = None
+            else:
+                self.betaArr = None
 
-            with open(self.datasetPath + 'alphas.pickle', 'rb') as f:
-                if fileExists['alphas']:
+            if fileExists['alphas']:
+                with open(self.datasetPath + 'alphas.pickle', 'rb') as f:
                     self.alphaArr = pickle.load(f)
-                else:
-                    self.alphaArr = None
+            else:
+                self.alphaArr = None
 
-            with open(self.datasetPath + 'centers.pickle', 'rb') as f:
-                if fileExists['centers']:
+            if fileExists['centers']:
+                with open(self.datasetPath + 'centers.pickle', 'rb') as f:
                     self.centerArr = pickle.load(f)
-                else:
-                    self.centerArr = None
+            else:
+                self.centerArr = None
 
-            with open(self.datasetPath + 'radii.pickle', 'rb') as f:
-                if fileExists['radii']:
+            if fileExists['radii']:
+                with open(self.datasetPath + 'radii.pickle', 'rb') as f:
                     self.radiusArr = pickle.load(f)
-                else:
-                    self.radiusArr = None
+            else:
+                self.radiusArr = None
 
-            with open(self.datasetPath + 'angles.pickle', 'rb') as f:
-                if fileExists['angles']:
+            if fileExists['angles']:
+                with open(self.datasetPath + 'angles.pickle', 'rb') as f:
                     self.angleArr = pickle.load(f)
-                else:
-                    self.angleArr = None
+            else:
+                self.angleArr = None
 
             # And try to load in the settings
             settingsFile = self.datasetPath + 'readme.txt'
@@ -107,7 +107,7 @@ class Trial():
 
 
             # Load in the particle identities too, since that is often very useful
-            if self.settings["genFitReport"]:
+            if 'genFitReport' in self.settings.keys() and self.settings["genFitReport"]:
                 self.identitiesImage = Image.fromarray(checkImageType(self.datasetPath + 'FitReport_src/particle_identities.png'))
             else:
                 self.identitiesImage = None
