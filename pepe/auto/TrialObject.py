@@ -318,7 +318,10 @@ class Trial():
         Calculates the time-averaged beta values of forces for the provided
         particle.
         """
-        averageBetaArr = np.array([np.nanmean(self.betaArr[particleIndex][i,:]) for i in range(self.numForces[particleIndex])])
+        #averageBetaArr = np.array([np.nanmean(self.betaArr[particleIndex][i,:]) for i in range(self.numForces[particleIndex])])
+        averageBetaArr = np.array([np.nanmedian(self.betaArr[particleIndex][i,:]) for i in range(self.numForces[particleIndex])])
+        # Now correct for periodicity
+        #return np.array([ab if ab <= np.pi else ab - 2*np.pi for ab in averageBetaArr])
         return averageBetaArr
                                     
 

@@ -75,10 +75,10 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
     # a central pixel
     if imageSize is None:
         # 11 is arbitrary, just a small, odd number
-        imageSize = (np.int16(radius*2)+11, np.int16(radius*2)+11)
+        imageSize = (np.int64(radius*2)+11, np.int64(radius*2)+11)
 
     if center is None:
-        center = np.array([imageSize[0]/2, imageSize[1]/2], dtype=np.int64)
+        center = np.array([imageSize[0]/2, imageSize[1]/2], dtype=np.float64)
 
     if mask is None:
         mask = circularMask(imageSize, center, radius)[:,:,0]
@@ -94,7 +94,7 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
     # a little more creative
     fullMask = particleMask + mask
     whereIndices = np.where(fullMask > 1)
-    points = np.zeros((len(whereIndices[0]), 2), dtype=np.int16)
+    points = np.zeros((len(whereIndices[0]), 2), dtype=np.int64)
     # There is a chance that these indices are backwards, but
     # because we have rotational symmetry, it doesn't really matter...
     # BUT if there is ever some weird anisotropy bug or something,

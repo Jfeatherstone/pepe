@@ -453,6 +453,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
     imageFiles = np.sort([img for img in imageFiles if img[-len(settings["imageExtension"]):] == settings["imageExtension"]])
 
+    # DEBUG:
+    #imageFiles = imageFiles[::-1]
+
     # We have to do the end index first, so it doesn't mess up the start one
     if settings["imageEndIndex"] is not None:
         imageFiles = imageFiles[:min(settings["imageEndIndex"], len(imageFiles))]
@@ -588,8 +591,8 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
 
         # We do some indexing using the centers/radii, so it is helpful
         # to have them as an integer type
-        centers = centers.astype(np.int64)
-        radii = radii.astype(np.int64)
+        #centers = centers.astype(np.int64)
+        #radii = radii.astype(np.int64)
 
         # We want to keep the order of particles constant, so we make sure
         # that they are (to whatever extent possible) in the same order
