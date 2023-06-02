@@ -1,7 +1,7 @@
 import inspect
 import numpy as np
 
-from pepe.auto import forceSolve, forceSolveArgDTypes
+from pepe.auto import forceSolve, forceSolveArgDTypes, excludedArgs
 
 def test_forceSolve_DTypeCoverage():
     """
@@ -10,7 +10,7 @@ def test_forceSolve_DTypeCoverage():
     reading in values from a settings file.
     """
     args, counts= np.unique(list(inspect.signature(forceSolve).parameters.keys()) + list(forceSolveArgDTypes.keys()), return_counts=True) 
-    missingArgs = args[counts == 1]
-
+    missingArgs = [a for a in args[counts == 1] if a not in excludedArgs]
+    
     assert len(missingArgs) == 0, f"Missing data types for args: {missingArgs}"
 

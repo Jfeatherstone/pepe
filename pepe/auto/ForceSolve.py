@@ -54,8 +54,10 @@ forceSolveArgDTypes  = {"imageDirectory": str,
             "peBlurKernel": int,
             "requireForceBalance": bool,
             "circleTrackingChannel": int,
+            "circleTrackingGain": float,
             "circleTrackingKwargs": dict,
             "photoelasticChannel": int,
+            "photoelasticGain": float,
             "optimizationKwargs": dict,
             "maxBetaDisplacement": float,
             "forceNoiseWidth": float,
@@ -69,11 +71,17 @@ forceSolveArgDTypes  = {"imageDirectory": str,
             "inputSettingsFile": str,
             "debug": bool}
 
+# These dtypes don't matter, so we don't need to carry them
+# through the settings file, but we want to explicitly define
+# them so that the test function in pepe/test/test_auto.py
+# doesn't catch them as missing
+excludedArgs = ["progressBarOffset", "progressBarTitle"]
+
 # Decorator that allows us to identify which keyword arguments were explicitly
 # passed to the function, and which were left as default values. See beginning
 # of method code for more information/motivation.
 @explicitKwargs()
-def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, cropXMin=None, cropXMax=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, maxBetaDisplacement=.5, photoelasticChannel=1, forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, performOptimization=True, debug=False, showProgressBar=True, progressBarOffset=0, progressBarTitle=None, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
+def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brightfield=True, contactPadding=15, g2MaskPadding=2, contactMaskRadius=30, lightCorrectionImage=None, lightCorrectionHorizontalMask=None, lightCorrectionVerticalMask=None, g2CalibrationImage=None, g2CalibrationCutoffFactor=.9, maskImage=None, cropXMin=None, cropXMax=None, peBlurKernel=3, imageExtension='bmp', requireForceBalance=False, imageStartIndex=None, imageEndIndex=None, carryOverAlpha=True, carryOverForce=True, circleDetectionMethod='convolution', circleTrackingKwargs={}, circleTrackingChannel=0, circleTrackingGain=1., maxBetaDisplacement=.5, photoelasticChannel=1, photoelasticGain=1., forceNoiseWidth=.03, alphaNoiseWidth=.01, optimizationKwargs={}, performOptimization=True, debug=False, showProgressBar=True, progressBarOffset=0, progressBarTitle=None, saveMovie=False, outputRootFolder='./', inputSettingsFile=None, pickleArrays=True, genFitReport=True, outputExtension=''):
     """
     Complete pipeline to solve for forces and particle positions for all image files
     in a directory. Results will be returned and potentially written to various files.
@@ -211,6 +219,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         The channel of the image that will be used to track the particles. `0` for red, `1` for
         green, and `2` for blue.
 
+    circleTrackingGain : float
+        The gain applied to the intensity in the circle tracking channel.
+
     maxBetaDisplacement : float
         The maximum distance (angle) that a force can move between frames and still be identified
         as the same force. If a force moves more than this value, it will still be recorded as a force,
@@ -219,6 +230,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     photoelasticChannel : int
         The channel of the image that will be used to gauge the photoelastic response. `0` for red, `1` for
         green, and `2` for blue.
+
+    photoelasticGain : float
+        The gain applied to the intensity in the photoelastic channel.
 
     forceNoiseWidth : float or None
         The width of the gaussian distribution (centered at 0) that noise is sampled from to add to the
@@ -351,7 +365,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
                 "peBlurKernel": peBlurKernel,
                 "requireForceBalance": requireForceBalance,
                 "circleTrackingChannel": circleTrackingChannel,
+                "circleTrackingGain": circleTrackingGain,
                 "photoelasticChannel": photoelasticChannel,
+                "photoelasticGain": photoelasticGain,
                 "maxBetaDisplacement": maxBetaDisplacement,
                 "forceNoiseWidth": forceNoiseWidth,
                 "alphaNoiseWidth": alphaNoiseWidth,
@@ -535,9 +551,9 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
     if settings["g2CalibrationImage"] is not None:
         g2CalImage = checkImageType(settings["g2CalibrationImage"])[:,xB[0]:xB[1]]
 
-        g2CalPEImage = cv2.blur((g2CalImage[:,:,settings["photoelasticChannel"]] + peCorrection).astype(np.float64) / 255, (settings["peBlurKernel"],settings["peBlurKernel"]))
+        g2CalPEImage = cv2.blur(settings["photoelasticGain"]*(g2CalImage[:,:,settings["photoelasticChannel"]] + peCorrection).astype(np.float64) / 255, (settings["peBlurKernel"],settings["peBlurKernel"]))
         # Locate particles
-        centers, radii = circFunc((g2CalImage[:,:,settings["circleTrackingChannel"]] + trackCorrection) * maskArr[:,:,0], settings["guessRadius"], **circleTrackingKwargs)
+        centers, radii = circFunc(settings["circleTrackingGain"]*(g2CalImage[:,:,settings["circleTrackingChannel"]] + trackCorrection) * maskArr[:,:,0], settings["guessRadius"], **circleTrackingKwargs)
         # There should only be 1 particle in the calibration image
         if len(centers) < 0:
             print(f'Warning: Gradient-squared calibration image does not contain any particles! Ignoring...')
@@ -581,13 +597,13 @@ def forceSolve(imageDirectory, guessRadius=0.0, fSigma=0.0, pxPerMeter=0.0, brig
         image = checkImageType(settings["imageDirectory"] + imageFiles[i])[:,xB[0]:xB[1]]
         # Convert to floats on the domain [0,1], so we can compare to the output of 
         # genSyntheticResponse()
-        peImage = cv2.blur((image[:,:,settings["photoelasticChannel"]] + peCorrection).astype(np.float64) / 255, (settings["peBlurKernel"],settings["peBlurKernel"]))
+        peImage = cv2.blur(settings["photoelasticGain"]*(image[:,:,settings["photoelasticChannel"]] + peCorrection).astype(np.float64) / 255, (settings["peBlurKernel"],settings["peBlurKernel"]))
 
         # -------------
         # Track circles
         # -------------
         start = time.perf_counter()
-        centers, radii = circFunc((image[:,:,settings["circleTrackingChannel"]] + trackCorrection) * maskArr[:,:,0], settings["guessRadius"], **circleTrackingKwargs)
+        centers, radii = circFunc(settings["circleTrackingGain"]*(image[:,:,settings["circleTrackingChannel"]] + trackCorrection) * maskArr[:,:,0], settings["guessRadius"], **circleTrackingKwargs)
 
         # We do some indexing using the centers/radii, so it is helpful
         # to have them as an integer type
