@@ -37,7 +37,7 @@ Available [here](http://jfeatherstone.github.io/pepe/pepe).
 
 ## Requirements
 
-Python 3.7 is the recommended version to use, with the following packages:
+Python 3.11 is the recommended version to use, with the following packages:
 
 - [numpy](https://numpy.org/)
 - [matplotlib](https://matplotlib.org/)

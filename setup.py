@@ -5,9 +5,9 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
      name='pepe-granular',  
-     version='1.0.1',
+     version='1.1.0',
      author="Jack Featherstone",
-     author_email="jdfeathe@ncsu.edu",
+     author_email="jack.featherstone@oist.jp",
      license='MIT',
      url='https://jfeatherstone.github.io/pepe/pepe',
      description="Toolbox for granular analysis of photoelastic images",
@@ -16,6 +16,7 @@ setuptools.setup(
      packages=setuptools.find_packages(),
      classifiers=[
          "Programming Language :: Python :: 3.7",
+         "Programming Language :: Python :: 3.11",
          "License :: OSI Approved :: MIT License",
          "Operating System :: OS Independent",
      ],

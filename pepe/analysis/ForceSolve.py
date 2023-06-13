@@ -521,7 +521,7 @@ def forceOptimize(forceGuessArr, betaGuessArr, alphaGuessArr, radius, center, re
         realScaleFactor = 1
 
     scaledRadius = np.int64(radius * realScaleFactor)
-    scaledCenter = np.array(center * realScaleFactor, dtype=np.int64)
+    scaledCenter = np.array(center * realScaleFactor, dtype=np.float64)
     scaledPxPerMeter = np.int64(pxPerMeter * realScaleFactor)
     scaledContactMaskRadius = np.int64(contactMaskRadius * realScaleFactor)
     scaledParticleArea = scaledRadius**2 * np.pi
