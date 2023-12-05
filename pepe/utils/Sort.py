@@ -68,7 +68,7 @@ def preserveOrderSort(oldValues, newValues, padMissingValues=False, maxDistance=
     # We already have preserveOrderArgsort written, so we can just wrap that
     order = preserveOrderArgsort(oldValues, newValues, padMissingValues, maxDistance, periodic, fillNanSpots)
 
-    dim = len(newValues[0])
+    dim = len(newValues[0]) if hasattr(newValues[0], '__iter__') else 1
 
     # Slightly different behavior for d=1 vs. d>1, since we don't want
     # an extra dimension nested in there if our data is 1d

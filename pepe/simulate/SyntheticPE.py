@@ -52,11 +52,11 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
         Whether the intensity should be simulated as seen through a brightfield (True)
         polariscope or darkfield (False) polariscope.
 
-    imageSize : [int, int]
+    imageSize : tuple(np.int64[2]) or None
         The size of the canvas the stress pattern will be drawn on. Set to None to automatically
         determine this based on the radius.
 
-    center : [int, int]
+    center : np.float64[2] or None
         Where the center of the particle should be position in on the image canvas. Useful for
         creating a composite image of many particles, as the final image can be made just by
         adding each individual matrix together. Set to None to center the particle automatically.

@@ -29,7 +29,7 @@ cd pepe
 pip install .
 ```
 
-Theoretically, this should work for any Python >3, but Python 3.7 is the recommended version (primarily because OpenCV has some issues with newer versions).
+Theoretically, this should work for any Python >3, but Python 3.7 and 3.11 have been explicitly tested.
 
 Dependencies:
 
@@ -73,7 +73,6 @@ See the `pepe.examples` submodule for some common uses of the toolbox. Many pseu
 [2a] Jonathan Kollmer's implementation in Matlab: https://github.com/jekollmer/PEGS
 
 [2b] Olivier Lantsoght's implementation in Python: https://git.immc.ucl.ac.be/olantsoght/pegs_py
-
 
 [3] Photoelastic methods wiki. https://git-xen.lmgc.univ-montp2.fr/PhotoElasticity/Main/-/wikis/home
 """

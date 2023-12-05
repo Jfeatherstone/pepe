@@ -1,6 +1,8 @@
 tests/test_data/
 images/convolution_test/
 
+clear_ipynb.py
+
 __pycache__/
 .ipynb_checkpoints/
 .pytest_cache/
