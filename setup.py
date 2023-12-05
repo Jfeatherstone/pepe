@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
      name='pepe-granular',  
-     version='1.0.2',
+     version='1.1.1',
      author="Jack Featherstone",
      author_email="jdfeathe@ncsu.edu",
      license='MIT',

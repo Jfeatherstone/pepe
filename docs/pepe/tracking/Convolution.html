@@ -43,9 +43,9 @@ from pepe.topology import findPeaks2D
 from pepe.utils import lorentzian
 from pepe.analysis import adjacencyMatrix
 
-from lmfit import minimize, Parameters
+from lmfit import minimize, Parameters, fit_report
 
-def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False, peakDownsample=10, minPeakPrevalence=.1, intensitySoftmax=1.2, intensitySoftmin=.1, invert=False, allowOverlap=False, fitPeaks=True, debug=False):
+def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, kernelBlurKernel=3, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False, peakDownsample=10, minPeakPrevalence=.1, intensitySoftmax=1.2, intensitySoftmin=.1, invert=False, allowOverlap=True, fitPeaks=True, debug=False):
     &#34;&#34;&#34;
     Perform convolution circle detection on the provided image.
 
@@ -170,6 +170,10 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
         the image.
 
         Set to `None` to skip this preprocessing step.
+
+    allowOverlap : bool
+        Whether or not to allow detections of particles that overlap. If set to
+        False, then the particle with the stronger signature will be kept
         
     debug : bool
         Whether or not to draw debug information on a plot. 
@@ -197,7 +201,6 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
     CRC Press. https://doi.org/10.1201/b19291
 
     &#34;&#34;&#34;
-
     # General housekeeping of arguments, see if we need to parse anything
     if offscreenParticles:
         paddingFactor = 2.
@@ -251,7 +254,7 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
     convArr = circularKernelFind(imageArr, initialRadius, fftPadding=int(initialRadius*paddingFactor),
                                  outlineOnly=outlineOnly, outlineThickness=outlineThickness,
                                  negativeHalo=negativeHalo, haloThickness=haloThickness,
-                                 negativeInside=negativeInside, debug=debug)
+                                 negativeInside=negativeInside, kernelBlurKernel=kernelBlurKernel, debug=debug)
 
     if debug:
         plt.show()
@@ -315,144 +318,58 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
             lorentzPositions[i] = upsampledPosition
 
     # Look around each peak to find the real peak in the full-resolution image
+    # (only if we are actually downsampling)
     refinedPeakPositions = []
     refinedRadii = []
 
-    localPadding = int(peakDownsample*1.5)
-    for i in range(len(peakPositions)):
-        # We want to vary the radius here as well, so we can maybe get a slightly more accurate result.
-        # Note that it is much more efficient to perform the kernel finding on a small image many times
-        # than to work on a large image just a few times. So we recalculate the kernel finding for each
-        # radii for each peak.
-        # TODO: This part is still WIP, because it doens&#39;t quite work correctly
-        if len(possibleRadii) &gt; 1:
-            maximumValues = np.zeros(len(possibleRadii))
-            maximumPositions = np.zeros((len(possibleRadii), 2))
+    if peakDownsample &gt; 1:
+        # To do this, we use a non-linear optimization scheme
+        for i in range(len(peakPositions)):
 
-            #upsampledPosition = np.array([peakPositions[i][0]*peakDownsample, peakPositions[i][1]*peakDownsample])
-            upsampledPosition = np.int16(lorentzPositions[i])
-            for j in range(len(possibleRadii)):
-                # This is the point in the real image (not the conv arr)
-                imagePadding = int(possibleRadii[j])
-                # Crop out the small area of the image that we are working with
-                localImage = imageArr[max(upsampledPosition[0]-imagePadding, 0):min(upsampledPosition[0]+imagePadding,imageArr.shape[0]-1),max(upsampledPosition[1]-imagePadding, 0):min(upsampledPosition[1]+imagePadding, imageArr.shape[1]-1)]
+            costArr = []
 
-                # Perform another convolution
-                # Don&#39;t need as much padding for this one, since we are quite sure the particle is somewhere
-                # near the center
-                localConvPadding = int(possibleRadii[j])
-                localConvArr = circularKernelFind(localImage, possibleRadii[j], fftPadding=localConvPadding,
-                                                  outlineOnly=outlineOnly, outlineThickness=outlineThickness,
-                                                  negativeHalo=negativeHalo, haloThickness=haloThickness,
-                                                  negativeInside=negativeInside, debug=False)
-                # Required if you set debug=True in above line
-                #plt.show()
+            def refineObjectiveFunction(params):
+                kernelArr = genCircularKernel(np.array([params[&#34;y&#34;].value, params[&#34;x&#34;].value]), params[&#34;r&#34;].value,
+                                              imageArr.shape, kernelBlurKernel, outlineOnly,
+                                              outlineThickness, negativeHalo, haloThickness, negativeInside)
 
-                # Add a *very* small weighting that favors circles closer to the center of the
-                # image. This is needed because otherwise the algorithm may place circles more
-                # offscreen than they actually are, because it would mean fewer pixels are included
-                # (since some are cropped off)
-                #Y = np.arange(localImage.shape[0]).reshape((localImage.shape[0], 1)) # Column vector
-                #X = np.arange(localImage.shape[1]).reshape((1, localImage.shape[1])) # Row vector
-                #localConvArr += 1e-3*np.exp(- ( (Y - localImage.shape[0]/2)**2 + (X - localImage.shape[1]/2)**2 ) / max(localImage.shape))
+                # We are minimizing this function, so we need the cost to be negative
+                # (unless we have to invert the image)
+                costArr.append((np.sum(kernelArr * imageArr) / np.sum(kernelArr)) * (int(invert)*2 - 1))
+                return (np.sum(kernelArr * imageArr) / np.sqrt(np.sum(kernelArr))) * (int(invert)*2 - 1)
 
-                # Now setup a fit to this function
-                params = Parameters()
+            params = Parameters()
 
-                params.add(&#39;center_y&#39;, value=localImage.shape[0]/2, vary=True)
-                params.add(&#39;center_x&#39;, value=localImage.shape[1]/2, vary=True)
-                params.add(&#39;width&#39;, value=imagePadding, vary=True)
-                params.add(&#39;amp&#39;, value=np.max(localConvArr)/2, vary=True)
-                params.add(&#39;offset&#39;, value=np.mean(localConvArr), vary=True)
+            params.add(&#39;y&#39;, value=lorentzPositions[i][0], min=lorentzPositions[i][0]-imageArr.shape[0]*.02, max=lorentzPositions[i][0]+imageArr.shape[0]*.02)
+            params.add(&#39;x&#39;, value=lorentzPositions[i][1], min=lorentzPositions[i][1]-imageArr.shape[1]*.02, max=lorentzPositions[i][1]+imageArr.shape[1]*.02)
+            # May or may not want to vary the radius
+            # Small tolerances on the radius are so that min != max
+            params.add(&#39;r&#39;, value=np.mean(possibleRadii), vary=(len(possibleRadii) &gt; 1), max=np.max(possibleRadii)-.01, min=np.min(possibleRadii)+.01)
+
+            result = minimize(refineObjectiveFunction, params, method=&#39;powell&#39;, max_nfev=10000, options={&#34;ftol&#34;: 1e-5, &#34;xtol&#34;: 1e-5})
+
+            #print(fit_report(result))
+
+            if result is not None:
+                refinedPeakPositions.append([result.params[&#34;y&#34;].value, result.params[&#34;x&#34;].value])
+                refinedRadii.append(result.params[&#34;r&#34;].value)
                 
-                try:
-                    result = minimize(objectiveFunction, params, args=[localConvArr], method=&#39;nelder&#39;, max_nfev=1000)
-                except:
-                    result = None
-                
-                if result is not None:
-                    realLocalMax = np.array([int(result.params[&#34;center_y&#34;]), int(result.params[&#34;center_x&#34;])])
-                else:
-                    realLocalMax = np.zeros(2)
-
-                #realLocalMax = np.unravel_index(np.argmax(localConvArr.flatten()), localConvArr.shape)
-                # We want to convert these back to real-space coordinates here
-                #maximumPositions[j] = upsampledPosition - realLocalMax - np.repeat(localConvPadding, 2)
-                maximumPositions[j,0] = upsampledPosition[0] - localConvArr.shape[0]/2 + realLocalMax[0]
-                maximumPositions[j,1] = upsampledPosition[1] - localConvArr.shape[1]/2 + realLocalMax[1]
-
-                # Need to convert to int16 since we might have negative values
-                pMask = circularMask(singleChannelFrame.shape, maximumPositions[j], possibleRadii[j])[:,:,0].astype(np.int16)
-
-                # The next couple if statements are for only doing an outline, adding a halo, removing the center, etc.
-                # If we only want the outline, we subtract another circular mask from the above one
-                if outlineOnly:
-                    # Should be 2 if negative inside is true, 1 otherwise
-                    negativeInsideFactor = 1 + int(negativeInside)
-                    if outlineThickness &lt; 1:
-                        innerRadius = np.ceil((1 - outlineThickness) * possibleRadii[j])
-                    else:
-                        innerRadius = possibleRadii[j] - outlineThickness
-                        pMask -= negativeInsideFactor * circularMask(singleChannelFrame.shape, maximumPositions[j], innerRadius)[:,:,0]
-
-                    if negativeHalo:
-                        pMask = 2*pMask - (circularMask(singleChannelFrame.shape, maximumPositions[j], possibleRadii[j]+2)[:,:,0].astype(np.int16) - circularMask(singleChannelFrame.shape, maximumPositions[j], possibleRadii[j])[:,:,0].astype(np.int16))
-
-                elif negativeHalo:
-                    pMask = 2*pMask - circularMask(singleChannelFrame.shape, maximumPositions[j], possibleRadii[j]+2)[:,:,0].astype(np.int16)
-
-
-                if np.sum(pMask) == 0:
-                    maximumValues[j] = 0
-                else:
-                    maximumValues[j] = np.sum(singleChannelFrame * pMask) / np.sum(pMask)
-           
-            
-
-            # Noise can cause some slight variations in the maximum values making different
-            # radii give different maximum values, when they should give actually the same
-            # value (and then the largest one should be taken). We fix this by rounding
-            # after multiply by a large number. .5e3 was chosen by experimenting
-
-            maximumValues = [int(m*1e2) if not np.isnan(m) else 0 for m in maximumValues]
-
-            #plt.plot(possibleRadii, maximumValues)
-            #plt.show()
-
-            # Now save whichever on had the largest signal
-            # We want to sort the list backwards, because we want the largest possible radius
-            # that also gives the best value. If the radius is smaller than the actual one, you
-            # can end up with the same exact maximum value, since you are just cutting off extra
-            # parts of the circle.
-            refinedPeakPositions.append(tuple(maximumPositions[::-1][np.argmax(maximumValues[::-1])]))
-            refinedRadii.append(possibleRadii[::-1][np.argmax(maximumValues[::-1])])
-
-        else:
-            # Position of the peaks in the convolution image (NOT the real image)
-            upsampledPosition = np.int16(lorentzPositions[i])
-            
-            # We don&#39;t need to refine if we fit a peak, since that already did refine the
-            # position
-            if fitPeaks:
-                refinementOffset = 0
+                #if debug:
+                #    plt.plot(costArr)
+                #    plt.show()
 
             else:
-                # This just looks long because my naming is a little verbose
-                # + we also have to make sure we don&#39;t accidentally go off of the image
-                localRegion = convArr[max(upsampledPosition[0]-localPadding, 0):min(upsampledPosition[0]+localPadding,convArr.shape[0]-1),max(upsampledPosition[1]-localPadding, 0):min(upsampledPosition[1]+localPadding, convArr.shape[1]-1)]
-                # Find maximum intensity in small region around that position
-                realLocalMax = np.unravel_index(np.argmax(localRegion.flatten()), localRegion.shape)
-                # This is relative to the small region we just created, so we have to subtract off the bounds
-                # eg. if this local max was found to be in the center of the local image, that would mean
-                # that the original upsampled position was correct.
-                refinementOffset = realLocalMax - np.repeat(localPadding, 2)
+                refinedPeakPositions.append(lorentzPositions[i])
+                refinedRadii.append(np.mean(possibleRadii))
 
-            # Now put everything together the coordinates of the circle in the original image
-            refinedPeakPositions.append(tuple(upsampledPosition + refinementOffset))
-            refinedRadii.append(initialRadius)
+    else:
+        refinedPeakPositions = lorentzPositions
+        refinedRadii = np.repeat(np.mean(possibleRadii), len(refinedPeakPositions))
 
 
     # Now we (optionally) remove overlapping particles
+    # TODO: Allow overlap to be a float value, which allows overlaps
+    # that do not exceed a certain threshold (eg. that fraction of the radius).
     if not allowOverlap:
         # Calculate the contact matrix
         # negative contact padding because we don&#39;t want to remove particles that are
@@ -466,24 +383,9 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
         particleScores = np.zeros(len(overlappingParticles))
         for i in range(len(particleScores)):
             # Need to convert to int16 since we might have negative values
-            pMask = circularMask(singleChannelFrame.shape, refinedPeakPositions[i], refinedRadii[i])[:,:,0].astype(np.int16)
-
-            # The next couple if statements are for only doing an outline, adding a halo, removing the center, etc.
-            # If we only want the outline, we subtract another circular mask from the above one
-            if outlineOnly:
-                # Should be 2 if negative inside is true, 1 otherwise
-                negativeInsideFactor = 1 + int(negativeInside)
-                if outlineThickness &lt; 1:
-                    innerRadius = np.ceil((1 - outlineThickness) * refinedRadii[i])
-                else:
-                    innerRadius = refinedRadii[i] - outlineThickness
-                    pMask -= negativeInsideFactor * circularMask(singleChannelFrame.shape, refinedPeakPositions[i], innerRadius)[:,:,0]
-
-                if negativeHalo:
-                    pMask = 2*pMask - (circularMask(singleChannelFrame.shape, refinedPeakPositions[i], refinedRadii[i]+2)[:,:,0].astype(np.int16) - circularMask(singleChannelFrame.shape, refinedPeakPositions[i], refinedRadii[i])[:,:,0].astype(np.int16))
-
-            elif negativeHalo:
-                pMask = 2*pMask - circularMask(singleChannelFrame.shape, refinedPeakPositions[i], refinedRadii[i]+2)[:,:,0].astype(np.int16)
+            pMask = genCircularKernel(refinedPeakPositions[i], refinedRadii[i],
+                                      singleChannelFrame.shape, kernelBlurKernel, outlineOnly,
+                                      outlineThickness, negativeHalo, haloThickness, negativeInside).astype(np.int16)
 
             if np.sum(pMask) &gt; 0:
                 # I square-root the mask sum so that the particles at the edge don&#39;t
@@ -540,7 +442,7 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
     return np.array(refinedPeakPositions), np.array(refinedRadii)
 
 
-def circularKernelFind(singleChannelFrame, radius, fftPadding, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False, paddingValue=None, debug=False):
+def circularKernelFind(singleChannelFrame, radius, fftPadding, kernelBlurKernel=3, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False, paddingValue=None, debug=False):
     &#34;&#34;&#34;
     Calculate the convolution of a circular mask with an image,
     identifying likely locations of circles within the image. Adapted from
@@ -572,6 +474,10 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, outlineOnly=False
         fft from having issues. A good choice is usually 1.5 times the radius,
         though, less padding can be used if circles are not expected to often
         be located near the edges.
+
+    kernelBlurKernel : int
+        The kernel size to use to blur the kernel that will be convolved with the image, in
+        pixels. A value of 0 or None will use the original kernel.
 
     outlineOnly : bool
         Whether to look for only a particle outline (True), or to look for a filled-in circle (False).
@@ -611,9 +517,6 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, outlineOnly=False
 
     debug : bool
         Whether or not to plot various quantities of the calculation for inspection
-- `S`: Soft particles; shore hardness 40
-- `M`: Medium particles; shore hardness 50
-- `H`: Hard particles; shore hardness 60, thickness
         at the end of the evaluation.
 
     Returns
@@ -679,34 +582,9 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, outlineOnly=False
     # To be able to properly convolute the kernel with the image, they have to
     # be the same size, so just just put our kernel into an array the same size
     # as the image (though most entries will just be zero)
-    kernelArr = circularMask(paddedImageArr.shape, center, radius)[:,:,0].astype(np.float64)
-   
-    # If we only want the outline, we subtract another circular mask from the above one
-    if outlineOnly:
-        # Should be 2 if negative inside is true, 1 otherwise
-        negativeInsideFactor = 1 + int(negativeInside)
-        if outlineThickness &lt; 1:
-            innerRadius = np.ceil((1 - outlineThickness) * radius)
-        else:
-            innerRadius = radius - outlineThickness
-        
-        kernelArr = kernelArr - negativeInsideFactor * circularMask(paddedImageArr.shape, center, innerRadius)[:,:,0].astype(np.float64)
-
-        if negativeHalo:
-            if haloThickness &lt; 1:
-                haloRadius = radius + np.ceil((1 - haloThickness) * radius)
-            else:
-                haloRadius = radius + haloThickness
-
-            kernelArr = 2*kernelArr - (circularMask(paddedImageArr.shape, center, haloRadius)[:,:,0].astype(np.float64) - circularMask(paddedImageArr.shape, center, radius)[:,:,0].astype(np.float64))
-
-    elif negativeHalo:
-        if haloThickness &lt; 1:
-            haloRadius = np.ceil((1 + haloThickness) * radius)
-        else:
-            haloRadius = radius + haloThickness
-
-        kernelArr = 2*kernelArr - circularMask(paddedImageArr.shape, center, haloRadius)[:,:,0].astype(np.float64)
+    # See function below for more information on generating this kernel
+    kernelArr = genCircularKernel(center, radius, paddedImageArr.shape, kernelBlurKernel, outlineOnly,
+                                 outlineThickness, negativeHalo, haloThickness, negativeInside)
 
     # First convolutional term
     convTerm1 = ifft2(fft2(paddedImageArr**2) * fft2(kernelArr))
@@ -748,7 +626,44 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, outlineOnly=False
 
         fig.tight_layout()
 
-    return chiSqr</code></pre>
+    return chiSqr
+
+
+def genCircularKernel(center, radius, imageShape, kernelBlurKernel=3, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False,):
+
+    kernelArr = circularMask(imageShape, center, radius)[:,:,0].astype(np.float64)
+
+    # If we only want the outline, we subtract another circular mask from the above one
+    if outlineOnly:
+        # Should be 2 if negative inside is true, 1 otherwise
+        negativeInsideFactor = 1 + int(negativeInside)
+        if outlineThickness &lt; 1:
+            innerRadius = np.ceil((1 - outlineThickness) * radius)
+        else:
+            innerRadius = radius - outlineThickness
+        
+        kernelArr = kernelArr - negativeInsideFactor * circularMask(imageShape, center, innerRadius)[:,:,0].astype(np.float64)
+
+        if negativeHalo:
+            if haloThickness &lt; 1:
+                haloRadius = radius + np.ceil((1 - haloThickness) * radius)
+            else:
+                haloRadius = radius + haloThickness
+
+            kernelArr = 2*kernelArr - (circularMask(imageShape, center, haloRadius)[:,:,0].astype(np.float64) - circularMask(imageShape, center, radius)[:,:,0].astype(np.float64))
+
+    elif negativeHalo:
+        if haloThickness &lt; 1:
+            haloRadius = np.ceil((1 + haloThickness) * radius)
+        else:
+            haloRadius = radius + haloThickness
+
+        kernelArr = 2*kernelArr - circularMask(imageShape, center, haloRadius)[:,:,0].astype(np.float64)
+
+    if kernelBlurKernel is not None and kernelBlurKernel &gt; 0:
+        kernelArr = cv2.blur(kernelArr, (kernelBlurKernel,kernelBlurKernel))
+
+    return kernelArr</code></pre>
 </details>
 </section>
 <section>
@@ -759,99 +674,89 @@ def circularKernelFind(singleChannelFrame, radius, fftPadding, outlineOnly=False
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="pepe.tracking.Convolution.circularKernelFind"><code class="name flex">
-<span>def <span class="ident">circularKernelFind</span></span>(<span>singleChannelFrame, radius, fftPadding, outlineOnly=False, outlineThickness=0.05, negativeHalo=False, haloThickness=0.03, negativeInside=False, paddingValue=None, debug=False)</span>
+<span>def <span class="ident">circularKernelFind</span></span>(<span>singleChannelFrame, radius, fftPadding, kernelBlurKernel=3, outlineOnly=False, outlineThickness=0.05, negativeHalo=False, haloThickness=0.03, negativeInside=False, paddingValue=None, debug=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Calculate the convolution of a circular mask with an image,
 identifying likely locations of circles within the image. Adapted from
 method described in [1].</p>
-<pre><code>To perform the convolution, we take the product of the fft of each the
+<p>To perform the convolution, we take the product of the fft of each the
 kernel and image, and then ifft the result to transform back to real space.
 The only peculiarity is that there can be some issues with the edges of image
 (especially if any circle centers are near the edge/off-screen) so we
-have to take care to properly pad the image and the kernel.
-
-Note that this method is not intended to be used as the front end for
-circle detection for real data. The method &lt;code&gt;pepe.tracking.convCircle()&lt;/code&gt;
+have to take care to properly pad the image and the kernel.</p>
+<p>Note that this method is not intended to be used as the front end for
+circle detection for real data. The method <code>pepe.tracking.convCircle()</code>
 makes use of this method to track circles, while also offering many more
 features. It is recommended to use that function unless there is a very
-specific purpose that it does not serve.
-
-Parameters
-----------
-singleChannelFrame : np.ndarray[H,W]
-    A single-channel image (grayscale or just one channel) within which we
-    are looking to identify circular objects.
-
-radius : float
-    The radius of circles to detect in the image.
-
-fftPadding : int
-    The amount of padding to add to each side of the image, to prevent the
-    fft from having issues. A good choice is usually 1.5 times the radius,
-    though, less padding can be used if circles are not expected to often
-    be located near the edges.
-
-outlineOnly : bool
-    Whether to look for only a particle outline (True), or to look for a filled-in circle (False).
-
-    See &lt;code&gt;outlineThickness&lt;/code&gt;.
-
-outlineThickness : float or int
-    Thickness of the particle outline in the kernel; only relevant if `outlineOnly=True`.
-
-    If float, will be taken as fraction of the radius; if integer, will be taken as number
-    of pixels.
-
-negativeHalo : bool
-    Whether to surround the particle mask with a region of negative value, which
-    further promotes identifying distinct objects as grains.
-
-haloThickness : float or int
-    Thickness of the negative halo in the kernel; only relevant if `negativeHalo=True`.
-
-    If float, will be taken as fraction of the radius; if integer, will be taken as number
-    of pixels.
-
-negativeInside : bool
-    Whether to fill the inside of the particle mask with a negative value, which 
-    further promotes identifying outlines of circles.
-
-    Has no effect unless `outlineOnly=True`.
-
-paddingValue : [float, `'sigmoid'`, or &lt;code&gt;None&lt;/code&gt;]
-    What value to fill in for the extra padding that is added during the fft/ifft.
-
-    &lt;code&gt;None&lt;/code&gt; leaves the value at 0.
-
-    `'sigmoid'` will create a smooth-ish transition to 0.
-
-    Any float value will be inserted into every point.
-
-debug : bool
-    Whether or not to plot various quantities of the calculation for inspection
-</code></pre>
-<ul>
-<li><code>S</code>: Soft particles; shore hardness 40</li>
-<li><code>M</code>: Medium particles; shore hardness 50</li>
-<li>
-<p><code>H</code>: Hard particles; shore hardness 60, thickness
-at the end of the evaluation.</p>
+specific purpose that it does not serve.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>singleChannelFrame</code></strong> :&ensp;<code>np.ndarray[H,W]</code></dt>
+<dd>A single-channel image (grayscale or just one channel) within which we
+are looking to identify circular objects.</dd>
+<dt><strong><code>radius</code></strong> :&ensp;<code>float</code></dt>
+<dd>The radius of circles to detect in the image.</dd>
+<dt><strong><code>fftPadding</code></strong> :&ensp;<code>int</code></dt>
+<dd>The amount of padding to add to each side of the image, to prevent the
+fft from having issues. A good choice is usually 1.5 times the radius,
+though, less padding can be used if circles are not expected to often
+be located near the edges.</dd>
+<dt><strong><code>kernelBlurKernel</code></strong> :&ensp;<code>int</code></dt>
+<dd>The kernel size to use to blur the kernel that will be convolved with the image, in
+pixels. A value of 0 or None will use the original kernel.</dd>
+<dt><strong><code>outlineOnly</code></strong> :&ensp;<code>bool</code></dt>
+<dd>
+<p>Whether to look for only a particle outline (True), or to look for a filled-in circle (False).</p>
+<p>See <code>outlineThickness</code>.</p>
+</dd>
+<dt><strong><code>outlineThickness</code></strong> :&ensp;<code>float</code> or <code>int</code></dt>
+<dd>
+<p>Thickness of the particle outline in the kernel; only relevant if <code>outlineOnly=True</code>.</p>
+<p>If float, will be taken as fraction of the radius; if integer, will be taken as number
+of pixels.</p>
+</dd>
+<dt><strong><code>negativeHalo</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether to surround the particle mask with a region of negative value, which
+further promotes identifying distinct objects as grains.</dd>
+<dt><strong><code>haloThickness</code></strong> :&ensp;<code>float</code> or <code>int</code></dt>
+<dd>
+<p>Thickness of the negative halo in the kernel; only relevant if <code>negativeHalo=True</code>.</p>
+<p>If float, will be taken as fraction of the radius; if integer, will be taken as number
+of pixels.</p>
+</dd>
+<dt><strong><code>negativeInside</code></strong> :&ensp;<code>bool</code></dt>
+<dd>
+<p>Whether to fill the inside of the particle mask with a negative value, which
+further promotes identifying outlines of circles.</p>
+<p>Has no effect unless <code>outlineOnly=True</code>.</p>
+</dd>
+<dt><strong><code>paddingValue</code></strong> :&ensp;<code>[float, </code>'sigmoid'<code>,</code> or <code><code>None&lt;/code&gt;]</code></dt>
+<dd>
+<p>What value to fill in for the extra padding that is added during the fft/ifft.</p>
+<p><code>None</code> leaves the value at 0.</p>
+<p><code>'sigmoid'</code> will create a smooth-ish transition to 0.</p>
+<p>Any float value will be inserted into every point.</p>
+</dd>
+<dt><strong><code>debug</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether or not to plot various quantities of the calculation for inspection
+at the end of the evaluation.</dd>
+</dl>
 <h2 id="returns">Returns</h2>
-<p>chiSqr : np.ndarray[H,W]
-The convolution of the kernel with the image. Larger values represent
-higher likelihood that there is a particle centered there.</p>
+<dl>
+<dt><strong><code>chiSqr</code></strong> :&ensp;<code>np.ndarray[H,W]</code></dt>
+<dd>The convolution of the kernel with the image. Larger values represent
+higher likelihood that there is a particle centered there.</dd>
+</dl>
 <h2 id="references">References</h2>
 <p>[1] Franklin, S. V., &amp; Shattuck, M. D. (Eds.). (2016). Handbook
 of Granular Materials. Chapter 2: Experimental Techniques. p.64-68.
-CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b19291</a></p>
-</li>
-</ul></div>
+CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b19291</a></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def circularKernelFind(singleChannelFrame, radius, fftPadding, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False, paddingValue=None, debug=False):
+<pre><code class="python">def circularKernelFind(singleChannelFrame, radius, fftPadding, kernelBlurKernel=3, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False, paddingValue=None, debug=False):
     &#34;&#34;&#34;
     Calculate the convolution of a circular mask with an image,
     identifying likely locations of circles within the image. Adapted from
@@ -883,6 +788,10 @@ CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b192
         fft from having issues. A good choice is usually 1.5 times the radius,
         though, less padding can be used if circles are not expected to often
         be located near the edges.
+
+    kernelBlurKernel : int
+        The kernel size to use to blur the kernel that will be convolved with the image, in
+        pixels. A value of 0 or None will use the original kernel.
 
     outlineOnly : bool
         Whether to look for only a particle outline (True), or to look for a filled-in circle (False).
@@ -922,9 +831,6 @@ CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b192
 
     debug : bool
         Whether or not to plot various quantities of the calculation for inspection
-- `S`: Soft particles; shore hardness 40
-- `M`: Medium particles; shore hardness 50
-- `H`: Hard particles; shore hardness 60, thickness
         at the end of the evaluation.
 
     Returns
@@ -990,34 +896,9 @@ CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b192
     # To be able to properly convolute the kernel with the image, they have to
     # be the same size, so just just put our kernel into an array the same size
     # as the image (though most entries will just be zero)
-    kernelArr = circularMask(paddedImageArr.shape, center, radius)[:,:,0].astype(np.float64)
-   
-    # If we only want the outline, we subtract another circular mask from the above one
-    if outlineOnly:
-        # Should be 2 if negative inside is true, 1 otherwise
-        negativeInsideFactor = 1 + int(negativeInside)
-        if outlineThickness &lt; 1:
-            innerRadius = np.ceil((1 - outlineThickness) * radius)
-        else:
-            innerRadius = radius - outlineThickness
-        
-        kernelArr = kernelArr - negativeInsideFactor * circularMask(paddedImageArr.shape, center, innerRadius)[:,:,0].astype(np.float64)
-
-        if negativeHalo:
-            if haloThickness &lt; 1:
-                haloRadius = radius + np.ceil((1 - haloThickness) * radius)
-            else:
-                haloRadius = radius + haloThickness
-
-            kernelArr = 2*kernelArr - (circularMask(paddedImageArr.shape, center, haloRadius)[:,:,0].astype(np.float64) - circularMask(paddedImageArr.shape, center, radius)[:,:,0].astype(np.float64))
-
-    elif negativeHalo:
-        if haloThickness &lt; 1:
-            haloRadius = np.ceil((1 + haloThickness) * radius)
-        else:
-            haloRadius = radius + haloThickness
-
-        kernelArr = 2*kernelArr - circularMask(paddedImageArr.shape, center, haloRadius)[:,:,0].astype(np.float64)
+    # See function below for more information on generating this kernel
+    kernelArr = genCircularKernel(center, radius, paddedImageArr.shape, kernelBlurKernel, outlineOnly,
+                                 outlineThickness, negativeHalo, haloThickness, negativeInside)
 
     # First convolutional term
     convTerm1 = ifft2(fft2(paddedImageArr**2) * fft2(kernelArr))
@@ -1063,7 +944,7 @@ CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b192
 </details>
 </dd>
 <dt id="pepe.tracking.Convolution.convCircle"><code class="name flex">
-<span>def <span class="ident">convCircle</span></span>(<span>singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, outlineOnly=False, outlineThickness=0.05, negativeHalo=False, haloThickness=0.03, negativeInside=False, peakDownsample=10, minPeakPrevalence=0.1, intensitySoftmax=1.2, intensitySoftmin=0.1, invert=False, allowOverlap=False, fitPeaks=True, debug=False)</span>
+<span>def <span class="ident">convCircle</span></span>(<span>singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, kernelBlurKernel=3, outlineOnly=False, outlineThickness=0.05, negativeHalo=False, haloThickness=0.03, negativeInside=False, peakDownsample=10, minPeakPrevalence=0.1, intensitySoftmax=1.2, intensitySoftmin=0.1, invert=False, allowOverlap=True, fitPeaks=True, debug=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Perform convolution circle detection on the provided image.</p>
@@ -1177,6 +1058,9 @@ this value multipled by the mean of the image.</p>
 the image.</p>
 <p>Set to <code>None</code> to skip this preprocessing step.</p>
 </dd>
+<dt><strong><code>allowOverlap</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether or not to allow detections of particles that overlap. If set to
+False, then the particle with the stronger signature will be kept</dd>
 <dt><strong><code>debug</code></strong> :&ensp;<code>bool</code></dt>
 <dd>Whether or not to draw debug information on a plot.</dd>
 <dt><strong><code>invert</code></strong> :&ensp;<code>bool</code></dt>
@@ -1199,7 +1083,7 @@ CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b192
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False, peakDownsample=10, minPeakPrevalence=.1, intensitySoftmax=1.2, intensitySoftmin=.1, invert=False, allowOverlap=False, fitPeaks=True, debug=False):
+<pre><code class="python">def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, kernelBlurKernel=3, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False, peakDownsample=10, minPeakPrevalence=.1, intensitySoftmax=1.2, intensitySoftmin=.1, invert=False, allowOverlap=True, fitPeaks=True, debug=False):
     &#34;&#34;&#34;
     Perform convolution circle detection on the provided image.
 
@@ -1324,6 +1208,10 @@ CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b192
         the image.
 
         Set to `None` to skip this preprocessing step.
+
+    allowOverlap : bool
+        Whether or not to allow detections of particles that overlap. If set to
+        False, then the particle with the stronger signature will be kept
         
     debug : bool
         Whether or not to draw debug information on a plot. 
@@ -1351,7 +1239,6 @@ CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b192
     CRC Press. https://doi.org/10.1201/b19291
 
     &#34;&#34;&#34;
-
     # General housekeeping of arguments, see if we need to parse anything
     if offscreenParticles:
         paddingFactor = 2.
@@ -1405,7 +1292,7 @@ CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b192
     convArr = circularKernelFind(imageArr, initialRadius, fftPadding=int(initialRadius*paddingFactor),
                                  outlineOnly=outlineOnly, outlineThickness=outlineThickness,
                                  negativeHalo=negativeHalo, haloThickness=haloThickness,
-                                 negativeInside=negativeInside, debug=debug)
+                                 negativeInside=negativeInside, kernelBlurKernel=kernelBlurKernel, debug=debug)
 
     if debug:
         plt.show()
@@ -1469,144 +1356,58 @@ CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b192
             lorentzPositions[i] = upsampledPosition
 
     # Look around each peak to find the real peak in the full-resolution image
+    # (only if we are actually downsampling)
     refinedPeakPositions = []
     refinedRadii = []
 
-    localPadding = int(peakDownsample*1.5)
-    for i in range(len(peakPositions)):
-        # We want to vary the radius here as well, so we can maybe get a slightly more accurate result.
-        # Note that it is much more efficient to perform the kernel finding on a small image many times
-        # than to work on a large image just a few times. So we recalculate the kernel finding for each
-        # radii for each peak.
-        # TODO: This part is still WIP, because it doens&#39;t quite work correctly
-        if len(possibleRadii) &gt; 1:
-            maximumValues = np.zeros(len(possibleRadii))
-            maximumPositions = np.zeros((len(possibleRadii), 2))
+    if peakDownsample &gt; 1:
+        # To do this, we use a non-linear optimization scheme
+        for i in range(len(peakPositions)):
 
-            #upsampledPosition = np.array([peakPositions[i][0]*peakDownsample, peakPositions[i][1]*peakDownsample])
-            upsampledPosition = np.int16(lorentzPositions[i])
-            for j in range(len(possibleRadii)):
-                # This is the point in the real image (not the conv arr)
-                imagePadding = int(possibleRadii[j])
-                # Crop out the small area of the image that we are working with
-                localImage = imageArr[max(upsampledPosition[0]-imagePadding, 0):min(upsampledPosition[0]+imagePadding,imageArr.shape[0]-1),max(upsampledPosition[1]-imagePadding, 0):min(upsampledPosition[1]+imagePadding, imageArr.shape[1]-1)]
+            costArr = []
 
-                # Perform another convolution
-                # Don&#39;t need as much padding for this one, since we are quite sure the particle is somewhere
-                # near the center
-                localConvPadding = int(possibleRadii[j])
-                localConvArr = circularKernelFind(localImage, possibleRadii[j], fftPadding=localConvPadding,
-                                                  outlineOnly=outlineOnly, outlineThickness=outlineThickness,
-                                                  negativeHalo=negativeHalo, haloThickness=haloThickness,
-                                                  negativeInside=negativeInside, debug=False)
-                # Required if you set debug=True in above line
-                #plt.show()
+            def refineObjectiveFunction(params):
+                kernelArr = genCircularKernel(np.array([params[&#34;y&#34;].value, params[&#34;x&#34;].value]), params[&#34;r&#34;].value,
+                                              imageArr.shape, kernelBlurKernel, outlineOnly,
+                                              outlineThickness, negativeHalo, haloThickness, negativeInside)
 
-                # Add a *very* small weighting that favors circles closer to the center of the
-                # image. This is needed because otherwise the algorithm may place circles more
-                # offscreen than they actually are, because it would mean fewer pixels are included
-                # (since some are cropped off)
-                #Y = np.arange(localImage.shape[0]).reshape((localImage.shape[0], 1)) # Column vector
-                #X = np.arange(localImage.shape[1]).reshape((1, localImage.shape[1])) # Row vector
-                #localConvArr += 1e-3*np.exp(- ( (Y - localImage.shape[0]/2)**2 + (X - localImage.shape[1]/2)**2 ) / max(localImage.shape))
+                # We are minimizing this function, so we need the cost to be negative
+                # (unless we have to invert the image)
+                costArr.append((np.sum(kernelArr * imageArr) / np.sum(kernelArr)) * (int(invert)*2 - 1))
+                return (np.sum(kernelArr * imageArr) / np.sqrt(np.sum(kernelArr))) * (int(invert)*2 - 1)
 
-                # Now setup a fit to this function
-                params = Parameters()
+            params = Parameters()
 
-                params.add(&#39;center_y&#39;, value=localImage.shape[0]/2, vary=True)
-                params.add(&#39;center_x&#39;, value=localImage.shape[1]/2, vary=True)
-                params.add(&#39;width&#39;, value=imagePadding, vary=True)
-                params.add(&#39;amp&#39;, value=np.max(localConvArr)/2, vary=True)
-                params.add(&#39;offset&#39;, value=np.mean(localConvArr), vary=True)
+            params.add(&#39;y&#39;, value=lorentzPositions[i][0], min=lorentzPositions[i][0]-imageArr.shape[0]*.02, max=lorentzPositions[i][0]+imageArr.shape[0]*.02)
+            params.add(&#39;x&#39;, value=lorentzPositions[i][1], min=lorentzPositions[i][1]-imageArr.shape[1]*.02, max=lorentzPositions[i][1]+imageArr.shape[1]*.02)
+            # May or may not want to vary the radius
+            # Small tolerances on the radius are so that min != max
+            params.add(&#39;r&#39;, value=np.mean(possibleRadii), vary=(len(possibleRadii) &gt; 1), max=np.max(possibleRadii)-.01, min=np.min(possibleRadii)+.01)
+
+            result = minimize(refineObjectiveFunction, params, method=&#39;powell&#39;, max_nfev=10000, options={&#34;ftol&#34;: 1e-5, &#34;xtol&#34;: 1e-5})
+
+            #print(fit_report(result))
+
+            if result is not None:
+                refinedPeakPositions.append([result.params[&#34;y&#34;].value, result.params[&#34;x&#34;].value])
+                refinedRadii.append(result.params[&#34;r&#34;].value)
                 
-                try:
-                    result = minimize(objectiveFunction, params, args=[localConvArr], method=&#39;nelder&#39;, max_nfev=1000)
-                except:
-                    result = None
-                
-                if result is not None:
-                    realLocalMax = np.array([int(result.params[&#34;center_y&#34;]), int(result.params[&#34;center_x&#34;])])
-                else:
-                    realLocalMax = np.zeros(2)
-
-                #realLocalMax = np.unravel_index(np.argmax(localConvArr.flatten()), localConvArr.shape)
-                # We want to convert these back to real-space coordinates here
-                #maximumPositions[j] = upsampledPosition - realLocalMax - np.repeat(localConvPadding, 2)
-                maximumPositions[j,0] = upsampledPosition[0] - localConvArr.shape[0]/2 + realLocalMax[0]
-                maximumPositions[j,1] = upsampledPosition[1] - localConvArr.shape[1]/2 + realLocalMax[1]
-
-                # Need to convert to int16 since we might have negative values
-                pMask = circularMask(singleChannelFrame.shape, maximumPositions[j], possibleRadii[j])[:,:,0].astype(np.int16)
-
-                # The next couple if statements are for only doing an outline, adding a halo, removing the center, etc.
-                # If we only want the outline, we subtract another circular mask from the above one
-                if outlineOnly:
-                    # Should be 2 if negative inside is true, 1 otherwise
-                    negativeInsideFactor = 1 + int(negativeInside)
-                    if outlineThickness &lt; 1:
-                        innerRadius = np.ceil((1 - outlineThickness) * possibleRadii[j])
-                    else:
-                        innerRadius = possibleRadii[j] - outlineThickness
-                        pMask -= negativeInsideFactor * circularMask(singleChannelFrame.shape, maximumPositions[j], innerRadius)[:,:,0]
-
-                    if negativeHalo:
-                        pMask = 2*pMask - (circularMask(singleChannelFrame.shape, maximumPositions[j], possibleRadii[j]+2)[:,:,0].astype(np.int16) - circularMask(singleChannelFrame.shape, maximumPositions[j], possibleRadii[j])[:,:,0].astype(np.int16))
-
-                elif negativeHalo:
-                    pMask = 2*pMask - circularMask(singleChannelFrame.shape, maximumPositions[j], possibleRadii[j]+2)[:,:,0].astype(np.int16)
-
-
-                if np.sum(pMask) == 0:
-                    maximumValues[j] = 0
-                else:
-                    maximumValues[j] = np.sum(singleChannelFrame * pMask) / np.sum(pMask)
-           
-            
-
-            # Noise can cause some slight variations in the maximum values making different
-            # radii give different maximum values, when they should give actually the same
-            # value (and then the largest one should be taken). We fix this by rounding
-            # after multiply by a large number. .5e3 was chosen by experimenting
-
-            maximumValues = [int(m*1e2) if not np.isnan(m) else 0 for m in maximumValues]
-
-            #plt.plot(possibleRadii, maximumValues)
-            #plt.show()
-
-            # Now save whichever on had the largest signal
-            # We want to sort the list backwards, because we want the largest possible radius
-            # that also gives the best value. If the radius is smaller than the actual one, you
-            # can end up with the same exact maximum value, since you are just cutting off extra
-            # parts of the circle.
-            refinedPeakPositions.append(tuple(maximumPositions[::-1][np.argmax(maximumValues[::-1])]))
-            refinedRadii.append(possibleRadii[::-1][np.argmax(maximumValues[::-1])])
-
-        else:
-            # Position of the peaks in the convolution image (NOT the real image)
-            upsampledPosition = np.int16(lorentzPositions[i])
-            
-            # We don&#39;t need to refine if we fit a peak, since that already did refine the
-            # position
-            if fitPeaks:
-                refinementOffset = 0
+                #if debug:
+                #    plt.plot(costArr)
+                #    plt.show()
 
             else:
-                # This just looks long because my naming is a little verbose
-                # + we also have to make sure we don&#39;t accidentally go off of the image
-                localRegion = convArr[max(upsampledPosition[0]-localPadding, 0):min(upsampledPosition[0]+localPadding,convArr.shape[0]-1),max(upsampledPosition[1]-localPadding, 0):min(upsampledPosition[1]+localPadding, convArr.shape[1]-1)]
-                # Find maximum intensity in small region around that position
-                realLocalMax = np.unravel_index(np.argmax(localRegion.flatten()), localRegion.shape)
-                # This is relative to the small region we just created, so we have to subtract off the bounds
-                # eg. if this local max was found to be in the center of the local image, that would mean
-                # that the original upsampled position was correct.
-                refinementOffset = realLocalMax - np.repeat(localPadding, 2)
+                refinedPeakPositions.append(lorentzPositions[i])
+                refinedRadii.append(np.mean(possibleRadii))
 
-            # Now put everything together the coordinates of the circle in the original image
-            refinedPeakPositions.append(tuple(upsampledPosition + refinementOffset))
-            refinedRadii.append(initialRadius)
+    else:
+        refinedPeakPositions = lorentzPositions
+        refinedRadii = np.repeat(np.mean(possibleRadii), len(refinedPeakPositions))
 
 
     # Now we (optionally) remove overlapping particles
+    # TODO: Allow overlap to be a float value, which allows overlaps
+    # that do not exceed a certain threshold (eg. that fraction of the radius).
     if not allowOverlap:
         # Calculate the contact matrix
         # negative contact padding because we don&#39;t want to remove particles that are
@@ -1620,24 +1421,9 @@ CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b192
         particleScores = np.zeros(len(overlappingParticles))
         for i in range(len(particleScores)):
             # Need to convert to int16 since we might have negative values
-            pMask = circularMask(singleChannelFrame.shape, refinedPeakPositions[i], refinedRadii[i])[:,:,0].astype(np.int16)
-
-            # The next couple if statements are for only doing an outline, adding a halo, removing the center, etc.
-            # If we only want the outline, we subtract another circular mask from the above one
-            if outlineOnly:
-                # Should be 2 if negative inside is true, 1 otherwise
-                negativeInsideFactor = 1 + int(negativeInside)
-                if outlineThickness &lt; 1:
-                    innerRadius = np.ceil((1 - outlineThickness) * refinedRadii[i])
-                else:
-                    innerRadius = refinedRadii[i] - outlineThickness
-                    pMask -= negativeInsideFactor * circularMask(singleChannelFrame.shape, refinedPeakPositions[i], innerRadius)[:,:,0]
-
-                if negativeHalo:
-                    pMask = 2*pMask - (circularMask(singleChannelFrame.shape, refinedPeakPositions[i], refinedRadii[i]+2)[:,:,0].astype(np.int16) - circularMask(singleChannelFrame.shape, refinedPeakPositions[i], refinedRadii[i])[:,:,0].astype(np.int16))
-
-            elif negativeHalo:
-                pMask = 2*pMask - circularMask(singleChannelFrame.shape, refinedPeakPositions[i], refinedRadii[i]+2)[:,:,0].astype(np.int16)
+            pMask = genCircularKernel(refinedPeakPositions[i], refinedRadii[i],
+                                      singleChannelFrame.shape, kernelBlurKernel, outlineOnly,
+                                      outlineThickness, negativeHalo, haloThickness, negativeInside).astype(np.int16)
 
             if np.sum(pMask) &gt; 0:
                 # I square-root the mask sum so that the particles at the edge don&#39;t
@@ -1694,6 +1480,52 @@ CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b192
     return np.array(refinedPeakPositions), np.array(refinedRadii)</code></pre>
 </details>
 </dd>
+<dt id="pepe.tracking.Convolution.genCircularKernel"><code class="name flex">
+<span>def <span class="ident">genCircularKernel</span></span>(<span>center, radius, imageShape, kernelBlurKernel=3, outlineOnly=False, outlineThickness=0.05, negativeHalo=False, haloThickness=0.03, negativeInside=False)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def genCircularKernel(center, radius, imageShape, kernelBlurKernel=3, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False,):
+
+    kernelArr = circularMask(imageShape, center, radius)[:,:,0].astype(np.float64)
+
+    # If we only want the outline, we subtract another circular mask from the above one
+    if outlineOnly:
+        # Should be 2 if negative inside is true, 1 otherwise
+        negativeInsideFactor = 1 + int(negativeInside)
+        if outlineThickness &lt; 1:
+            innerRadius = np.ceil((1 - outlineThickness) * radius)
+        else:
+            innerRadius = radius - outlineThickness
+        
+        kernelArr = kernelArr - negativeInsideFactor * circularMask(imageShape, center, innerRadius)[:,:,0].astype(np.float64)
+
+        if negativeHalo:
+            if haloThickness &lt; 1:
+                haloRadius = radius + np.ceil((1 - haloThickness) * radius)
+            else:
+                haloRadius = radius + haloThickness
+
+            kernelArr = 2*kernelArr - (circularMask(imageShape, center, haloRadius)[:,:,0].astype(np.float64) - circularMask(imageShape, center, radius)[:,:,0].astype(np.float64))
+
+    elif negativeHalo:
+        if haloThickness &lt; 1:
+            haloRadius = np.ceil((1 + haloThickness) * radius)
+        else:
+            haloRadius = radius + haloThickness
+
+        kernelArr = 2*kernelArr - circularMask(imageShape, center, haloRadius)[:,:,0].astype(np.float64)
+
+    if kernelBlurKernel is not None and kernelBlurKernel &gt; 0:
+        kernelArr = cv2.blur(kernelArr, (kernelBlurKernel,kernelBlurKernel))
+
+    return kernelArr</code></pre>
+</details>
+</dd>
 </dl>
 </section>
 <section>
@@ -1714,6 +1546,7 @@ CRC Press. <a href="https://doi.org/10.1201/b19291">https://doi.org/10.1201/b192
 <ul class="">
 <li><code><a title="pepe.tracking.Convolution.circularKernelFind" href="#pepe.tracking.Convolution.circularKernelFind">circularKernelFind</a></code></li>
 <li><code><a title="pepe.tracking.Convolution.convCircle" href="#pepe.tracking.Convolution.convCircle">convCircle</a></code></li>
+<li><code><a title="pepe.tracking.Convolution.genCircularKernel" href="#pepe.tracking.Convolution.genCircularKernel">genCircularKernel</a></code></li>
 </ul>
 </li>
 </ul>

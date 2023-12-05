@@ -862,8 +862,8 @@ def g2ForceCalibration(fSigma, radius, pxPerMeter=1., g2Padding=1, alphaArr=np.a
     forceValues = np.linspace(forceBounds[0], forceBounds[1], forceSteps)
     gSqrAvgArr = np.zeros(forceSteps)
 
-    imageSize = (np.int16(radius*2)+11, np.int16(radius*2)+11)
-    center = np.array([imageSize[0]/2, imageSize[1]/2], dtype=np.int64)
+    imageSize = (np.int64(radius*2)+11, np.int64(radius*2)+11)
+    center = np.array([imageSize[0]/2, imageSize[1]/2], dtype=np.float64)
     particleMask = circularMask(imageSize, center, radius - g2Padding)[:,:,0]
 
     # The contact mask is a circle placed over the edge of the particle where the force is applied
@@ -2367,8 +2367,8 @@ def g2ForceCalibration(fSigma, radius, pxPerMeter=1., g2Padding=1, alphaArr=np.a
     forceValues = np.linspace(forceBounds[0], forceBounds[1], forceSteps)
     gSqrAvgArr = np.zeros(forceSteps)
 
-    imageSize = (np.int16(radius*2)+11, np.int16(radius*2)+11)
-    center = np.array([imageSize[0]/2, imageSize[1]/2], dtype=np.int64)
+    imageSize = (np.int64(radius*2)+11, np.int64(radius*2)+11)
+    center = np.array([imageSize[0]/2, imageSize[1]/2], dtype=np.float64)
     particleMask = circularMask(imageSize, center, radius - g2Padding)[:,:,0]
 
     # The contact mask is a circle placed over the edge of the particle where the force is applied

@@ -39,6 +39,38 @@ from scipy.signal import savgol_filter
 
 import matplotlib.pyplot as plt
 
+IMAGE_TYPES = [&#39;jpg&#39;,
+               &#39;jpeg&#39;,
+               &#39;png&#39;,
+               &#39;bmp&#39;,
+               &#39;tiff&#39;,
+               &#39;nef&#39;]
+
+def imageType(file):
+    &#34;&#34;&#34;
+    Returns the image type of a file.
+
+    More or less just extracts the extension, but will return
+    `None` if the extension is not that of an image, so can be
+    used in the following way:
+
+        listOfFiles = [&#39;a.png&#39;, &#39;b.bmp&#39;, &#39;c.txt&#39;, ...]
+        imageFiles = [f for f in listOfFiles if imageType(f)]
+
+    Parameters
+    ----------
+
+    file : str or Path
+
+    Returns
+    -------
+
+    imageExt : str or None
+        Image extension if file is an image, else None.
+    &#34;&#34;&#34;
+    isImage = file.lower().endswith(tuple(IMAGE_TYPES))
+    return file.split(&#39;.&#39;)[-1] if isImage else None
+
 def checkImageType(frame):
     &#34;&#34;&#34;
     Make sure that the image is a proper image, and not a path
@@ -155,7 +187,7 @@ def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None
         fig.tight_layout()
         plt.show()
 
-    return fullLightCorrection</code></pre>
+    return fullLightCorrection.astype(calibrationImage.dtype)</code></pre>
 </details>
 </section>
 <section>
@@ -207,6 +239,57 @@ def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None
         newFrame = frame
 
     return newFrame</code></pre>
+</details>
+</dd>
+<dt id="pepe.preprocess.Image.imageType"><code class="name flex">
+<span>def <span class="ident">imageType</span></span>(<span>file)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the image type of a file.</p>
+<p>More or less just extracts the extension, but will return
+<code>None</code> if the extension is not that of an image, so can be
+used in the following way:</p>
+<pre><code>listOfFiles = ['a.png', 'b.bmp', 'c.txt', ...]
+imageFiles = [f for f in listOfFiles if imageType(f)]
+</code></pre>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>file</code></strong> :&ensp;<code>str</code> or <code>Path</code></dt>
+<dd>&nbsp;</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>imageExt</code></strong> :&ensp;<code>str</code> or <code>None</code></dt>
+<dd>Image extension if file is an image, else None.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def imageType(file):
+    &#34;&#34;&#34;
+    Returns the image type of a file.
+
+    More or less just extracts the extension, but will return
+    `None` if the extension is not that of an image, so can be
+    used in the following way:
+
+        listOfFiles = [&#39;a.png&#39;, &#39;b.bmp&#39;, &#39;c.txt&#39;, ...]
+        imageFiles = [f for f in listOfFiles if imageType(f)]
+
+    Parameters
+    ----------
+
+    file : str or Path
+
+    Returns
+    -------
+
+    imageExt : str or None
+        Image extension if file is an image, else None.
+    &#34;&#34;&#34;
+    isImage = file.lower().endswith(tuple(IMAGE_TYPES))
+    return file.split(&#39;.&#39;)[-1] if isImage else None</code></pre>
 </details>
 </dd>
 <dt id="pepe.preprocess.Image.lightCorrectionDiff"><code class="name flex">
@@ -309,7 +392,7 @@ def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None
         fig.tight_layout()
         plt.show()
 
-    return fullLightCorrection</code></pre>
+    return fullLightCorrection.astype(calibrationImage.dtype)</code></pre>
 </details>
 </dd>
 </dl>
@@ -331,6 +414,7 @@ def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="pepe.preprocess.Image.checkImageType" href="#pepe.preprocess.Image.checkImageType">checkImageType</a></code></li>
+<li><code><a title="pepe.preprocess.Image.imageType" href="#pepe.preprocess.Image.imageType">imageType</a></code></li>
 <li><code><a title="pepe.preprocess.Image.lightCorrectionDiff" href="#pepe.preprocess.Image.lightCorrectionDiff">lightCorrectionDiff</a></code></li>
 </ul>
 </li>

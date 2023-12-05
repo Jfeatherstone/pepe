@@ -105,10 +105,10 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
     # a central pixel
     if imageSize is None:
         # 11 is arbitrary, just a small, odd number
-        imageSize = (np.int16(radius*2)+11, np.int16(radius*2)+11)
+        imageSize = (np.int64(radius*2)+11, np.int64(radius*2)+11)
 
     if center is None:
-        center = np.array([imageSize[0]/2, imageSize[1]/2], dtype=np.int64)
+        center = np.array([imageSize[0]/2, imageSize[1]/2], dtype=np.float64)
 
     if mask is None:
         mask = circularMask(imageSize, center, radius)[:,:,0]
@@ -124,7 +124,7 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
     # a little more creative
     fullMask = particleMask + mask
     whereIndices = np.where(fullMask &gt; 1)
-    points = np.zeros((len(whereIndices[0]), 2), dtype=np.int16)
+    points = np.zeros((len(whereIndices[0]), 2), dtype=np.int64)
     # There is a chance that these indices are backwards, but
     # because we have rotational symmetry, it doesn&#39;t really matter...
     # BUT if there is ever some weird anisotropy bug or something,
@@ -245,7 +245,11 @@ def evaluateStress(yInd, xInd, forceArr, alphaArr, betaArr, fSigma, radius, pxPe
 
         s1 = -2/np.pi * forceArr[i]*arccosArgument / rVec
         s2 = -1/(np.pi*radiusM) * forceArr[i] * (-np.sin(alphaArr[i]))
-        sr = s1 - s2
+        # Update: This was changed from s1 - s2 to just s1 thanks to
+        # Ben McMillan finding the bug. For more information, seeA
+        # https://github.com/jekollmer/PEGS/pull/4
+        # So s2 is not actually needed anymore, but I&#39;ll leave it in just in case...
+        sr = s1
 
         th += betaArr[i] - np.pi/2 - alphaArr[i]
 
@@ -410,7 +414,11 @@ def evaluateStress(yInd, xInd, forceArr, alphaArr, betaArr, fSigma, radius, pxPe
 
         s1 = -2/np.pi * forceArr[i]*arccosArgument / rVec
         s2 = -1/(np.pi*radiusM) * forceArr[i] * (-np.sin(alphaArr[i]))
-        sr = s1 - s2
+        # Update: This was changed from s1 - s2 to just s1 thanks to
+        # Ben McMillan finding the bug. For more information, seeA
+        # https://github.com/jekollmer/PEGS/pull/4
+        # So s2 is not actually needed anymore, but I&#39;ll leave it in just in case...
+        sr = s1
 
         th += betaArr[i] - np.pi/2 - alphaArr[i]
 
@@ -542,10 +550,10 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
     # a central pixel
     if imageSize is None:
         # 11 is arbitrary, just a small, odd number
-        imageSize = (np.int16(radius*2)+11, np.int16(radius*2)+11)
+        imageSize = (np.int64(radius*2)+11, np.int64(radius*2)+11)
 
     if center is None:
-        center = np.array([imageSize[0]/2, imageSize[1]/2], dtype=np.int64)
+        center = np.array([imageSize[0]/2, imageSize[1]/2], dtype=np.float64)
 
     if mask is None:
         mask = circularMask(imageSize, center, radius)[:,:,0]
@@ -561,7 +569,7 @@ def genSyntheticResponse(forceArr, alphaArr, betaArr, fSigma, radius, pxPerMeter
     # a little more creative
     fullMask = particleMask + mask
     whereIndices = np.where(fullMask &gt; 1)
-    points = np.zeros((len(whereIndices[0]), 2), dtype=np.int16)
+    points = np.zeros((len(whereIndices[0]), 2), dtype=np.int64)
     # There is a chance that these indices are backwards, but
     # because we have rotational symmetry, it doesn&#39;t really matter...
     # BUT if there is ever some weird anisotropy bug or something,
