@@ -9,6 +9,38 @@ from scipy.signal import savgol_filter
 
 import matplotlib.pyplot as plt
 
+IMAGE_TYPES = ['jpg',
+               'jpeg',
+               'png',
+               'bmp',
+               'tiff',
+               'nef']
+
+def imageType(file):
+    """
+    Returns the image type of a file.
+
+    More or less just extracts the extension, but will return
+    `None` if the extension is not that of an image, so can be
+    used in the following way:
+
+        listOfFiles = ['a.png', 'b.bmp', 'c.txt', ...]
+        imageFiles = [f for f in listOfFiles if imageType(f)]
+
+    Parameters
+    ----------
+
+    file : str or Path
+
+    Returns
+    -------
+
+    imageExt : str or None
+        Image extension if file is an image, else None.
+    """
+    isImage = file.lower().endswith(tuple(IMAGE_TYPES))
+    return file.split('.')[-1] if isImage else None
+
 def checkImageType(frame):
     """
     Make sure that the image is a proper image, and not a path
@@ -125,4 +157,4 @@ def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None
         fig.tight_layout()
         plt.show()
 
-    return fullLightCorrection
+    return fullLightCorrection.astype(calibrationImage.dtype)

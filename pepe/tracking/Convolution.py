@@ -15,7 +15,7 @@ from pepe.analysis import adjacencyMatrix
 
 from lmfit import minimize, Parameters, fit_report
 
-def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, kernelBlurKernel=3, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False, peakDownsample=10, minPeakPrevalence=.1, intensitySoftmax=1.2, intensitySoftmin=.1, invert=False, allowOverlap=False, fitPeaks=True, debug=False):
+def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenParticles=False, kernelBlurKernel=3, outlineOnly=False, outlineThickness=.05, negativeHalo=False, haloThickness=.03, negativeInside=False, peakDownsample=10, minPeakPrevalence=.1, intensitySoftmax=1.2, intensitySoftmin=.1, invert=False, allowOverlap=True, fitPeaks=True, debug=False):
     """
     Perform convolution circle detection on the provided image.
 
@@ -140,6 +140,10 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
         the image.
 
         Set to `None` to skip this preprocessing step.
+
+    allowOverlap : bool
+        Whether or not to allow detections of particles that overlap. If set to
+        False, then the particle with the stronger signature will be kept
         
     debug : bool
         Whether or not to draw debug information on a plot. 
@@ -167,7 +171,6 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
     CRC Press. https://doi.org/10.1201/b19291
 
     """
-
     # General housekeeping of arguments, see if we need to parse anything
     if offscreenParticles:
         paddingFactor = 2.
@@ -285,50 +288,58 @@ def convCircle(singleChannelFrame, radius, radiusTolerance=None, offscreenPartic
             lorentzPositions[i] = upsampledPosition
 
     # Look around each peak to find the real peak in the full-resolution image
+    # (only if we are actually downsampling)
     refinedPeakPositions = []
     refinedRadii = []
 
-    # To do this, we use a non-linear optimization scheme
-    for i in range(len(peakPositions)):
+    if peakDownsample > 1:
+        # To do this, we use a non-linear optimization scheme
+        for i in range(len(peakPositions)):
 
-        costArr = []
+            costArr = []
 
-        def refineObjectiveFunction(params):
-            kernelArr = genCircularKernel(np.array([params["y"].value, params["x"].value]), params["r"].value,
-                                          imageArr.shape, kernelBlurKernel, outlineOnly,
-                                          outlineThickness, negativeHalo, haloThickness, negativeInside)
+            def refineObjectiveFunction(params):
+                kernelArr = genCircularKernel(np.array([params["y"].value, params["x"].value]), params["r"].value,
+                                              imageArr.shape, kernelBlurKernel, outlineOnly,
+                                              outlineThickness, negativeHalo, haloThickness, negativeInside)
 
-            # We are minimizing this function, so we need the cost to be negative
-            # (unless we have to invert the image)
-            costArr.append((np.sum(kernelArr * imageArr) / np.sum(kernelArr)) * (int(invert)*2 - 1))
-            return (np.sum(kernelArr * imageArr) / np.sqrt(np.sum(kernelArr))) * (int(invert)*2 - 1)
+                # We are minimizing this function, so we need the cost to be negative
+                # (unless we have to invert the image)
+                costArr.append((np.sum(kernelArr * imageArr) / np.sum(kernelArr)) * (int(invert)*2 - 1))
+                return (np.sum(kernelArr * imageArr) / np.sqrt(np.sum(kernelArr))) * (int(invert)*2 - 1)
 
-        params = Parameters()
+            params = Parameters()
 
-        params.add('y', value=lorentzPositions[i][0], min=lorentzPositions[i][0]-imageArr.shape[0]*.02, max=lorentzPositions[i][0]+imageArr.shape[0]*.02)
-        params.add('x', value=lorentzPositions[i][1], min=lorentzPositions[i][1]-imageArr.shape[1]*.02, max=lorentzPositions[i][1]+imageArr.shape[1]*.02)
-        # May or may not want to vary the radius
-        # Small tolerances on the radius are so that min != max
-        params.add('r', value=np.mean(possibleRadii), vary=(len(possibleRadii) > 1), max=np.max(possibleRadii)-.01, min=np.min(possibleRadii)+.01)
+            params.add('y', value=lorentzPositions[i][0], min=lorentzPositions[i][0]-imageArr.shape[0]*.02, max=lorentzPositions[i][0]+imageArr.shape[0]*.02)
+            params.add('x', value=lorentzPositions[i][1], min=lorentzPositions[i][1]-imageArr.shape[1]*.02, max=lorentzPositions[i][1]+imageArr.shape[1]*.02)
+            # May or may not want to vary the radius
+            # Small tolerances on the radius are so that min != max
+            params.add('r', value=np.mean(possibleRadii), vary=(len(possibleRadii) > 1), max=np.max(possibleRadii)-.01, min=np.min(possibleRadii)+.01)
 
-        result = minimize(refineObjectiveFunction, params, method='powell', max_nfev=10000, options={"ftol": 1e-5, "xtol": 1e-5})
+            result = minimize(refineObjectiveFunction, params, method='powell', max_nfev=10000, options={"ftol": 1e-5, "xtol": 1e-5})
 
-        #print(fit_report(result))
+            #print(fit_report(result))
 
-        if result is not None:
-            refinedPeakPositions.append([result.params["y"].value, result.params["x"].value])
-            refinedRadii.append(result.params["r"].value)
-            
-            if debug:
-                plt.plot(costArr)
-                plt.show()
+            if result is not None:
+                refinedPeakPositions.append([result.params["y"].value, result.params["x"].value])
+                refinedRadii.append(result.params["r"].value)
+                
+                #if debug:
+                #    plt.plot(costArr)
+                #    plt.show()
 
-        else:
-            refinedPeakPositions.append(lorentzPositions[i])
-            refinedRadii.append(np.mean(possibleRadii))
+            else:
+                refinedPeakPositions.append(lorentzPositions[i])
+                refinedRadii.append(np.mean(possibleRadii))
+
+    else:
+        refinedPeakPositions = lorentzPositions
+        refinedRadii = np.repeat(np.mean(possibleRadii), len(refinedPeakPositions))
 
 
     # Now we (optionally) remove overlapping particles
+    # TODO: Allow overlap to be a float value, which allows overlaps
+    # that do not exceed a certain threshold (eg. that fraction of the radius).
     if not allowOverlap:
         # Calculate the contact matrix
         # negative contact padding because we don't want to remove particles that are

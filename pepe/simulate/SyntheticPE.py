@@ -215,7 +215,11 @@ def evaluateStress(yInd, xInd, forceArr, alphaArr, betaArr, fSigma, radius, pxPe
 
         s1 = -2/np.pi * forceArr[i]*arccosArgument / rVec
         s2 = -1/(np.pi*radiusM) * forceArr[i] * (-np.sin(alphaArr[i]))
-        sr = s1 - s2
+        # Update: This was changed from s1 - s2 to just s1 thanks to
+        # Ben McMillan finding the bug. For more information, seeA
+        # https://github.com/jekollmer/PEGS/pull/4
+        # So s2 is not actually needed anymore, but I'll leave it in just in case...
+        sr = s1
 
         th += betaArr[i] - np.pi/2 - alphaArr[i]
 
