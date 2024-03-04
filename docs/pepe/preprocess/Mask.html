@@ -33,6 +33,10 @@ Image mask creation and manipulation.
 &#34;&#34;&#34;
 import numpy as np
 
+import cv2
+
+import alphashape as ap
+
 import numba
 
 @numba.jit(nopython=True)
@@ -294,7 +298,363 @@ def mergeMasks(listOfMasks, signs=None, channels=3):
 
     #sumMask += np.abs(np.min(sumMask))
     #sumMask = np.ceil(sumMask / np.max(sumMask))
-    return (sumMask &gt; 0).astype(np.uint8)</code></pre>
+    return (sumMask &gt; 0).astype(np.uint8)
+
+
+def identifyFeatureBoundary(image,
+                            approxFeatureLocation,
+                            featureSize,
+                            meanThresholdFactor=2,
+                            minIslandSize=5,
+                            pointDownsampleFactor=5,
+                            concaveHullParameter=0,
+                            debug=False):
+    &#34;&#34;&#34;
+    Detect the boundary of a feature near the specified location.
+
+    Feature detection is done using the same algorithm as in
+    `pepe.preprocess.maskFeature()`. Feature should be
+    brighter than the background.
+
+    Parameters
+    ----------
+    image : numpy.ndarray[H,W[,C]]
+        Input image to identify feature in. If multi-channel,
+        the channels will be averaged (gray-scaled).
+
+    approxFeatureLocation : (float, float)
+        Approximate coordinates (y,x) of the location of the feature.
+
+    meanThresholdFactor : float
+        Parameter for determining which pixels are a part of the feature.
+        Lower value means the detected feature will be larger.
+
+    minIslandSize : int
+        Parameter for culling pixels initially detected to be a part of
+        the feature, but likely are not actually. eg. If a value of 5,
+        is chosen, only pixels surrounded by 24 other pixels detected to
+        be a part of the feature will be kept.
+
+        If not an odd number, the value will be rounded up to the next odd
+        number.
+
+    pointDownsampleFactor : int &gt;= 1
+        Parameter for generating the hull around the points detected to be
+        a part of the feature. Higher value means more approximate shape,
+        but faster calculations. Value of `1` will give the most accurate
+        result.
+
+    concaveHullParamter : float
+        Alphashape parameter for generating the hull. A value of `0`
+        means the hull will be convex, a value `&gt;= 0` will mean the
+        hull is increasingly concave.
+
+        For more information, see [alphashape documentation](https://alphashape.readthedocs.io/en/latest/readme.html)
+        related to the &#39;alpha parameter&#39;.
+
+    debug : bool
+        Whether to plot debug information about the feature
+        detection once completed or not.
+
+
+    Returns
+    -------
+    boundaryPoints : numpy.ndarray[N,2]
+        List of N points that comprise the boundary ordered
+        such that the boundary can be drawn by drawing all pairs
+        of points (i,i+1) (and (-1,0) for the final line).
+    &#34;&#34;&#34;
+    # Grayscale if necessary
+    if len(np.shape(image)) == 3:
+        grayImage = np.mean(image, axis=-1)
+    else:
+        grayImage = image
+
+    # Crop
+    croppedImage = grayImage[approxFeatureLocation[0]-int(featureSize):approxFeatureLocation[0]+int(featureSize),
+                                approxFeatureLocation[1]-int(featureSize):approxFeatureLocation[1]+int(featureSize)]
+
+    # Identify regions that are above the mean
+    thresholdedImage = np.float64(croppedImage &gt; meanThresholdFactor*np.mean(croppedImage))
+
+    # Blur and then threshold again, meaning that anything who isn&#39;t surrounded by
+    # `minIslandSize/2` neighbors in each direction gets removed
+    kernel = minIslandSize + int(not minIslandSize%2) # Make sure it is odd
+    thresholdedImage = np.float64(cv2.blur(thresholdedImage, (kernel,kernel)) == 1)
+
+    # Generate a convex hull
+    alphashape = ap.alphashape(np.array(np.where(thresholdedImage)).T[::pointDownsampleFactor], concaveHullParameter)
+    
+    boundaryPoints = np.array(alphashape.boundary.coords)[:,:2:][:,::-1]
+
+    if debug:
+        fig, ax = plt.subplots(1, 2, figsize=(8,4))
+
+        ax[0].imshow(thresholdedImage)
+        ax[1].imshow(grayImage)
+        for i in range(len(boundaryPoints-1)):
+            ax[1].plot(boundaryPoints[i:i+2,0], boundaryPoints[i:i+2,1], c=&#39;red&#39;, alpha=1)
+
+        ax[0].set_title(&#39;Thresholded Image&#39;)
+        ax[1].set_title(&#39;Identified Feature Boundary&#39;)
+        plt.show()
+
+    # Convert local coordinates back to absolute image coordinates
+    return approxFeatureLocation + boundaryPoints - featureSize
+
+def maskFeature(image,
+                approxFeatureLocation,
+                featureSize,
+                meanThresholdFactor=1,
+                minIslandSize=5,
+                pointDownsampleFactor=5,
+                concaveHullParameter=0,
+                extraPadding=0,
+                allowRecurse=True,
+                debug=False):
+    &#34;&#34;&#34;
+    Generate a mask to remove a detected feature near the specified location.
+
+    Feature detection is done using the same algorithm as in
+    `pepe.preprocess.detectFeatureBoundary()`. Feature should be
+    brighter than the background.
+
+    Parameters
+    ----------
+    image : numpy.ndarray[H,W[,C]]
+        Input image to identify feature in. If multi-channel,
+        the channels will be averaged (gray-scaled).
+
+    approxFeatureLocation : (float, float)
+        Approximate coordinates (y,x) of the location of the feature.
+
+    meanThresholdFactor : float
+        Parameter for determining which pixels are a part of the feature.
+        Lower value means the detected feature will be larger.
+
+    minIslandSize : int
+        Parameter for culling pixels initially detected to be a part of
+        the feature, but likely are not actually. eg. If a value of 5,
+        is chosen, only pixels surrounded by 24 other pixels detected to
+        be a part of the feature will be kept.
+
+        If not an odd number, the value will be rounded up to the next odd
+        number.
+
+    pointDownsampleFactor : int &gt;= 1
+        Parameter for generating the hull around the points detected to be
+        a part of the feature. Higher value means more approximate shape,
+        but faster calculations. Value of `1` will give the most accurate
+        result.
+
+    concaveHullParamter : float
+        Alphashape parameter for generating the hull. A value of `0`
+        means the hull will be convex, a value `&gt;= 0` will mean the
+        hull is increasingly concave.
+
+        For more information, see [alphashape documentation](https://alphashape.readthedocs.io/en/latest/readme.html)
+        related to the &#39;alpha parameter&#39;.
+
+    extraPadding : int
+        Extra padding at the end of the feature identification
+        added to the shape.
+
+    allowRecurse : bool
+        If the  detected feature is larger than the size,
+        and this value is `True`, the function will recursively
+        call itself (at most once) with a larger feature size to try
+        and detect the entire feature.
+        
+    debug : bool
+        Whether to plot debug information about the feature
+        detection once completed or not.
+
+
+    Returns
+    -------
+    imageMask : numpy.ndarray[H,W]
+        Image mask with values of `1` everywhere
+        except for points that are detected to be a
+        part of the feature, which will have values
+        of `0`.
+
+    &#34;&#34;&#34;
+    # Grayscale if necessary
+    if len(np.shape(image)) == 3:
+        grayImage = np.mean(image, axis=-1)
+    else:
+        grayImage = image
+
+    # Crop
+    croppedImage = grayImage[max(approxFeatureLocation[0]-int(featureSize), 0):min(approxFeatureLocation[0]+int(featureSize), grayImage.shape[0]),
+                                max(approxFeatureLocation[1]-int(featureSize), 0):min(approxFeatureLocation[1]+int(featureSize), grayImage.shape[1])]
+
+    # Identify regions that are above the mean
+    thresholdedImage = np.float64(croppedImage &gt; meanThresholdFactor*np.mean(croppedImage))
+
+    # Blur and then threshold again, meaning that anything who isn&#39;t surrounded by
+    # `minIslandSize/2` neighbors in each direction gets removed
+    kernel = minIslandSize + int(not minIslandSize%2) # Make sure it is odd
+    thresholdedImage = np.float64(cv2.blur(thresholdedImage, (kernel,kernel)) == 1)
+
+    # Generate a convex hull
+    alphashape = ap.alphashape(np.array(np.where(thresholdedImage)).T[::pointDownsampleFactor], concaveHullParameter)
+
+    if alphashape is not None:
+        boundaryPoints = np.array(alphashape.boundary.coords)[:,:2:][:,::-1]
+    else:
+        boundaryPoints = None
+
+    # If any of the boundary points are at the edge of the image, that means the 
+    # feature extends beyond the cropped region, and we should try again with a slightly
+    # larger region
+    edgePadding = 5
+    if (True in (boundaryPoints.flatten() &lt; edgePadding) or True in (boundaryPoints.flatten() + edgePadding &gt; 2*featureSize)) and allowRecurse:
+        # We could try and recenter the crop window, but that doesn&#39;t actually work all that well...
+        # Maybe since averaging the boundary points doesn&#39;t actually calculate the center of mass
+        #newFeatureCenter = approxFeatureLocation + np.int64(np.mean(boundaryPoints, axis=0)) - featureSize
+        newFeatureCenter = approxFeatureLocation
+        return maskFeature(image, newFeatureCenter, featureSize*1.5,
+                           meanThresholdFactor, minIslandSize, pointDownsampleFactor,
+                           concaveHullParameter, False, debug)
+        
+    maskImage = np.zeros_like(croppedImage, dtype=np.uint8)
+
+    for i in range(len(boundaryPoints)-1):
+        cv2.line(maskImage, np.int64(boundaryPoints[i]), np.int64(boundaryPoints[i+1]), 1, minIslandSize)        
+    cv2.line(maskImage, np.int64(boundaryPoints[-1]), np.int64(boundaryPoints[0]), 1, minIslandSize)
+                    
+    outsidePoint = (0,0)
+    cv2.floodFill(maskImage, None, outsidePoint, 2)
+
+    # Add extra padding
+    if extraPadding &gt; 0:
+        oddPadding = extraPadding + int(not extraPadding%2) # Make sure it is odd
+        maskImage = cv2.blur(maskImage, (oddPadding, oddPadding))
+
+    maskImage = maskImage == 2
+
+    fullImageMask = np.ones(image.shape[:2], dtype=np.uint8)
+    fullImageMask[max(approxFeatureLocation[0]-int(featureSize), 0):min(approxFeatureLocation[0]+int(featureSize), grayImage.shape[0]),
+                                max(approxFeatureLocation[1]-int(featureSize), 0):min(approxFeatureLocation[1]+int(featureSize), grayImage.shape[1])] = maskImage
+
+    if debug:
+        fig, ax = plt.subplots(1, 3, figsize=(12,4))
+
+        ax[0].imshow(thresholdedImage)
+        ax[1].imshow(croppedImage)
+        for i in range(len(boundaryPoints)-1):
+            ax[1].plot(boundaryPoints[i:i+2,0], boundaryPoints[i:i+2,1], c=&#39;red&#39;, alpha=1)
+
+        ax[2].imshow(fullImageMask)
+        
+        ax[0].set_title(&#39;Thresholded Image&#39;)
+        ax[1].set_title(&#39;Identified Feature Boundary&#39;)
+        ax[2].set_title(&#39;Full Image Mask&#39;)
+        plt.show()
+
+    return fullImageMask
+
+
+def polygonMask(boundaryPoints, maskSize, debug=False):
+    &#34;&#34;&#34;
+    Create a mask of a polygon defined by the points that
+    comprise its boundary.
+
+    Parameters
+    ----------
+    boundaryPoints : iterable of points
+        Iterable of points (y,x) that define the
+        boundary of the polygon. Should be ordered
+        such that drawing each pair of points (i,i+1)
+        creates the desired shape.
+
+    maskSize : [H,W]
+        The size of the mask array to create.
+
+    debug : bool
+        Whether or not to plot a visualization of
+        the mask once it is completed.
+
+    Returns
+    -------
+    maskImage : numpy.ndarray[H,W]
+        Mask array, with values of `1` inside
+        the polygon, and `0` outside.
+
+    &#34;&#34;&#34;
+    maskImage = np.ones(maskSize, dtype=np.uint8)
+
+    for i in range(len(boundaryPoints)-1):
+        # Have to reverse coordinates
+        cv2.line(maskImage, np.int64(boundaryPoints[i][::-1]), np.int64(boundaryPoints[i+1][::-1]), 255, 1)        
+    cv2.line(maskImage, np.int64(boundaryPoints[-1][::-1]), np.int64(boundaryPoints[0][::-1]), 255, 1)
+                    
+    outsidePoint = (0,0)
+    cv2.floodFill(maskImage, None, outsidePoint, 255)
+
+    maskImage = (maskImage != 255).astype(np.float64)
+
+    if debug:
+        plt.imshow(maskImage)
+        plt.show()
+
+    return maskImage
+
+
+def removePadding(image):
+    &#34;&#34;&#34;
+    Remove padding from an image.
+
+    Parameters
+    ----------
+    image : array-like
+        Image to remove excess padding from.
+
+    Returns
+    -------
+    unpaddedImage : array-like
+        Original image with rows and columns
+        removed if they contained no image data.
+    &#34;&#34;&#34;
+    # Grayscale if necessary
+    if len(np.shape(image)) == 3:
+        grayImage = np.mean(image, axis=-1)
+    else:
+        grayImage = image
+
+    rowSum = np.sum(grayImage, axis=0)
+    columnSum = np.sum(grayImage, axis=-1)
+
+    # There is probably a much fancier way to do this, but this
+    # is fast enough, so... essentially we just count until the sum
+    # is not zero anymore (ie there is some image data)
+    
+    leftEdge = None
+    for i in range(len(rowSum)):
+        leftEdge = i
+        if rowSum[i] &gt; 0:
+            break
+
+    rightEdge = None
+    for i in range(len(rowSum))[::-1]:
+        rightEdge = i
+        if rowSum[i] &gt; 0:
+            break
+
+    topEdge = None
+    for i in range(len(columnSum)):
+        topEdge = i
+        if columnSum[i] &gt; 0:
+            break
+            
+    bottomEdge = None
+    for i in range(len(columnSum))[::-1]:
+        bottomEdge = i
+        if columnSum[i] &gt; 0:
+            break
+
+    return image[topEdge:bottomEdge,leftEdge:rightEdge]</code></pre>
 </details>
 </section>
 <section>
@@ -565,6 +925,382 @@ def ellipticalMask(size, majorAxisEndpoint1, majorAxisEndpoint2, minorAxisLength
     return maskArr</code></pre>
 </details>
 </dd>
+<dt id="pepe.preprocess.Mask.identifyFeatureBoundary"><code class="name flex">
+<span>def <span class="ident">identifyFeatureBoundary</span></span>(<span>image, approxFeatureLocation, featureSize, meanThresholdFactor=2, minIslandSize=5, pointDownsampleFactor=5, concaveHullParameter=0, debug=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Detect the boundary of a feature near the specified location.</p>
+<p>Feature detection is done using the same algorithm as in
+<code>pepe.preprocess.maskFeature()</code>. Feature should be
+brighter than the background.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>image</code></strong> :&ensp;<code>numpy.ndarray[H,W[,C]]</code></dt>
+<dd>Input image to identify feature in. If multi-channel,
+the channels will be averaged (gray-scaled).</dd>
+<dt><strong><code>approxFeatureLocation</code></strong> :&ensp;<code>(float, float)</code></dt>
+<dd>Approximate coordinates (y,x) of the location of the feature.</dd>
+<dt><strong><code>meanThresholdFactor</code></strong> :&ensp;<code>float</code></dt>
+<dd>Parameter for determining which pixels are a part of the feature.
+Lower value means the detected feature will be larger.</dd>
+<dt><strong><code>minIslandSize</code></strong> :&ensp;<code>int</code></dt>
+<dd>
+<p>Parameter for culling pixels initially detected to be a part of
+the feature, but likely are not actually. eg. If a value of 5,
+is chosen, only pixels surrounded by 24 other pixels detected to
+be a part of the feature will be kept.</p>
+<p>If not an odd number, the value will be rounded up to the next odd
+number.</p>
+</dd>
+<dt><strong><code>pointDownsampleFactor</code></strong> :&ensp;<code>int &gt;= 1</code></dt>
+<dd>Parameter for generating the hull around the points detected to be
+a part of the feature. Higher value means more approximate shape,
+but faster calculations. Value of <code>1</code> will give the most accurate
+result.</dd>
+<dt><strong><code>concaveHullParamter</code></strong> :&ensp;<code>float</code></dt>
+<dd>
+<p>Alphashape parameter for generating the hull. A value of <code>0</code>
+means the hull will be convex, a value <code>&gt;= 0</code> will mean the
+hull is increasingly concave.</p>
+<p>For more information, see <a href="https://alphashape.readthedocs.io/en/latest/readme.html">alphashape documentation</a>
+related to the 'alpha parameter'.</p>
+</dd>
+<dt><strong><code>debug</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether to plot debug information about the feature
+detection once completed or not.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>boundaryPoints</code></strong> :&ensp;<code>numpy.ndarray[N,2]</code></dt>
+<dd>List of N points that comprise the boundary ordered
+such that the boundary can be drawn by drawing all pairs
+of points (i,i+1) (and (-1,0) for the final line).</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def identifyFeatureBoundary(image,
+                            approxFeatureLocation,
+                            featureSize,
+                            meanThresholdFactor=2,
+                            minIslandSize=5,
+                            pointDownsampleFactor=5,
+                            concaveHullParameter=0,
+                            debug=False):
+    &#34;&#34;&#34;
+    Detect the boundary of a feature near the specified location.
+
+    Feature detection is done using the same algorithm as in
+    `pepe.preprocess.maskFeature()`. Feature should be
+    brighter than the background.
+
+    Parameters
+    ----------
+    image : numpy.ndarray[H,W[,C]]
+        Input image to identify feature in. If multi-channel,
+        the channels will be averaged (gray-scaled).
+
+    approxFeatureLocation : (float, float)
+        Approximate coordinates (y,x) of the location of the feature.
+
+    meanThresholdFactor : float
+        Parameter for determining which pixels are a part of the feature.
+        Lower value means the detected feature will be larger.
+
+    minIslandSize : int
+        Parameter for culling pixels initially detected to be a part of
+        the feature, but likely are not actually. eg. If a value of 5,
+        is chosen, only pixels surrounded by 24 other pixels detected to
+        be a part of the feature will be kept.
+
+        If not an odd number, the value will be rounded up to the next odd
+        number.
+
+    pointDownsampleFactor : int &gt;= 1
+        Parameter for generating the hull around the points detected to be
+        a part of the feature. Higher value means more approximate shape,
+        but faster calculations. Value of `1` will give the most accurate
+        result.
+
+    concaveHullParamter : float
+        Alphashape parameter for generating the hull. A value of `0`
+        means the hull will be convex, a value `&gt;= 0` will mean the
+        hull is increasingly concave.
+
+        For more information, see [alphashape documentation](https://alphashape.readthedocs.io/en/latest/readme.html)
+        related to the &#39;alpha parameter&#39;.
+
+    debug : bool
+        Whether to plot debug information about the feature
+        detection once completed or not.
+
+
+    Returns
+    -------
+    boundaryPoints : numpy.ndarray[N,2]
+        List of N points that comprise the boundary ordered
+        such that the boundary can be drawn by drawing all pairs
+        of points (i,i+1) (and (-1,0) for the final line).
+    &#34;&#34;&#34;
+    # Grayscale if necessary
+    if len(np.shape(image)) == 3:
+        grayImage = np.mean(image, axis=-1)
+    else:
+        grayImage = image
+
+    # Crop
+    croppedImage = grayImage[approxFeatureLocation[0]-int(featureSize):approxFeatureLocation[0]+int(featureSize),
+                                approxFeatureLocation[1]-int(featureSize):approxFeatureLocation[1]+int(featureSize)]
+
+    # Identify regions that are above the mean
+    thresholdedImage = np.float64(croppedImage &gt; meanThresholdFactor*np.mean(croppedImage))
+
+    # Blur and then threshold again, meaning that anything who isn&#39;t surrounded by
+    # `minIslandSize/2` neighbors in each direction gets removed
+    kernel = minIslandSize + int(not minIslandSize%2) # Make sure it is odd
+    thresholdedImage = np.float64(cv2.blur(thresholdedImage, (kernel,kernel)) == 1)
+
+    # Generate a convex hull
+    alphashape = ap.alphashape(np.array(np.where(thresholdedImage)).T[::pointDownsampleFactor], concaveHullParameter)
+    
+    boundaryPoints = np.array(alphashape.boundary.coords)[:,:2:][:,::-1]
+
+    if debug:
+        fig, ax = plt.subplots(1, 2, figsize=(8,4))
+
+        ax[0].imshow(thresholdedImage)
+        ax[1].imshow(grayImage)
+        for i in range(len(boundaryPoints-1)):
+            ax[1].plot(boundaryPoints[i:i+2,0], boundaryPoints[i:i+2,1], c=&#39;red&#39;, alpha=1)
+
+        ax[0].set_title(&#39;Thresholded Image&#39;)
+        ax[1].set_title(&#39;Identified Feature Boundary&#39;)
+        plt.show()
+
+    # Convert local coordinates back to absolute image coordinates
+    return approxFeatureLocation + boundaryPoints - featureSize</code></pre>
+</details>
+</dd>
+<dt id="pepe.preprocess.Mask.maskFeature"><code class="name flex">
+<span>def <span class="ident">maskFeature</span></span>(<span>image, approxFeatureLocation, featureSize, meanThresholdFactor=1, minIslandSize=5, pointDownsampleFactor=5, concaveHullParameter=0, extraPadding=0, allowRecurse=True, debug=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generate a mask to remove a detected feature near the specified location.</p>
+<p>Feature detection is done using the same algorithm as in
+<code>pepe.preprocess.detectFeatureBoundary()</code>. Feature should be
+brighter than the background.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>image</code></strong> :&ensp;<code>numpy.ndarray[H,W[,C]]</code></dt>
+<dd>Input image to identify feature in. If multi-channel,
+the channels will be averaged (gray-scaled).</dd>
+<dt><strong><code>approxFeatureLocation</code></strong> :&ensp;<code>(float, float)</code></dt>
+<dd>Approximate coordinates (y,x) of the location of the feature.</dd>
+<dt><strong><code>meanThresholdFactor</code></strong> :&ensp;<code>float</code></dt>
+<dd>Parameter for determining which pixels are a part of the feature.
+Lower value means the detected feature will be larger.</dd>
+<dt><strong><code>minIslandSize</code></strong> :&ensp;<code>int</code></dt>
+<dd>
+<p>Parameter for culling pixels initially detected to be a part of
+the feature, but likely are not actually. eg. If a value of 5,
+is chosen, only pixels surrounded by 24 other pixels detected to
+be a part of the feature will be kept.</p>
+<p>If not an odd number, the value will be rounded up to the next odd
+number.</p>
+</dd>
+<dt><strong><code>pointDownsampleFactor</code></strong> :&ensp;<code>int &gt;= 1</code></dt>
+<dd>Parameter for generating the hull around the points detected to be
+a part of the feature. Higher value means more approximate shape,
+but faster calculations. Value of <code>1</code> will give the most accurate
+result.</dd>
+<dt><strong><code>concaveHullParamter</code></strong> :&ensp;<code>float</code></dt>
+<dd>
+<p>Alphashape parameter for generating the hull. A value of <code>0</code>
+means the hull will be convex, a value <code>&gt;= 0</code> will mean the
+hull is increasingly concave.</p>
+<p>For more information, see <a href="https://alphashape.readthedocs.io/en/latest/readme.html">alphashape documentation</a>
+related to the 'alpha parameter'.</p>
+</dd>
+<dt><strong><code>extraPadding</code></strong> :&ensp;<code>int</code></dt>
+<dd>Extra padding at the end of the feature identification
+added to the shape.</dd>
+<dt><strong><code>allowRecurse</code></strong> :&ensp;<code>bool</code></dt>
+<dd>If the
+detected feature is larger than the size,
+and this value is <code>True</code>, the function will recursively
+call itself (at most once) with a larger feature size to try
+and detect the entire feature.</dd>
+<dt><strong><code>debug</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether to plot debug information about the feature
+detection once completed or not.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>imageMask</code></strong> :&ensp;<code>numpy.ndarray[H,W]</code></dt>
+<dd>Image mask with values of <code>1</code> everywhere
+except for points that are detected to be a
+part of the feature, which will have values
+of <code>0</code>.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def maskFeature(image,
+                approxFeatureLocation,
+                featureSize,
+                meanThresholdFactor=1,
+                minIslandSize=5,
+                pointDownsampleFactor=5,
+                concaveHullParameter=0,
+                extraPadding=0,
+                allowRecurse=True,
+                debug=False):
+    &#34;&#34;&#34;
+    Generate a mask to remove a detected feature near the specified location.
+
+    Feature detection is done using the same algorithm as in
+    `pepe.preprocess.detectFeatureBoundary()`. Feature should be
+    brighter than the background.
+
+    Parameters
+    ----------
+    image : numpy.ndarray[H,W[,C]]
+        Input image to identify feature in. If multi-channel,
+        the channels will be averaged (gray-scaled).
+
+    approxFeatureLocation : (float, float)
+        Approximate coordinates (y,x) of the location of the feature.
+
+    meanThresholdFactor : float
+        Parameter for determining which pixels are a part of the feature.
+        Lower value means the detected feature will be larger.
+
+    minIslandSize : int
+        Parameter for culling pixels initially detected to be a part of
+        the feature, but likely are not actually. eg. If a value of 5,
+        is chosen, only pixels surrounded by 24 other pixels detected to
+        be a part of the feature will be kept.
+
+        If not an odd number, the value will be rounded up to the next odd
+        number.
+
+    pointDownsampleFactor : int &gt;= 1
+        Parameter for generating the hull around the points detected to be
+        a part of the feature. Higher value means more approximate shape,
+        but faster calculations. Value of `1` will give the most accurate
+        result.
+
+    concaveHullParamter : float
+        Alphashape parameter for generating the hull. A value of `0`
+        means the hull will be convex, a value `&gt;= 0` will mean the
+        hull is increasingly concave.
+
+        For more information, see [alphashape documentation](https://alphashape.readthedocs.io/en/latest/readme.html)
+        related to the &#39;alpha parameter&#39;.
+
+    extraPadding : int
+        Extra padding at the end of the feature identification
+        added to the shape.
+
+    allowRecurse : bool
+        If the  detected feature is larger than the size,
+        and this value is `True`, the function will recursively
+        call itself (at most once) with a larger feature size to try
+        and detect the entire feature.
+        
+    debug : bool
+        Whether to plot debug information about the feature
+        detection once completed or not.
+
+
+    Returns
+    -------
+    imageMask : numpy.ndarray[H,W]
+        Image mask with values of `1` everywhere
+        except for points that are detected to be a
+        part of the feature, which will have values
+        of `0`.
+
+    &#34;&#34;&#34;
+    # Grayscale if necessary
+    if len(np.shape(image)) == 3:
+        grayImage = np.mean(image, axis=-1)
+    else:
+        grayImage = image
+
+    # Crop
+    croppedImage = grayImage[max(approxFeatureLocation[0]-int(featureSize), 0):min(approxFeatureLocation[0]+int(featureSize), grayImage.shape[0]),
+                                max(approxFeatureLocation[1]-int(featureSize), 0):min(approxFeatureLocation[1]+int(featureSize), grayImage.shape[1])]
+
+    # Identify regions that are above the mean
+    thresholdedImage = np.float64(croppedImage &gt; meanThresholdFactor*np.mean(croppedImage))
+
+    # Blur and then threshold again, meaning that anything who isn&#39;t surrounded by
+    # `minIslandSize/2` neighbors in each direction gets removed
+    kernel = minIslandSize + int(not minIslandSize%2) # Make sure it is odd
+    thresholdedImage = np.float64(cv2.blur(thresholdedImage, (kernel,kernel)) == 1)
+
+    # Generate a convex hull
+    alphashape = ap.alphashape(np.array(np.where(thresholdedImage)).T[::pointDownsampleFactor], concaveHullParameter)
+
+    if alphashape is not None:
+        boundaryPoints = np.array(alphashape.boundary.coords)[:,:2:][:,::-1]
+    else:
+        boundaryPoints = None
+
+    # If any of the boundary points are at the edge of the image, that means the 
+    # feature extends beyond the cropped region, and we should try again with a slightly
+    # larger region
+    edgePadding = 5
+    if (True in (boundaryPoints.flatten() &lt; edgePadding) or True in (boundaryPoints.flatten() + edgePadding &gt; 2*featureSize)) and allowRecurse:
+        # We could try and recenter the crop window, but that doesn&#39;t actually work all that well...
+        # Maybe since averaging the boundary points doesn&#39;t actually calculate the center of mass
+        #newFeatureCenter = approxFeatureLocation + np.int64(np.mean(boundaryPoints, axis=0)) - featureSize
+        newFeatureCenter = approxFeatureLocation
+        return maskFeature(image, newFeatureCenter, featureSize*1.5,
+                           meanThresholdFactor, minIslandSize, pointDownsampleFactor,
+                           concaveHullParameter, False, debug)
+        
+    maskImage = np.zeros_like(croppedImage, dtype=np.uint8)
+
+    for i in range(len(boundaryPoints)-1):
+        cv2.line(maskImage, np.int64(boundaryPoints[i]), np.int64(boundaryPoints[i+1]), 1, minIslandSize)        
+    cv2.line(maskImage, np.int64(boundaryPoints[-1]), np.int64(boundaryPoints[0]), 1, minIslandSize)
+                    
+    outsidePoint = (0,0)
+    cv2.floodFill(maskImage, None, outsidePoint, 2)
+
+    # Add extra padding
+    if extraPadding &gt; 0:
+        oddPadding = extraPadding + int(not extraPadding%2) # Make sure it is odd
+        maskImage = cv2.blur(maskImage, (oddPadding, oddPadding))
+
+    maskImage = maskImage == 2
+
+    fullImageMask = np.ones(image.shape[:2], dtype=np.uint8)
+    fullImageMask[max(approxFeatureLocation[0]-int(featureSize), 0):min(approxFeatureLocation[0]+int(featureSize), grayImage.shape[0]),
+                                max(approxFeatureLocation[1]-int(featureSize), 0):min(approxFeatureLocation[1]+int(featureSize), grayImage.shape[1])] = maskImage
+
+    if debug:
+        fig, ax = plt.subplots(1, 3, figsize=(12,4))
+
+        ax[0].imshow(thresholdedImage)
+        ax[1].imshow(croppedImage)
+        for i in range(len(boundaryPoints)-1):
+            ax[1].plot(boundaryPoints[i:i+2,0], boundaryPoints[i:i+2,1], c=&#39;red&#39;, alpha=1)
+
+        ax[2].imshow(fullImageMask)
+        
+        ax[0].set_title(&#39;Thresholded Image&#39;)
+        ax[1].set_title(&#39;Identified Feature Boundary&#39;)
+        ax[2].set_title(&#39;Full Image Mask&#39;)
+        plt.show()
+
+    return fullImageMask</code></pre>
+</details>
+</dd>
 <dt id="pepe.preprocess.Mask.mergeMasks"><code class="name flex">
 <span>def <span class="ident">mergeMasks</span></span>(<span>listOfMasks, signs=None, channels=3)</span>
 </code></dt>
@@ -628,6 +1364,81 @@ def mergeMasks(listOfMasks, signs=None, channels=3):
     #sumMask += np.abs(np.min(sumMask))
     #sumMask = np.ceil(sumMask / np.max(sumMask))
     return (sumMask &gt; 0).astype(np.uint8)</code></pre>
+</details>
+</dd>
+<dt id="pepe.preprocess.Mask.polygonMask"><code class="name flex">
+<span>def <span class="ident">polygonMask</span></span>(<span>boundaryPoints, maskSize, debug=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Create a mask of a polygon defined by the points that
+comprise its boundary.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>boundaryPoints</code></strong> :&ensp;<code>iterable</code> of <code>points</code></dt>
+<dd>Iterable of points (y,x) that define the
+boundary of the polygon. Should be ordered
+such that drawing each pair of points (i,i+1)
+creates the desired shape.</dd>
+<dt><strong><code>maskSize</code></strong> :&ensp;<code>[H,W]</code></dt>
+<dd>The size of the mask array to create.</dd>
+<dt><strong><code>debug</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether or not to plot a visualization of
+the mask once it is completed.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>maskImage</code></strong> :&ensp;<code>numpy.ndarray[H,W]</code></dt>
+<dd>Mask array, with values of <code>1</code> inside
+the polygon, and <code>0</code> outside.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def polygonMask(boundaryPoints, maskSize, debug=False):
+    &#34;&#34;&#34;
+    Create a mask of a polygon defined by the points that
+    comprise its boundary.
+
+    Parameters
+    ----------
+    boundaryPoints : iterable of points
+        Iterable of points (y,x) that define the
+        boundary of the polygon. Should be ordered
+        such that drawing each pair of points (i,i+1)
+        creates the desired shape.
+
+    maskSize : [H,W]
+        The size of the mask array to create.
+
+    debug : bool
+        Whether or not to plot a visualization of
+        the mask once it is completed.
+
+    Returns
+    -------
+    maskImage : numpy.ndarray[H,W]
+        Mask array, with values of `1` inside
+        the polygon, and `0` outside.
+
+    &#34;&#34;&#34;
+    maskImage = np.ones(maskSize, dtype=np.uint8)
+
+    for i in range(len(boundaryPoints)-1):
+        # Have to reverse coordinates
+        cv2.line(maskImage, np.int64(boundaryPoints[i][::-1]), np.int64(boundaryPoints[i+1][::-1]), 255, 1)        
+    cv2.line(maskImage, np.int64(boundaryPoints[-1][::-1]), np.int64(boundaryPoints[0][::-1]), 255, 1)
+                    
+    outsidePoint = (0,0)
+    cv2.floodFill(maskImage, None, outsidePoint, 255)
+
+    maskImage = (maskImage != 255).astype(np.float64)
+
+    if debug:
+        plt.imshow(maskImage)
+        plt.show()
+
+    return maskImage</code></pre>
 </details>
 </dd>
 <dt id="pepe.preprocess.Mask.rectMask"><code class="name flex">
@@ -705,6 +1516,81 @@ def rectMask(size, corner=[0,0], dimensions=[0,0], channels=3):
     return maskArr</code></pre>
 </details>
 </dd>
+<dt id="pepe.preprocess.Mask.removePadding"><code class="name flex">
+<span>def <span class="ident">removePadding</span></span>(<span>image)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Remove padding from an image.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>image</code></strong> :&ensp;<code>array-like</code></dt>
+<dd>Image to remove excess padding from.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>unpaddedImage</code></strong> :&ensp;<code>array-like</code></dt>
+<dd>Original image with rows and columns
+removed if they contained no image data.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def removePadding(image):
+    &#34;&#34;&#34;
+    Remove padding from an image.
+
+    Parameters
+    ----------
+    image : array-like
+        Image to remove excess padding from.
+
+    Returns
+    -------
+    unpaddedImage : array-like
+        Original image with rows and columns
+        removed if they contained no image data.
+    &#34;&#34;&#34;
+    # Grayscale if necessary
+    if len(np.shape(image)) == 3:
+        grayImage = np.mean(image, axis=-1)
+    else:
+        grayImage = image
+
+    rowSum = np.sum(grayImage, axis=0)
+    columnSum = np.sum(grayImage, axis=-1)
+
+    # There is probably a much fancier way to do this, but this
+    # is fast enough, so... essentially we just count until the sum
+    # is not zero anymore (ie there is some image data)
+    
+    leftEdge = None
+    for i in range(len(rowSum)):
+        leftEdge = i
+        if rowSum[i] &gt; 0:
+            break
+
+    rightEdge = None
+    for i in range(len(rowSum))[::-1]:
+        rightEdge = i
+        if rowSum[i] &gt; 0:
+            break
+
+    topEdge = None
+    for i in range(len(columnSum)):
+        topEdge = i
+        if columnSum[i] &gt; 0:
+            break
+            
+    bottomEdge = None
+    for i in range(len(columnSum))[::-1]:
+        bottomEdge = i
+        if columnSum[i] &gt; 0:
+            break
+
+    return image[topEdge:bottomEdge,leftEdge:rightEdge]</code></pre>
+</details>
+</dd>
 </dl>
 </section>
 <section>
@@ -726,8 +1612,12 @@ def rectMask(size, corner=[0,0], dimensions=[0,0], channels=3):
 <li><code><a title="pepe.preprocess.Mask.circularMask" href="#pepe.preprocess.Mask.circularMask">circularMask</a></code></li>
 <li><code><a title="pepe.preprocess.Mask.crossMask" href="#pepe.preprocess.Mask.crossMask">crossMask</a></code></li>
 <li><code><a title="pepe.preprocess.Mask.ellipticalMask" href="#pepe.preprocess.Mask.ellipticalMask">ellipticalMask</a></code></li>
+<li><code><a title="pepe.preprocess.Mask.identifyFeatureBoundary" href="#pepe.preprocess.Mask.identifyFeatureBoundary">identifyFeatureBoundary</a></code></li>
+<li><code><a title="pepe.preprocess.Mask.maskFeature" href="#pepe.preprocess.Mask.maskFeature">maskFeature</a></code></li>
 <li><code><a title="pepe.preprocess.Mask.mergeMasks" href="#pepe.preprocess.Mask.mergeMasks">mergeMasks</a></code></li>
+<li><code><a title="pepe.preprocess.Mask.polygonMask" href="#pepe.preprocess.Mask.polygonMask">polygonMask</a></code></li>
 <li><code><a title="pepe.preprocess.Mask.rectMask" href="#pepe.preprocess.Mask.rectMask">rectMask</a></code></li>
+<li><code><a title="pepe.preprocess.Mask.removePadding" href="#pepe.preprocess.Mask.removePadding">removePadding</a></code></li>
 </ul>
 </li>
 </ul>

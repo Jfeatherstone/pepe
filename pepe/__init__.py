@@ -77,6 +77,6 @@ See the `pepe.examples` submodule for some common uses of the toolbox. Many pseu
 [3] Photoelastic methods wiki. https://git-xen.lmgc.univ-montp2.fr/PhotoElasticity/Main/-/wikis/home
 """
 
-__version__ = '1.1.1'
+__version__ = '1.2.1'
 __author__ = 'Jack Featherstone'
-__credits__ = 'North Carolina State University' 
+__credits__ = 'North Carolina State University; Okinawa Institute of Science and Technology' 

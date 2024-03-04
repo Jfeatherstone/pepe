@@ -116,7 +116,51 @@ defaultModelInstance = None
 defaultModelType = &#39;FSRCNN&#39;
 defaultModelFactor = 2
 
+def modelInstallHelp():
+    helpString = f&#34;&#34;&#34;
+    Note that the super-resolution models need to be downloaded separately, as they are not
+    my own original work. Four methods are compatible with this package:
+
+    - [EDSR](https://arxiv.org/pdf/1707.02921.pdf) ([implementation](https://github.com/Saafke/EDSR_Tensorflow))
+
+    - [ESPCN](https://arxiv.org/abs/1609.05158) ([implementation](https://github.com/fannymonori/TF-ESPCN))
+
+    - [FSRCNN](http://mmlab.ie.cuhk.edu.hk/projects/FSRCNN.html) ([implementation](https://github.com/Saafke/FSRCNN_Tensorflow))
+
+    - [LapSRN](https://arxiv.org/abs/1710.01992) ([implementation](https://github.com/fannymonori/TF-LapSRN))
+
+    The above implementations are simply the ones that I have used in the past; there are certainly others available, which should give comparable results. I am not the creator of any of the above listed implementations either, nor am I associated in any way (other than as a user) with them.
+
+    To install any of the above models, you should place the `.pb` weight files into an appropriately named directory within the following folder:
+    {MODELS_DIR}.
+
+    e.g. directory structure:
+
+    ```
+    .../preprocess/
+        |-- Rescale.py
+        |-- ...
+        `-- models/
+            |-- FSRCNN/
+            |   |-- FSRCNN_x2.pb
+            |   |-- FSRCNN_x3.pb
+            |   `-- FSRCNN_x4.pb
+            `-- LapSRN/
+                |-- LapSRN_x2.pb
+                |-- LapSRN_x4.pb
+                `-- LapSRN_x8.pb
+    ```
+    Make sure that the naming conventions are consistent: the name of the directory should be the same as the first part of the weight file name, and the second part (separated by an underscore `_`) should be `x` plus the upsample factor. These conventions are important for the package to automatically detect which models are available.
+    &#34;&#34;&#34;
+
+    print(helpString)
+
 def listSuperResModels(debug=False):
+
+    if not os.path.exists(MODELS_DIR):
+        print(f&#39;Warning: models folder ({MODELS_DIR}) does not exist!\nSee pepe.preprocess.modelInstallHelp() for more information about installing models.&#39;)
+        return {}
+
     # Determine what models are available
     availableModels = [d for d in os.listdir(MODELS_DIR) if os.path.isdir(MODELS_DIR + d)]
     availableModels = np.sort(availableModels)
@@ -142,7 +186,7 @@ def listSuperResModels(debug=False):
                 availableScalingFactors.append(upscaleFactor)
             except:
                 if debug:
-                    print(f&#39;Warning: file \&#39;{d}/{wF}\&#39; does not conform to naming conventions.\nAll files should be named in the format &lt;model_type&gt;_x&lt;upscale_factor&gt;.pb!&#39;)
+                    print(f&#39;Warning: file \&#39;{d}/{wF}\&#39; does not conform to naming conventions.\nAll files should be named in the format &lt;model_type&gt;_x&lt;upscale_factor&gt;.pb!\nSee pepe.preprocess.modelInstallHelp() for more information about installing models.&#39;)
 
         modelFactors[d] = list(np.sort(availableScalingFactors))
 
@@ -297,6 +341,11 @@ downscale factor.</p>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def listSuperResModels(debug=False):
+
+    if not os.path.exists(MODELS_DIR):
+        print(f&#39;Warning: models folder ({MODELS_DIR}) does not exist!\nSee pepe.preprocess.modelInstallHelp() for more information about installing models.&#39;)
+        return {}
+
     # Determine what models are available
     availableModels = [d for d in os.listdir(MODELS_DIR) if os.path.isdir(MODELS_DIR + d)]
     availableModels = np.sort(availableModels)
@@ -322,11 +371,60 @@ downscale factor.</p>
                 availableScalingFactors.append(upscaleFactor)
             except:
                 if debug:
-                    print(f&#39;Warning: file \&#39;{d}/{wF}\&#39; does not conform to naming conventions.\nAll files should be named in the format &lt;model_type&gt;_x&lt;upscale_factor&gt;.pb!&#39;)
+                    print(f&#39;Warning: file \&#39;{d}/{wF}\&#39; does not conform to naming conventions.\nAll files should be named in the format &lt;model_type&gt;_x&lt;upscale_factor&gt;.pb!\nSee pepe.preprocess.modelInstallHelp() for more information about installing models.&#39;)
 
         modelFactors[d] = list(np.sort(availableScalingFactors))
 
     return modelFactors</code></pre>
+</details>
+</dd>
+<dt id="pepe.preprocess.Rescale.modelInstallHelp"><code class="name flex">
+<span>def <span class="ident">modelInstallHelp</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def modelInstallHelp():
+    helpString = f&#34;&#34;&#34;
+    Note that the super-resolution models need to be downloaded separately, as they are not
+    my own original work. Four methods are compatible with this package:
+
+    - [EDSR](https://arxiv.org/pdf/1707.02921.pdf) ([implementation](https://github.com/Saafke/EDSR_Tensorflow))
+
+    - [ESPCN](https://arxiv.org/abs/1609.05158) ([implementation](https://github.com/fannymonori/TF-ESPCN))
+
+    - [FSRCNN](http://mmlab.ie.cuhk.edu.hk/projects/FSRCNN.html) ([implementation](https://github.com/Saafke/FSRCNN_Tensorflow))
+
+    - [LapSRN](https://arxiv.org/abs/1710.01992) ([implementation](https://github.com/fannymonori/TF-LapSRN))
+
+    The above implementations are simply the ones that I have used in the past; there are certainly others available, which should give comparable results. I am not the creator of any of the above listed implementations either, nor am I associated in any way (other than as a user) with them.
+
+    To install any of the above models, you should place the `.pb` weight files into an appropriately named directory within the following folder:
+    {MODELS_DIR}.
+
+    e.g. directory structure:
+
+    ```
+    .../preprocess/
+        |-- Rescale.py
+        |-- ...
+        `-- models/
+            |-- FSRCNN/
+            |   |-- FSRCNN_x2.pb
+            |   |-- FSRCNN_x3.pb
+            |   `-- FSRCNN_x4.pb
+            `-- LapSRN/
+                |-- LapSRN_x2.pb
+                |-- LapSRN_x4.pb
+                `-- LapSRN_x8.pb
+    ```
+    Make sure that the naming conventions are consistent: the name of the directory should be the same as the first part of the weight file name, and the second part (separated by an underscore `_`) should be `x` plus the upsample factor. These conventions are important for the package to automatically detect which models are available.
+    &#34;&#34;&#34;
+
+    print(helpString)</code></pre>
 </details>
 </dd>
 <dt id="pepe.preprocess.Rescale.prepareSuperResModel"><code class="name flex">
@@ -421,6 +519,7 @@ downscale factor.</p>
 <ul class="">
 <li><code><a title="pepe.preprocess.Rescale.downsample" href="#pepe.preprocess.Rescale.downsample">downsample</a></code></li>
 <li><code><a title="pepe.preprocess.Rescale.listSuperResModels" href="#pepe.preprocess.Rescale.listSuperResModels">listSuperResModels</a></code></li>
+<li><code><a title="pepe.preprocess.Rescale.modelInstallHelp" href="#pepe.preprocess.Rescale.modelInstallHelp">modelInstallHelp</a></code></li>
 <li><code><a title="pepe.preprocess.Rescale.prepareSuperResModel" href="#pepe.preprocess.Rescale.prepareSuperResModel">prepareSuperResModel</a></code></li>
 <li><code><a title="pepe.preprocess.Rescale.upsample" href="#pepe.preprocess.Rescale.upsample">upsample</a></code></li>
 </ul>

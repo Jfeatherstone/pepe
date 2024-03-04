@@ -5,12 +5,12 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
      name='pepe-granular',  
-     version='1.1.1',
+     version='1.2.1',
      author="Jack Featherstone",
      author_email="jack.featherstone@oist.jp",
      license='MIT',
      url='https://jfeatherstone.github.io/pepe/pepe',
-     description="Toolbox for granular analysis of photoelastic images",
+     description="Image analysis toolbox tailored towards granular photoelastic images",
      long_description=long_description,
      long_description_content_type="text/markdown",
      packages=setuptools.find_packages(),

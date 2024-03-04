@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>pepe.test.test_auto API documentation</title>
+<title>pepe.test.test_conv_tracking API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -20,28 +20,49 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>pepe.test.test_auto</code></h1>
+<h1 class="title">Module <code>pepe.test.test_conv_tracking</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import inspect
-import numpy as np
+<pre><code class="python">import numpy as np
 
-from pepe.auto import forceSolve, forceSolveArgDTypes, excludedArgs
+import pathlib
 
-def test_forceSolve_DTypeCoverage():
+from pepe.preprocess import checkImageType
+from pepe.tracking import convCircle, houghCircle
+from pepe.utils import preserveOrderArgsort
+
+DATA_DIR = str(pathlib.Path(__file__).parent.resolve()) + &#39;/test_data&#39;
+
+def test_convCircle_track():
     &#34;&#34;&#34;
-    Make sure that all of the dtypes for the arguments in
-    pepe.auto.forceSolve are defined for the purpose of
-    reading in values from a settings file.
+    Test convolutional tracking on generated
+    test images.
     &#34;&#34;&#34;
-    args, counts= np.unique(list(inspect.signature(forceSolve).parameters.keys()) + list(forceSolveArgDTypes.keys()), return_counts=True) 
-    missingArgs = [a for a in args[counts == 1] if a not in excludedArgs]
-    
-    assert len(missingArgs) == 0, f&#34;Missing data types for args: {missingArgs}&#34;</code></pre>
+    for i in range(3):
+        image = checkImageType(f&#39;{DATA_DIR}/test_circles_{i+1}.bmp&#39;).astype(np.uint8)
+        radius = 50
+        tolerance = .10 # 10% tolerance of the radius
+
+        # Parameters aren&#39;t too important
+        particleCenters, particleRadii = convCircle(image, radius, negativeHalo=True,
+                                                    intensitySoftmax=1.8, intensitySoftmin=.6, peakDownsample=1,
+                                                    offscreenParticles=True, radiusTolerance=2, minPeakPrevalence=.4)
+
+        with open(f&#39;{DATA_DIR}/test_circles_{i+1}_centers.npy&#39;, &#39;rb&#39;) as f:
+            expectedCenters = np.load(f)
+
+        assert len(expectedCenters) == len(particleCenters), f&#34;Incorrect number of particles detected in test image {i+1}: {len(particleCenters)} vs {len(expectedCenters)}.&#34;
+
+        sortOrder = preserveOrderArgsort(particleCenters, expectedCenters)
+
+        difference = np.sqrt(np.sum((particleCenters - expectedCenters[sortOrder])**2, axis=-1))
+
+        percentOfRadius = difference / radius
+        assert not True in [p &gt; tolerance for p in percentOfRadius], f&#34;Particle centers not within {tolerance*100}% of expected value in test image {i+1}.&#34;</code></pre>
 </details>
 </section>
 <section>
@@ -51,27 +72,42 @@ def test_forceSolve_DTypeCoverage():
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="pepe.test.test_auto.test_forceSolve_DTypeCoverage"><code class="name flex">
-<span>def <span class="ident">test_forceSolve_DTypeCoverage</span></span>(<span>)</span>
+<dt id="pepe.test.test_conv_tracking.test_convCircle_track"><code class="name flex">
+<span>def <span class="ident">test_convCircle_track</span></span>(<span>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Make sure that all of the dtypes for the arguments in
-pepe.auto.forceSolve are defined for the purpose of
-reading in values from a settings file.</p></div>
+<div class="desc"><p>Test convolutional tracking on generated
+test images.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def test_forceSolve_DTypeCoverage():
+<pre><code class="python">def test_convCircle_track():
     &#34;&#34;&#34;
-    Make sure that all of the dtypes for the arguments in
-    pepe.auto.forceSolve are defined for the purpose of
-    reading in values from a settings file.
+    Test convolutional tracking on generated
+    test images.
     &#34;&#34;&#34;
-    args, counts= np.unique(list(inspect.signature(forceSolve).parameters.keys()) + list(forceSolveArgDTypes.keys()), return_counts=True) 
-    missingArgs = [a for a in args[counts == 1] if a not in excludedArgs]
-    
-    assert len(missingArgs) == 0, f&#34;Missing data types for args: {missingArgs}&#34;</code></pre>
+    for i in range(3):
+        image = checkImageType(f&#39;{DATA_DIR}/test_circles_{i+1}.bmp&#39;).astype(np.uint8)
+        radius = 50
+        tolerance = .10 # 10% tolerance of the radius
+
+        # Parameters aren&#39;t too important
+        particleCenters, particleRadii = convCircle(image, radius, negativeHalo=True,
+                                                    intensitySoftmax=1.8, intensitySoftmin=.6, peakDownsample=1,
+                                                    offscreenParticles=True, radiusTolerance=2, minPeakPrevalence=.4)
+
+        with open(f&#39;{DATA_DIR}/test_circles_{i+1}_centers.npy&#39;, &#39;rb&#39;) as f:
+            expectedCenters = np.load(f)
+
+        assert len(expectedCenters) == len(particleCenters), f&#34;Incorrect number of particles detected in test image {i+1}: {len(particleCenters)} vs {len(expectedCenters)}.&#34;
+
+        sortOrder = preserveOrderArgsort(particleCenters, expectedCenters)
+
+        difference = np.sqrt(np.sum((particleCenters - expectedCenters[sortOrder])**2, axis=-1))
+
+        percentOfRadius = difference / radius
+        assert not True in [p &gt; tolerance for p in percentOfRadius], f&#34;Particle centers not within {tolerance*100}% of expected value in test image {i+1}.&#34;</code></pre>
 </details>
 </dd>
 </dl>
@@ -92,7 +128,7 @@ reading in values from a settings file.</p></div>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="pepe.test.test_auto.test_forceSolve_DTypeCoverage" href="#pepe.test.test_auto.test_forceSolve_DTypeCoverage">test_forceSolve_DTypeCoverage</a></code></li>
+<li><code><a title="pepe.test.test_conv_tracking.test_convCircle_track" href="#pepe.test.test_conv_tracking.test_convCircle_track">test_convCircle_track</a></code></li>
 </ul>
 </li>
 </ul>
