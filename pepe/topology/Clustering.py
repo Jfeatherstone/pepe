@@ -116,10 +116,20 @@ def spatialClusterLabels(points, l=.001):
         # sort so that way we can do a unique check to remove
         # duplicates
         allLabels = sorted(np.unique(allLabels))
-        labelSets.append(allLabels)
+        # Python may automatically collapse the list if it is of length 1,
+        # which we don't want.
+        labelSets.append([allLabels] if len(allLabels) == 1 else allLabels)
 
     # Remove duplicate sets, creating disjoint sets of labels
     uniqueSets = np.unique(np.array(labelSets, list))
+
+    # If there are no overlaps, then this above operation will
+    # flatten the array to be one dimensional. We can't do anything
+    # about that, except to check if it is the case. The good news is
+    # that if this is the case, then we already have disjoint sets
+    # and we can just immediately return our label array
+    if len(np.shape(uniqueSets)) == 1:
+        return labels
 
     # Relabel things with the new disjoint sets
     mergedLabels = np.zeros_like(labels)
