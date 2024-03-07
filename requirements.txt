@@ -6,3 +6,4 @@ scikit-learn
 lmfit
 Pillow
 tqdm
+rawpy

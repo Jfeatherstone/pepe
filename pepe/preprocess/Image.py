@@ -5,6 +5,7 @@ import numpy as np
 
 from PIL import Image
 import cv2
+import rawpy
 from scipy.signal import savgol_filter
 
 import matplotlib.pyplot as plt
@@ -41,7 +42,16 @@ def imageType(file):
     isImage = file.lower().endswith(tuple(IMAGE_TYPES))
     return file.split('.')[-1] if isImage else None
 
-def checkImageType(frame):
+# In reading raw nef files, rawpy will automatically
+# do some post processing. These kwargs seem to give
+# me the most natural recreation of the original image
+# (or at least in comparing to the unedited version in
+# darktable)
+DEFAULT_NEF_PROCESS_KWARGS = {"no_auto_scale": True,
+                              "bright": .1,
+                             }
+
+def checkImageType(frame, nef_kwargs=DEFAULT_NEF_PROCESS_KWARGS):
     """
     Make sure that the image is a proper image, and not a path
 
@@ -51,6 +61,14 @@ def checkImageType(frame):
     frame : str or numpy.ndarray
         Either a path to an image, or an image array
 
+    nef_kwargs : dict
+        Dictionary of arguments of postprocessing of NEF
+        images by rawpy. Only relevant if `frame` is the path
+        to an NEF file.
+
+        For full list of possible parameters, see:
+        https://letmaik.github.io/rawpy/api/rawpy.Params.html#rawpy.Params
+
     Returns
     -------
 
@@ -59,7 +77,14 @@ def checkImageType(frame):
     """
     if isinstance(frame, str):
         # I don't want to overwrite the image itself, so create a new var for that
-        newFrame = np.array(Image.open(frame), dtype=np.uint8)
+        # Also, we need to open nef images in a special way, since they are a special
+        # format (uses rawpy)
+        if imageType(frame) == 'nef':
+            raw = rawpy.imread(frame)
+            newFrame = raw.postprocess(**nef_kwargs)
+        # Otherwise, we can just read the image normally using Pillow
+        else:
+            newFrame = np.array(Image.open(frame), dtype=np.uint8)
     else:
         newFrame = frame
 

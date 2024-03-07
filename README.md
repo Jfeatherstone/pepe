@@ -47,6 +47,7 @@ Python 3.11 is the recommended version to use, with the following packages:
 - [Pillow](https://pillow.readthedocs.io/en/stable/)
 - [numba](https://numba.pydata.org/)
 - [tqdm](https://github.com/tqdm/tqdm)
+- [rawpy](https://pypi.org/project/rawpy/)
 
 These can all be installed (alongside their dependencies) via `pip`:
 ```
