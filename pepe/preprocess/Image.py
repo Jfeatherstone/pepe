@@ -40,7 +40,7 @@ def imageType(file):
         Image extension if file is an image, else None.
     """
     isImage = file.lower().endswith(tuple(IMAGE_TYPES))
-    return file.split('.')[-1] if isImage else None
+    return file.split('.')[-1].lower() if isImage else None
 
 # In reading raw nef files, rawpy will automatically
 # do some post processing. These kwargs seem to give
