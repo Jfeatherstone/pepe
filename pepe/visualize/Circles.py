@@ -67,7 +67,7 @@ def visCircles(centers, radii, ax=None, color=None, sameColors=False, annotation
         goodIndices = np.array([0 if np.isnan(r) else 1 for r in radii])
         npRadii = np.array([r for r in radii if not np.isnan(r)])
     else:
-        goodIndices = np.ones(len(centers, dtype=np.uint8))
+        goodIndices = np.ones(len(centers), dtype=np.uint8)
         npRadii = np.repeat(radii, len(centers))
     
     npCenters = np.array([c for c in centers if not np.isnan(c[0])])
@@ -86,9 +86,9 @@ def visCircles(centers, radii, ax=None, color=None, sameColors=False, annotation
     # a single color
     elif not type(color) in [list, np.ndarray]:
         # If a single color is given, we want to repeat that
-        circleColorsList = [colors for _ in range(len(npCenters))]
+        circleColorsList = [color for _ in range(len(npCenters))]
     else:
-        circleColorsList = colors
+        circleColorsList = color
 
     for i in range(len(npCenters)):
         c = plt.Circle(npCenters[i,::-1], npRadii[i], color=circleColorsList[i], fill=False, linewidth=linewidth)
