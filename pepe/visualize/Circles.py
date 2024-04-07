@@ -6,38 +6,87 @@ import matplotlib.pyplot as plt
 
 from pepe.visualize import genColors
 
-def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColors=False, setBounds=False, linewidth=1):
+def visCircles(centers, radii, ax=None, color=None, sameColors=False, annotations=None, setBounds=False, linewidth=1):
     """
     Draw circles on an axis.
 
     Parameters
     ----------
 
-    centers : np.ndarray[N,2] or list[N,2]
+    centers : iterable[N,2] of float
         List of particle centers [y,x] (in pixels).
 
-    radii : np.ndarray[N] or list[N]
+    radii : float or iterable[N] of float
         List of particle radii (in pixels).
+
+    ax : matplotlib axis or None
+        Axis to draw the circles on. If `None`, a new
+        axis will be created.
+
+    color : iterable of color type (str, hex, etc.) or single color type
+        Color of the perimeter of the circles. Can be 
+        an iterable of colors allowing for different colors
+        for each circle. Can also be a list of values, which will
+        be used to create a color map.
+
+    sameColors : bool
+        If `color=None`, then colors will be chosen automatically;
+        these can either be all the same color (`sameColors=True`)
+        or all distinct colors (`sameColors=False`).
+
+        Only relevant if `color=None`.
+
+    annotations : iterable
+        Annotations/labels for each point to be drawn next
+        to the corresponding circle. Can be any type that
+        can be converted to a string use `str(*)`.
+
+    setBounds : bool
+        Whether to set the boundaries of the axes based on the
+        positions of the circles (`setBounds=True`) or to leave
+        them as default (`setBounds=False`).
+
+        For example, if drawing circles on top of an image,
+        you should use `setBounds=False`, since the image will
+        take care of making sure everything is shown, but if you
+        are just drawing circles on an empty canvas (for example,
+        if `ax=none` and you aren't drawing anything afterwards)
+        then you should use `setBounds=True`.
+
+    lineWidth : float
+        The width of the perimeter of the circles.
+
+    Returns
+    -------
+    ax : matplotlib axis
+        
     """
     # Cut out nan values
-    goodIndices = np.array([0 if np.isnan(r) else 1 for r in radii])
-    npRadii = np.array([r for r in radii if not np.isnan(r)])
+    # It is assumed that both of the center and the radius will be nan
+    if hasattr(radii, '__iter__'):
+        goodIndices = np.array([0 if np.isnan(r) else 1 for r in radii])
+        npRadii = np.array([r for r in radii if not np.isnan(r)])
+    else:
+        goodIndices = np.ones(len(centers, dtype=np.uint8))
+        npRadii = np.repeat(radii, len(centers))
+    
     npCenters = np.array([c for c in centers if not np.isnan(c[0])])
 
     if ax is None:
         fig, ax = plt.subplots()
 
-    if colors is None:
+    if color is None:
         if sameColors:
             singleColor = genColors(1)[0]
             circleColorsList = [singleColor for _ in range(len(npCenters))]
         else:
             circleColorsList = genColors(len(npCenters))
-
-    elif not type(colors) is list:
+    # We can't just check if color has the attribute '__iter__'
+    # since a string will have that, and a string could just be
+    # a single color
+    elif not type(color) in [list, np.ndarray]:
         # If a single color is given, we want to repeat that
         circleColorsList = [colors for _ in range(len(npCenters))]
-
     else:
         circleColorsList = colors
 

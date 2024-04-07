@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import os
 
-def loadVideo(path, start=None, end=None, returnList=False):
+def loadVideo(path, start=None, end=None):
     """
     Load in images from a video file.
 
@@ -25,24 +25,11 @@ def loadVideo(path, start=None, end=None, returnList=False):
     end : int or None
         The index of the last image that will be returned
 
-    returnList : bool
-        Whether create a generator and return each frame
-        one by one (False) or load every image at once
-        and return a list (True).
-
     Returns
     -------
-    images : generator for numpy.ndarray(uint8) or list(numpy.ndarray(uint8))
-        Frames of the video, either as a generator or a list.
+    images : generator for numpy.ndarray(uint8) 
+        Frames of the video.
     """
-    # If we want a list, we can just recursively call
-    # the function but save the frames afterwards.
-    if returnList:
-        frameList = []
-        for img in loadVideo(path, start, end, False):
-            frameList.append(img)
-
-        return frameList
 
     # We read each frame using opencv
     cam = cv2.VideoCapture(path)
@@ -63,3 +50,29 @@ def loadVideo(path, start=None, end=None, returnList=False):
             i += 1
         else:
             break
+
+
+def getNumFrames(path, start=None, end=None):
+    """
+    Returns the number of images to be loaded.
+
+    Since the images are loaded via a generator, we cannot
+    efficiently read how many total images there are directory
+    from the generator object.
+
+    Parameters
+    ----------
+    path : str
+        Path to a video file.
+
+    start : int or None
+        The index of the first image that will be returned.
+
+    end : int or None
+        The index of the last image that will be returned
+    """
+
+    cam = cv2.VideoCapture(path)
+    length = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    return length if (start is None and end is None) else min(length, (end if end is not None else length) - (start if start is not None else 0))
