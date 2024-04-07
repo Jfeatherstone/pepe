@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>pepe.preprocess.Rescale API documentation</title>
+<meta name="description" content="Methods to upsample or downsample an image via DNN super-resolution or pyramid scheme, respectively …" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS_CHTML" integrity="sha256-kZafAc6mZvK3W3v1pHOcUix30OHQN6pU/NO2oFkqZVw=" crossorigin></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>pepe.preprocess.Rescale</code></h1>
+</header>
+<section id="section-intro">
+<p>Methods to upsample or downsample an image via DNN super-resolution or pyramid scheme, respectively.</p>
+<p>Note that the super-resolution models need to be downloaded separately, as they are not
+my own original work. Four methods are compatible with this package:</p>
+<ul>
+<li>
+<p><a href="https://arxiv.org/pdf/1707.02921.pdf">EDSR</a> (<a href="https://github.com/Saafke/EDSR_Tensorflow">implementation</a>)</p>
+</li>
+<li>
+<p><a href="https://arxiv.org/abs/1609.05158">ESPCN</a> (<a href="https://github.com/fannymonori/TF-ESPCN">implementation</a>)</p>
+</li>
+<li>
+<p><a href="http://mmlab.ie.cuhk.edu.hk/projects/FSRCNN.html">FSRCNN</a> (<a href="https://github.com/Saafke/FSRCNN_Tensorflow">implementation</a>)</p>
+</li>
+<li>
+<p><a href="https://arxiv.org/abs/1710.01992">LapSRN</a> (<a href="https://github.com/fannymonori/TF-LapSRN">implementation</a>)</p>
+</li>
+</ul>
+<p>The above implementations are simply the ones that I have used in the past; there are certainly others available, which should give comparable results. I am not the creator of any of the above listed implementations either, nor am I associated in any way (other than as a user) with them.</p>
+<p>To install any of the above models, you should place the <code>.pb</code> weight files into an appropriately named directory within the <code>preprocess/models/</code> folder. e.g. directory structure:</p>
+<pre><code>.../preprocess/
+    |-- Rescale.py
+    |-- ...
+    `-- models/
+        |-- FSRCNN/
+        |   |-- FSRCNN_x2.pb
+        |   |-- FSRCNN_x3.pb
+        |   `-- FSRCNN_x4.pb
+        `-- LapSRN/
+            |-- LapSRN_x2.pb
+            |-- LapSRN_x4.pb
+            `-- LapSRN_x8.pb
+</code></pre>
+<p>Make sure that the naming conventions are consistent: the name of the directory should be the same as the first part of the weight file name, and the second part (separated by an underscore <code>_</code>) should be <code>x</code> plus the upsample factor. These conventions are important for the package to automatically detect which models are available.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;
+Methods to upsample or downsample an image via DNN super-resolution or pyramid scheme, respectively.
+
+Note that the super-resolution models need to be downloaded separately, as they are not
+my own original work. Four methods are compatible with this package:
+
+- [EDSR](https://arxiv.org/pdf/1707.02921.pdf) ([implementation](https://github.com/Saafke/EDSR_Tensorflow))
+
+- [ESPCN](https://arxiv.org/abs/1609.05158) ([implementation](https://github.com/fannymonori/TF-ESPCN))
+
+- [FSRCNN](http://mmlab.ie.cuhk.edu.hk/projects/FSRCNN.html) ([implementation](https://github.com/Saafke/FSRCNN_Tensorflow))
+
+- [LapSRN](https://arxiv.org/abs/1710.01992) ([implementation](https://github.com/fannymonori/TF-LapSRN))
+
+The above implementations are simply the ones that I have used in the past; there are certainly others available, which should give comparable results. I am not the creator of any of the above listed implementations either, nor am I associated in any way (other than as a user) with them.
+
+To install any of the above models, you should place the `.pb` weight files into an appropriately named directory within the `preprocess/models/` folder. e.g. directory structure:
+
+```
+.../preprocess/
+    |-- Rescale.py
+    |-- ...
+    `-- models/
+        |-- FSRCNN/
+        |   |-- FSRCNN_x2.pb
+        |   |-- FSRCNN_x3.pb
+        |   `-- FSRCNN_x4.pb
+        `-- LapSRN/
+            |-- LapSRN_x2.pb
+            |-- LapSRN_x4.pb
+            `-- LapSRN_x8.pb
+```
+
+Make sure that the naming conventions are consistent: the name of the directory should be the same as the first part of the weight file name, and the second part (separated by an underscore `_`) should be `x` plus the upsample factor. These conventions are important for the package to automatically detect which models are available.
+
+&#34;&#34;&#34;
+
+import numpy as np
+import os
+
+import cv2
+from cv2 import dnn_superres
+import pathlib
+from skimage.measure import block_reduce
+
+# The models dir should be in a directory called &#39;models&#39; in the same parent directory
+# as this file (likely `pepe/preprocess/models/`)
+MODELS_DIR = str(pathlib.Path(__file__).parent.resolve()) + &#39;/models/&#39;
+
+# For the upscale() method, we presumably are only doing a single operation,
+# but it is still good practice to hold onto the model we generate. So this
+# will be assigned to a proper model after the first call to upscale()
+defaultModelInstance = None
+defaultModelType = &#39;FSRCNN&#39;
+defaultModelFactor = 2
+
+def modelInstallHelp():
+    helpString = f&#34;&#34;&#34;
+    Note that the super-resolution models need to be downloaded separately, as they are not
+    my own original work. Four methods are compatible with this package:
+
+    - [EDSR](https://arxiv.org/pdf/1707.02921.pdf) ([implementation](https://github.com/Saafke/EDSR_Tensorflow))
+
+    - [ESPCN](https://arxiv.org/abs/1609.05158) ([implementation](https://github.com/fannymonori/TF-ESPCN))
+
+    - [FSRCNN](http://mmlab.ie.cuhk.edu.hk/projects/FSRCNN.html) ([implementation](https://github.com/Saafke/FSRCNN_Tensorflow))
+
+    - [LapSRN](https://arxiv.org/abs/1710.01992) ([implementation](https://github.com/fannymonori/TF-LapSRN))
+
+    The above implementations are simply the ones that I have used in the past; there are certainly others available, which should give comparable results. I am not the creator of any of the above listed implementations either, nor am I associated in any way (other than as a user) with them.
+
+    To install any of the above models, you should place the `.pb` weight files into an appropriately named directory within the following folder:
+    {MODELS_DIR}.
+
+    e.g. directory structure:
+
+    ```
+    .../preprocess/
+        |-- Rescale.py
+        |-- ...
+        `-- models/
+            |-- FSRCNN/
+            |   |-- FSRCNN_x2.pb
+            |   |-- FSRCNN_x3.pb
+            |   `-- FSRCNN_x4.pb
+            `-- LapSRN/
+                |-- LapSRN_x2.pb
+                |-- LapSRN_x4.pb
+                `-- LapSRN_x8.pb
+    ```
+    Make sure that the naming conventions are consistent: the name of the directory should be the same as the first part of the weight file name, and the second part (separated by an underscore `_`) should be `x` plus the upsample factor. These conventions are important for the package to automatically detect which models are available.
+    &#34;&#34;&#34;
+
+    print(helpString)
+
+def listSuperResModels(debug=False):
+
+    if not os.path.exists(MODELS_DIR):
+        print(f&#39;Warning: models folder ({MODELS_DIR}) does not exist!\nSee pepe.preprocess.modelInstallHelp() for more information about installing models.&#39;)
+        return {}
+
+    # Determine what models are available
+    availableModels = [d for d in os.listdir(MODELS_DIR) if os.path.isdir(MODELS_DIR + d)]
+    availableModels = np.sort(availableModels)
+
+    modelFactors = {}
+
+    # Now see which upscale factors are available for each model
+    # Each .pb file should be of the form &lt;model_name&gt;_x&lt;upscale_factor&gt;.pb
+    for d in availableModels:
+        weightFiles = [f for f in os.listdir(MODELS_DIR + d) if len(f) &gt; 2 and f[-2:] == &#39;pb&#39;]
+
+        if len(weightFiles) == 0:
+            if debug:
+                print(f&#39;Warning: model type \&#39;{d}\&#39; has no valid implementations!&#39;)
+            continue
+        
+        availableScalingFactors = []
+        # Now extract the scaling factor
+        for wF in weightFiles:
+            try:
+                # Cut off the extension, take the portion after the &#39;x&#39;, and cast to int
+                upscaleFactor = int(wF[:-3].split(&#39;x&#39;)[-1])
+                availableScalingFactors.append(upscaleFactor)
+            except:
+                if debug:
+                    print(f&#39;Warning: file \&#39;{d}/{wF}\&#39; does not conform to naming conventions.\nAll files should be named in the format &lt;model_type&gt;_x&lt;upscale_factor&gt;.pb!\nSee pepe.preprocess.modelInstallHelp() for more information about installing models.&#39;)
+
+        modelFactors[d] = list(np.sort(availableScalingFactors))
+
+    return modelFactors
+
+
+def prepareSuperResModel(modelName, upscaleFactor):
+
+    # Determine what models are available
+    modelFactors = listSuperResModels(debug=False)
+    possibleModels = list(modelFactors.keys())
+
+    if not modelName.lower() in [p.lower() for p in possibleModels]:
+        print(f&#39;Error: requested model \&#39;{modelName}\&#39; not found!&#39;)
+        return None
+
+    # We could just put the keys into the dict in lowercase, but that would mean that they
+    # would be displayed like that in the help screen, so I&#39;d rather just it like this.
+    for key in possibleModels:
+        if modelName.lower() == key.lower():
+            # Make sure the requested scaling factor is available
+            if not upscaleFactor in modelFactors[key]:
+                print(f&#39;Error: requested upscale factor ({upscaleFactor}) is not available for model \&#39;{modelName}\&#39;! \nAvailable factors are: {modelFactors[key]}&#39;)
+                return None
+
+            # Otherwise, we are good to go, and can take this file as our model
+            properName = modelName.lower()
+            modelPath = MODELS_DIR + f&#39;{key}/{key}_x{upscaleFactor}.pb&#39;
+            break
+
+    # Since fsrcnn has a small option, which is just a smaller network, but the same structure, upscale
+    # we need to adjust the proper name to just fsrcnn
+    if properName == &#39;fsrcnn_small&#39;:
+        properName = &#39;fsrcnn&#39;
+    
+    # Create the network
+    model = dnn_superres.DnnSuperResImpl_create()
+    # Read in the .pb file containing the weights
+    model.readModel(modelPath)
+    # Set the active model type to the one we just read in
+    model.setModel(properName, upscaleFactor)
+
+    return model
+
+
+def upsample(image, upscaleFactor=defaultModelFactor, modelName=defaultModelType):
+    global defaultModelInstance, defaultModelType, defaultModelFactor
+    # Make sure we have a (singleton) model on hand
+    if defaultModelInstance is None or upscaleFactor != defaultModelFactor or modelName != defaultModelType:
+        defaultModelInstance = prepareSuperResModel(modelName, upscaleFactor)
+        defaultModelType = modelName
+        defaultModelFactor = upscaleFactor
+   
+    if defaultModelInstance is None:
+        return None
+
+    # Now do the upscaling
+    return defaultModelInstance.upsample(image)
+
+def downsample(image, downscaleFactor=2):
+    &#34;&#34;&#34;
+    A very simple wrapper around either `cv2.pyrDown()` or
+    `skimage.measure.block_reduce()`, depending on the desired
+    downscale factor.
+
+    Parameters
+    ----------
+
+    image : np.ndarray[H,W]
+        The image to be downsampled
+
+    downscaleFactor : int
+        The factor by which to downsample the image.
+
+    Returns
+    -------
+
+    dsImage : np.ndarray[H/downscaleFactor,W/downscaleFactor]
+        Downsampled image.
+    &#34;&#34;&#34;
+    if downscaleFactor == 2:
+        return cv2.pyrDown(image)
+    else:
+        return block_reduce(image, downscaleFactor)
+    </code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="pepe.preprocess.Rescale.downsample"><code class="name flex">
+<span>def <span class="ident">downsample</span></span>(<span>image, downscaleFactor=2)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>A very simple wrapper around either <code>cv2.pyrDown()</code> or
+<code>skimage.measure.block_reduce()</code>, depending on the desired
+downscale factor.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>image</code></strong> :&ensp;<code>np.ndarray[H,W]</code></dt>
+<dd>The image to be downsampled</dd>
+<dt><strong><code>downscaleFactor</code></strong> :&ensp;<code>int</code></dt>
+<dd>The factor by which to downsample the image.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>dsImage</code></strong> :&ensp;<code>np.ndarray[H/downscaleFactor,W/downscaleFactor]</code></dt>
+<dd>Downsampled image.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def downsample(image, downscaleFactor=2):
+    &#34;&#34;&#34;
+    A very simple wrapper around either `cv2.pyrDown()` or
+    `skimage.measure.block_reduce()`, depending on the desired
+    downscale factor.
+
+    Parameters
+    ----------
+
+    image : np.ndarray[H,W]
+        The image to be downsampled
+
+    downscaleFactor : int
+        The factor by which to downsample the image.
+
+    Returns
+    -------
+
+    dsImage : np.ndarray[H/downscaleFactor,W/downscaleFactor]
+        Downsampled image.
+    &#34;&#34;&#34;
+    if downscaleFactor == 2:
+        return cv2.pyrDown(image)
+    else:
+        return block_reduce(image, downscaleFactor)</code></pre>
+</details>
+</dd>
+<dt id="pepe.preprocess.Rescale.listSuperResModels"><code class="name flex">
+<span>def <span class="ident">listSuperResModels</span></span>(<span>debug=False)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def listSuperResModels(debug=False):
+
+    if not os.path.exists(MODELS_DIR):
+        print(f&#39;Warning: models folder ({MODELS_DIR}) does not exist!\nSee pepe.preprocess.modelInstallHelp() for more information about installing models.&#39;)
+        return {}
+
+    # Determine what models are available
+    availableModels = [d for d in os.listdir(MODELS_DIR) if os.path.isdir(MODELS_DIR + d)]
+    availableModels = np.sort(availableModels)
+
+    modelFactors = {}
+
+    # Now see which upscale factors are available for each model
+    # Each .pb file should be of the form &lt;model_name&gt;_x&lt;upscale_factor&gt;.pb
+    for d in availableModels:
+        weightFiles = [f for f in os.listdir(MODELS_DIR + d) if len(f) &gt; 2 and f[-2:] == &#39;pb&#39;]
+
+        if len(weightFiles) == 0:
+            if debug:
+                print(f&#39;Warning: model type \&#39;{d}\&#39; has no valid implementations!&#39;)
+            continue
+        
+        availableScalingFactors = []
+        # Now extract the scaling factor
+        for wF in weightFiles:
+            try:
+                # Cut off the extension, take the portion after the &#39;x&#39;, and cast to int
+                upscaleFactor = int(wF[:-3].split(&#39;x&#39;)[-1])
+                availableScalingFactors.append(upscaleFactor)
+            except:
+                if debug:
+                    print(f&#39;Warning: file \&#39;{d}/{wF}\&#39; does not conform to naming conventions.\nAll files should be named in the format &lt;model_type&gt;_x&lt;upscale_factor&gt;.pb!\nSee pepe.preprocess.modelInstallHelp() for more information about installing models.&#39;)
+
+        modelFactors[d] = list(np.sort(availableScalingFactors))
+
+    return modelFactors</code></pre>
+</details>
+</dd>
+<dt id="pepe.preprocess.Rescale.modelInstallHelp"><code class="name flex">
+<span>def <span class="ident">modelInstallHelp</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def modelInstallHelp():
+    helpString = f&#34;&#34;&#34;
+    Note that the super-resolution models need to be downloaded separately, as they are not
+    my own original work. Four methods are compatible with this package:
+
+    - [EDSR](https://arxiv.org/pdf/1707.02921.pdf) ([implementation](https://github.com/Saafke/EDSR_Tensorflow))
+
+    - [ESPCN](https://arxiv.org/abs/1609.05158) ([implementation](https://github.com/fannymonori/TF-ESPCN))
+
+    - [FSRCNN](http://mmlab.ie.cuhk.edu.hk/projects/FSRCNN.html) ([implementation](https://github.com/Saafke/FSRCNN_Tensorflow))
+
+    - [LapSRN](https://arxiv.org/abs/1710.01992) ([implementation](https://github.com/fannymonori/TF-LapSRN))
+
+    The above implementations are simply the ones that I have used in the past; there are certainly others available, which should give comparable results. I am not the creator of any of the above listed implementations either, nor am I associated in any way (other than as a user) with them.
+
+    To install any of the above models, you should place the `.pb` weight files into an appropriately named directory within the following folder:
+    {MODELS_DIR}.
+
+    e.g. directory structure:
+
+    ```
+    .../preprocess/
+        |-- Rescale.py
+        |-- ...
+        `-- models/
+            |-- FSRCNN/
+            |   |-- FSRCNN_x2.pb
+            |   |-- FSRCNN_x3.pb
+            |   `-- FSRCNN_x4.pb
+            `-- LapSRN/
+                |-- LapSRN_x2.pb
+                |-- LapSRN_x4.pb
+                `-- LapSRN_x8.pb
+    ```
+    Make sure that the naming conventions are consistent: the name of the directory should be the same as the first part of the weight file name, and the second part (separated by an underscore `_`) should be `x` plus the upsample factor. These conventions are important for the package to automatically detect which models are available.
+    &#34;&#34;&#34;
+
+    print(helpString)</code></pre>
+</details>
+</dd>
+<dt id="pepe.preprocess.Rescale.prepareSuperResModel"><code class="name flex">
+<span>def <span class="ident">prepareSuperResModel</span></span>(<span>modelName, upscaleFactor)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def prepareSuperResModel(modelName, upscaleFactor):
+
+    # Determine what models are available
+    modelFactors = listSuperResModels(debug=False)
+    possibleModels = list(modelFactors.keys())
+
+    if not modelName.lower() in [p.lower() for p in possibleModels]:
+        print(f&#39;Error: requested model \&#39;{modelName}\&#39; not found!&#39;)
+        return None
+
+    # We could just put the keys into the dict in lowercase, but that would mean that they
+    # would be displayed like that in the help screen, so I&#39;d rather just it like this.
+    for key in possibleModels:
+        if modelName.lower() == key.lower():
+            # Make sure the requested scaling factor is available
+            if not upscaleFactor in modelFactors[key]:
+                print(f&#39;Error: requested upscale factor ({upscaleFactor}) is not available for model \&#39;{modelName}\&#39;! \nAvailable factors are: {modelFactors[key]}&#39;)
+                return None
+
+            # Otherwise, we are good to go, and can take this file as our model
+            properName = modelName.lower()
+            modelPath = MODELS_DIR + f&#39;{key}/{key}_x{upscaleFactor}.pb&#39;
+            break
+
+    # Since fsrcnn has a small option, which is just a smaller network, but the same structure, upscale
+    # we need to adjust the proper name to just fsrcnn
+    if properName == &#39;fsrcnn_small&#39;:
+        properName = &#39;fsrcnn&#39;
+    
+    # Create the network
+    model = dnn_superres.DnnSuperResImpl_create()
+    # Read in the .pb file containing the weights
+    model.readModel(modelPath)
+    # Set the active model type to the one we just read in
+    model.setModel(properName, upscaleFactor)
+
+    return model</code></pre>
+</details>
+</dd>
+<dt id="pepe.preprocess.Rescale.upsample"><code class="name flex">
+<span>def <span class="ident">upsample</span></span>(<span>image, upscaleFactor=2, modelName='FSRCNN')</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def upsample(image, upscaleFactor=defaultModelFactor, modelName=defaultModelType):
+    global defaultModelInstance, defaultModelType, defaultModelFactor
+    # Make sure we have a (singleton) model on hand
+    if defaultModelInstance is None or upscaleFactor != defaultModelFactor or modelName != defaultModelType:
+        defaultModelInstance = prepareSuperResModel(modelName, upscaleFactor)
+        defaultModelType = modelName
+        defaultModelFactor = upscaleFactor
+   
+    if defaultModelInstance is None:
+        return None
+
+    # Now do the upscaling
+    return defaultModelInstance.upsample(image)</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="pepe.preprocess" href="index.html">pepe.preprocess</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="pepe.preprocess.Rescale.downsample" href="#pepe.preprocess.Rescale.downsample">downsample</a></code></li>
+<li><code><a title="pepe.preprocess.Rescale.listSuperResModels" href="#pepe.preprocess.Rescale.listSuperResModels">listSuperResModels</a></code></li>
+<li><code><a title="pepe.preprocess.Rescale.modelInstallHelp" href="#pepe.preprocess.Rescale.modelInstallHelp">modelInstallHelp</a></code></li>
+<li><code><a title="pepe.preprocess.Rescale.prepareSuperResModel" href="#pepe.preprocess.Rescale.prepareSuperResModel">prepareSuperResModel</a></code></li>
+<li><code><a title="pepe.preprocess.Rescale.upsample" href="#pepe.preprocess.Rescale.upsample">upsample</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

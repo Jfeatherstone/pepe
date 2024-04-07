@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>pepe.utils.Sort API documentation</title>
+<meta name="description" content="Proximity sort, in which a list of items is sorted to most closely match another list." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS_CHTML" integrity="sha256-kZafAc6mZvK3W3v1pHOcUix30OHQN6pU/NO2oFkqZVw=" crossorigin></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>pepe.utils.Sort</code></h1>
+</header>
+<section id="section-intro">
+<p>Proximity sort, in which a list of items is sorted to most closely match another list.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;
+Proximity sort, in which a list of items is sorted to most closely match another list.
+&#34;&#34;&#34;
+import numpy as np
+from sklearn.neighbors import KDTree
+
+
+def preserveOrderSort(oldValues, newValues, padMissingValues=False, maxDistance=None, periodic=False, fillNanSpots=True):
+    &#34;&#34;&#34;
+    Order a set of values as similarly to a previous set of values as possible.
+    That is, arange `newValues` such that the first element is the one that is
+    closest to the first element of `oldValues`, and so on.
+
+    If `padMissingValues=True`, then when `newValues` contains fewer items than
+    `oldValues`, elements of `None` will be inserted to preserve the order.
+
+    If `newValues` contains more items than `oldValues`, the novel elements will
+    be appended at the end of the array in an arbitrary order.
+
+    If the values are coordinates of the form `newValues=[[x1, y1, z1, ...], [x2, y2, z2, ...], ...]`
+    then the proximity will be calculated as simple euclidiean distance.
+
+    Parameters
+    ----------
+
+    oldValues : iterable
+        A set of values whose order is to be preserved.
+
+    newValues : iterable
+        The new values that will be ordered based on proximity to the elements
+        of `oldValues`.
+
+    padMissingValues : bool
+        Whether or not to leave placeholder values (`None`) in the final result
+        for values that do not correspond to any of the original points (True)
+        or to only return values that have pairs (False).
+
+    maxDistance : float or None
+        The maximum distance a point can be from its old counterpart and still be
+        considered the same point. If set to None, every point in the smaller of the
+        two arrays (new or old) will always have a partner; if a max distance is set,
+        this is no longer guaranteed.
+
+        Not recommended to be used if `padMissingValues=False`, since it will result
+        in an array that has an arbitrary sorting order.
+        
+        eg. `[1, 2, 3]` sorted according to `[1, 3, 5]` would become `[1, None, 3, 2]` but
+        then the `None` will be removed, resulting in `[1, 3, 2]` which likely isn&#39;t
+        useful.
+
+    periodic : bool
+        Whether the values to be sorted are periodic such that pi and -pi are actually
+        the same point (and should have a separation of 0, not 2pi.
+
+    fillNanSpots : bool
+        Whether to fill Nan spots in the old list with unmatched new values (True), or
+        to preserve the position of the nan value and append unmatched new values to
+        the end (False).
+
+    Returns
+    -------
+
+    orderedValues : iterable
+        The elements of `newValues` ordered according to proximity to the elements
+        of `oldValues`.
+    &#34;&#34;&#34;
+
+    # We already have preserveOrderArgsort written, so we can just wrap that
+    order = preserveOrderArgsort(oldValues, newValues, padMissingValues, maxDistance, periodic, fillNanSpots)
+
+    dim = len(newValues[0]) if hasattr(newValues[0], &#39;__iter__&#39;) else 1
+
+    # Slightly different behavior for d=1 vs. d&gt;1, since we don&#39;t want
+    # an extra dimension nested in there if our data is 1d
+    if dim == 1:
+        return np.array([newValues[i] if i is not None else np.nan for i in order])
+    else:
+        return np.array([newValues[i] if i is not None else np.repeat(np.nan, dim) for i in order])
+
+
+def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistance=None, periodic=False, fillNanSpots=True):
+    &#34;&#34;&#34;
+    Return a set of indices that order a set of values as similarly to a previous
+    set of values as possible. That is, a set of indices that arranges `newValues`
+    such that the first element is the one that is closest to the first element of
+    `oldValues`, and so on.
+
+    If `padMissingValues=True`, then when `newValues` contains fewer items than
+    `oldValues`, elements of `None` will be inserted to preserve the order.
+
+    If `newValues` contains more items than `oldValues`, the novel elements will
+    be appended at the end of the array in an arbitrary order.
+
+    If the values are coordinates of the form `newValues=[[x1, y1, z1, ...], [x2, y2, z2, ...], ...]`
+    then the proximity will be calculated as simple euclidiean distance.
+
+    Parameters
+    ----------
+
+    oldValues : iterable
+        A set of values whose order is to be preserved.
+
+    newValues : iterable
+        The new values that will be ordered based on proximity to the elements
+        of `oldValues`.
+
+    padMissingValues : bool
+        Whether or not to leave placeholder values (`None`) in the final result
+        for values that do not correspond to any of the original points (True)
+        or to only return values that have pairs (False).
+
+    maxDistance : float or None
+        The maximum distance a point can be from its old counterpart and still be
+        considered the same point. If set to None, every point in the smaller of the
+        two arrays (new or old) will always have a partner; if a max distance is set,
+        this is no longer guaranteed.
+
+        Not recommended to be used if `padMissingValues=False`, since it will result
+        in an array that has an arbitrary sorting order.
+        
+        eg. `[1, 2, 3]` sorted according to `[1, 3, 5]` would become `[1, None, 3, 2]` but
+        then the `None` will be removed, resulting in `[1, 3, 2]` which likely isn&#39;t
+        useful.
+
+    periodic : bool
+        Whether the values to be sorted are periodic such that pi and -pi are actually
+        the same point (and should have a separation of 0, not 2pi.
+
+    fillNanSpots : bool
+        Whether to fill Nan spots in the old list with unmatched new values (True), or
+        to preserve the position of the nan value and append unmatched new values to
+        the end (False).
+
+    Returns
+    -------
+
+    orderedIndices : iterable
+        Indices corresponding to elements of `newValues` according to proximity
+        to the elements of `oldValues`.
+    &#34;&#34;&#34;
+
+    if maxDistance is None:
+        maxDistance = np.inf
+
+    # Make sure all of the values are np arrays
+    npOldValues = np.array(oldValues)
+    npNewValues = np.array(newValues)
+
+    # This is required for the kdtree to work, since it is
+    # generalized for higher dimensional spaces
+    scalarValues = npOldValues.ndim == 1
+    if scalarValues:
+        npNewValues = npNewValues[:,None]
+        npOldValues = npOldValues[:,None]
+
+    # Convert all potential None values to np.nan (since they play nicer)
+    # Numpy can only hold values of None in an array if the dtype is &#39;object&#39;,
+    # which is inconvient for working with the kd tree
+    # A note, since I have now spent a *very* long time figuring out this bug:
+    # np.where(array) will give the indices of all values that are not None/np.nan
+    # AND all values that are not 0. so this line used to be
+    # ...np.where(npNewValues, npNewValues, np.nan)...
+    # but this will convert any values that are exactly 0 to np.nan as wel, which is very bad.
+    npNewValues = np.array(np.where(npNewValues != None, npNewValues, np.nan), dtype=np.float64)
+    npOldValues = np.array(np.where(npOldValues != None, npOldValues, np.nan), dtype=np.float64)
+
+    # We want to have the longer list of items be the source points
+    # for the kdtree, and the shorter be the query points. If they are
+    # the same length, it doesn&#39;t matter.
+
+    # Detect which values are valid aka not np.nan (see above about nan/None)
+    oldValidIndices = np.unique(np.where(np.isnan(npOldValues) == False)[0])
+    newValidIndices = np.unique(np.where(np.isnan(npNewValues) == False)[0])
+
+    # If we have an empty old list, we just the original indexing
+    if len(oldValidIndices) == 0:
+        # If there just aren&#39;t any values in the old list
+        # then we just return indexing for the new values
+        if len(npOldValues) == 0:
+            return [i for i in range(len(npNewValues))]
+        else:
+            # If there are some old values, but they are just all
+            # None/nan, then we have to decide what to do based on
+            # whether we want to fill in the nan spots or not
+            if fillNanSpots:
+                # Filling nan spots, we just return the same indexing for the new
+                # list, potentially with some None values at the end
+                return [i for i in range(len(npNewValues))] + [None]*(len(npOldValues)-len(npNewValues))
+            else:
+                # Otherwise, we return a similar thing, but with the None values at the
+                # beginning, in the same spot as they were for the old list
+                return [None]*len(npOldValues) + [i for i in range(len(npNewValues))]
+
+    # If there are no new values, we return empty list (the new values)
+    # or a list of None values
+    if len(newValidIndices) == 0:
+        if padMissingValues:
+            return [None]*len(npOldValues)
+        else:
+            return [None]*len(npNewValues)
+
+    # The list that we will be building
+    # We&#39;ll append new entries on at the end
+    addedIndices = [None for i in range(len(npOldValues))]
+
+    kdTree = KDTree(npOldValues[oldValidIndices], leaf_size=5)
+    # This gives us the closest k points to each of the old values
+    dist, ind = kdTree.query(npNewValues[newValidIndices], k=len(oldValidIndices))
+
+    # Now convert the indices return from the kd tree (which excluded np.nan values)
+    # back to the original order, which includes np.nan values
+    ind = [[oldValidIndices[ind[i][j]] for j in range(len(ind[i]))] for i in range(len(ind))]
+
+    if periodic:
+        # Points can&#39;t be more than pi away from each other on a circle (ignoring circulation
+        # direction)
+        dist = np.where(dist &lt; np.pi, dist, 2*np.pi - dist)
+        # TODO: resort ind since the distances may have changed
+
+    # Now for each new point, grab the closest old point that hasn&#39;t already
+    # been added. The order we do this in is quite arbitrary (it follows the order
+    # the user has passed in the values) which means that if particles move quite
+    # large distances each frame, the algorithm may be incorrect. It would be more
+    # apt to instead perform a minimization on the sum of the change in particle positions
+    # for any possible pair configuration. TODO
+    
+    # When two new points have the same closest old point, one of them will have to
+    # use their second closest old point instead (the farther one). This list records
+    # the index their closest neighbor that they are able to use. eg. a value of 0
+    # here means that that particular point used it&#39;s closest old point, a value of 1
+    # means it had to use it&#39;s second closest point (because the first closest was
+    # already taken).
+    indexChoicePositions = [None]*len(newValidIndices)
+
+    # This has to be a while loop with the list here because we may need
+    # to recheck certain points (eg. if we first assign a point, and then realize
+    # that there is actually a better match later on).
+    newIndicesToAssign = list(np.arange(len(newValidIndices)))
+    listIndex = 0
+    while listIndex &lt; len(newIndicesToAssign):
+        # i is the index of the current new point
+        i = newIndicesToAssign[listIndex]
+        # The indices in possible points index the old array, so when we eventually
+        # assign a pair, this index will be the **index** of the actual value. The value
+        # will just be i, since that is what is iterating over the new list.
+
+        # Checking to see that the addedIndices array is None is making sure that this new
+        # point hasn&#39;t already been assigned
+        # Check to make sure all of the possible points are within the max distance
+        possiblePoints = [ind[i][j] for j in range(len(ind[i])) if dist[i][j] &lt; maxDistance]
+        # We don&#39;t need to explicitly check if len(possiblePoints) = 0, since the behavior
+        # in that case should do nothing, as such points are dealt with at the end
+
+        # We&#39;ll likely break out of this loop on the first iteration most of the time,
+        # but we need to be able to handle if the first/second/etc. best options are already
+        # taken
+        for j in range(len(possiblePoints)):
+            # It is possible that the closest old point to this new one has already
+            # been assigned to another new point.
+            if addedIndices[possiblePoints[j]] is None:
+                # If it hasn&#39;t, of course that&#39;s no problem, and we can assign it
+                addedIndices[possiblePoints[j]] = i
+                indexChoicePositions[i] = j
+                break
+            else:
+                # Otherwise, we have to check to see which is actually closer
+                compareNewIndex = addedIndices[possiblePoints[j]]
+                if dist[i][j] &lt; dist[compareNewIndex][indexChoicePositions[compareNewIndex]]:
+                    # If the new point is closer, we reassign the entry in addedIndices
+                    # and change the previous best point to the next best (available) one
+                    addedIndices[possiblePoints[j]] = i
+                    indexChoicePositions[i] = j
+                    
+                    # And add the replaced index back into the list so
+                    # we can find it a new match
+                    indexChoicePositions[compareNewIndex] = None
+                    newIndicesToAssign.append(compareNewIndex)
+                    break
+                else:
+                    # If the new point is further, we just continue the j loop and try the
+                    # next closest old point
+                    continue
+
+        listIndex += 1
+
+    # Check which new indices haven&#39;t been assigned yet
+    # Again, the values of addedIndices are the new indices, and the indices of
+    # addedIndices are the old indices (yikes, am I right?)
+    unaddedIndices = [i for i in range(len(newValidIndices)) if not i in addedIndices]
+
+    if fillNanSpots:
+        oldNanIndices = np.unique(np.where(np.isnan(npOldValues) == True)[0])
+        for i in range(min(len(oldNanIndices), len(unaddedIndices))):
+            addedIndices[oldNanIndices[i]] = unaddedIndices[i]
+
+        unaddedIndices = unaddedIndices[len(oldNanIndices):] if len(oldNanIndices) &lt; len(unaddedIndices) else []
+
+    addedIndices += unaddedIndices
+    
+    if not padMissingValues:
+        addedIndices = [i for i in addedIndices if i is not None]
+
+    return addedIndices</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="pepe.utils.Sort.preserveOrderArgsort"><code class="name flex">
+<span>def <span class="ident">preserveOrderArgsort</span></span>(<span>oldValues, newValues, padMissingValues=False, maxDistance=None, periodic=False, fillNanSpots=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return a set of indices that order a set of values as similarly to a previous
+set of values as possible. That is, a set of indices that arranges <code>newValues</code>
+such that the first element is the one that is closest to the first element of
+<code>oldValues</code>, and so on.</p>
+<p>If <code>padMissingValues=True</code>, then when <code>newValues</code> contains fewer items than
+<code>oldValues</code>, elements of <code>None</code> will be inserted to preserve the order.</p>
+<p>If <code>newValues</code> contains more items than <code>oldValues</code>, the novel elements will
+be appended at the end of the array in an arbitrary order.</p>
+<p>If the values are coordinates of the form <code>newValues=[[x1, y1, z1, ...], [x2, y2, z2, ...], ...]</code>
+then the proximity will be calculated as simple euclidiean distance.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>oldValues</code></strong> :&ensp;<code>iterable</code></dt>
+<dd>A set of values whose order is to be preserved.</dd>
+<dt><strong><code>newValues</code></strong> :&ensp;<code>iterable</code></dt>
+<dd>The new values that will be ordered based on proximity to the elements
+of <code>oldValues</code>.</dd>
+<dt><strong><code>padMissingValues</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether or not to leave placeholder values (<code>None</code>) in the final result
+for values that do not correspond to any of the original points (True)
+or to only return values that have pairs (False).</dd>
+<dt><strong><code>maxDistance</code></strong> :&ensp;<code>float</code> or <code>None</code></dt>
+<dd>
+<p>The maximum distance a point can be from its old counterpart and still be
+considered the same point. If set to None, every point in the smaller of the
+two arrays (new or old) will always have a partner; if a max distance is set,
+this is no longer guaranteed.</p>
+<p>Not recommended to be used if <code>padMissingValues=False</code>, since it will result
+in an array that has an arbitrary sorting order.</p>
+<p>eg. <code>[1, 2, 3]</code> sorted according to <code>[1, 3, 5]</code> would become <code>[1, None, 3, 2]</code> but
+then the <code>None</code> will be removed, resulting in <code>[1, 3, 2]</code> which likely isn't
+useful.</p>
+</dd>
+<dt><strong><code>periodic</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether the values to be sorted are periodic such that pi and -pi are actually
+the same point (and should have a separation of 0, not 2pi.</dd>
+<dt><strong><code>fillNanSpots</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether to fill Nan spots in the old list with unmatched new values (True), or
+to preserve the position of the nan value and append unmatched new values to
+the end (False).</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>orderedIndices</code></strong> :&ensp;<code>iterable</code></dt>
+<dd>Indices corresponding to elements of <code>newValues</code> according to proximity
+to the elements of <code>oldValues</code>.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def preserveOrderArgsort(oldValues, newValues, padMissingValues=False, maxDistance=None, periodic=False, fillNanSpots=True):
+    &#34;&#34;&#34;
+    Return a set of indices that order a set of values as similarly to a previous
+    set of values as possible. That is, a set of indices that arranges `newValues`
+    such that the first element is the one that is closest to the first element of
+    `oldValues`, and so on.
+
+    If `padMissingValues=True`, then when `newValues` contains fewer items than
+    `oldValues`, elements of `None` will be inserted to preserve the order.
+
+    If `newValues` contains more items than `oldValues`, the novel elements will
+    be appended at the end of the array in an arbitrary order.
+
+    If the values are coordinates of the form `newValues=[[x1, y1, z1, ...], [x2, y2, z2, ...], ...]`
+    then the proximity will be calculated as simple euclidiean distance.
+
+    Parameters
+    ----------
+
+    oldValues : iterable
+        A set of values whose order is to be preserved.
+
+    newValues : iterable
+        The new values that will be ordered based on proximity to the elements
+        of `oldValues`.
+
+    padMissingValues : bool
+        Whether or not to leave placeholder values (`None`) in the final result
+        for values that do not correspond to any of the original points (True)
+        or to only return values that have pairs (False).
+
+    maxDistance : float or None
+        The maximum distance a point can be from its old counterpart and still be
+        considered the same point. If set to None, every point in the smaller of the
+        two arrays (new or old) will always have a partner; if a max distance is set,
+        this is no longer guaranteed.
+
+        Not recommended to be used if `padMissingValues=False`, since it will result
+        in an array that has an arbitrary sorting order.
+        
+        eg. `[1, 2, 3]` sorted according to `[1, 3, 5]` would become `[1, None, 3, 2]` but
+        then the `None` will be removed, resulting in `[1, 3, 2]` which likely isn&#39;t
+        useful.
+
+    periodic : bool
+        Whether the values to be sorted are periodic such that pi and -pi are actually
+        the same point (and should have a separation of 0, not 2pi.
+
+    fillNanSpots : bool
+        Whether to fill Nan spots in the old list with unmatched new values (True), or
+        to preserve the position of the nan value and append unmatched new values to
+        the end (False).
+
+    Returns
+    -------
+
+    orderedIndices : iterable
+        Indices corresponding to elements of `newValues` according to proximity
+        to the elements of `oldValues`.
+    &#34;&#34;&#34;
+
+    if maxDistance is None:
+        maxDistance = np.inf
+
+    # Make sure all of the values are np arrays
+    npOldValues = np.array(oldValues)
+    npNewValues = np.array(newValues)
+
+    # This is required for the kdtree to work, since it is
+    # generalized for higher dimensional spaces
+    scalarValues = npOldValues.ndim == 1
+    if scalarValues:
+        npNewValues = npNewValues[:,None]
+        npOldValues = npOldValues[:,None]
+
+    # Convert all potential None values to np.nan (since they play nicer)
+    # Numpy can only hold values of None in an array if the dtype is &#39;object&#39;,
+    # which is inconvient for working with the kd tree
+    # A note, since I have now spent a *very* long time figuring out this bug:
+    # np.where(array) will give the indices of all values that are not None/np.nan
+    # AND all values that are not 0. so this line used to be
+    # ...np.where(npNewValues, npNewValues, np.nan)...
+    # but this will convert any values that are exactly 0 to np.nan as wel, which is very bad.
+    npNewValues = np.array(np.where(npNewValues != None, npNewValues, np.nan), dtype=np.float64)
+    npOldValues = np.array(np.where(npOldValues != None, npOldValues, np.nan), dtype=np.float64)
+
+    # We want to have the longer list of items be the source points
+    # for the kdtree, and the shorter be the query points. If they are
+    # the same length, it doesn&#39;t matter.
+
+    # Detect which values are valid aka not np.nan (see above about nan/None)
+    oldValidIndices = np.unique(np.where(np.isnan(npOldValues) == False)[0])
+    newValidIndices = np.unique(np.where(np.isnan(npNewValues) == False)[0])
+
+    # If we have an empty old list, we just the original indexing
+    if len(oldValidIndices) == 0:
+        # If there just aren&#39;t any values in the old list
+        # then we just return indexing for the new values
+        if len(npOldValues) == 0:
+            return [i for i in range(len(npNewValues))]
+        else:
+            # If there are some old values, but they are just all
+            # None/nan, then we have to decide what to do based on
+            # whether we want to fill in the nan spots or not
+            if fillNanSpots:
+                # Filling nan spots, we just return the same indexing for the new
+                # list, potentially with some None values at the end
+                return [i for i in range(len(npNewValues))] + [None]*(len(npOldValues)-len(npNewValues))
+            else:
+                # Otherwise, we return a similar thing, but with the None values at the
+                # beginning, in the same spot as they were for the old list
+                return [None]*len(npOldValues) + [i for i in range(len(npNewValues))]
+
+    # If there are no new values, we return empty list (the new values)
+    # or a list of None values
+    if len(newValidIndices) == 0:
+        if padMissingValues:
+            return [None]*len(npOldValues)
+        else:
+            return [None]*len(npNewValues)
+
+    # The list that we will be building
+    # We&#39;ll append new entries on at the end
+    addedIndices = [None for i in range(len(npOldValues))]
+
+    kdTree = KDTree(npOldValues[oldValidIndices], leaf_size=5)
+    # This gives us the closest k points to each of the old values
+    dist, ind = kdTree.query(npNewValues[newValidIndices], k=len(oldValidIndices))
+
+    # Now convert the indices return from the kd tree (which excluded np.nan values)
+    # back to the original order, which includes np.nan values
+    ind = [[oldValidIndices[ind[i][j]] for j in range(len(ind[i]))] for i in range(len(ind))]
+
+    if periodic:
+        # Points can&#39;t be more than pi away from each other on a circle (ignoring circulation
+        # direction)
+        dist = np.where(dist &lt; np.pi, dist, 2*np.pi - dist)
+        # TODO: resort ind since the distances may have changed
+
+    # Now for each new point, grab the closest old point that hasn&#39;t already
+    # been added. The order we do this in is quite arbitrary (it follows the order
+    # the user has passed in the values) which means that if particles move quite
+    # large distances each frame, the algorithm may be incorrect. It would be more
+    # apt to instead perform a minimization on the sum of the change in particle positions
+    # for any possible pair configuration. TODO
+    
+    # When two new points have the same closest old point, one of them will have to
+    # use their second closest old point instead (the farther one). This list records
+    # the index their closest neighbor that they are able to use. eg. a value of 0
+    # here means that that particular point used it&#39;s closest old point, a value of 1
+    # means it had to use it&#39;s second closest point (because the first closest was
+    # already taken).
+    indexChoicePositions = [None]*len(newValidIndices)
+
+    # This has to be a while loop with the list here because we may need
+    # to recheck certain points (eg. if we first assign a point, and then realize
+    # that there is actually a better match later on).
+    newIndicesToAssign = list(np.arange(len(newValidIndices)))
+    listIndex = 0
+    while listIndex &lt; len(newIndicesToAssign):
+        # i is the index of the current new point
+        i = newIndicesToAssign[listIndex]
+        # The indices in possible points index the old array, so when we eventually
+        # assign a pair, this index will be the **index** of the actual value. The value
+        # will just be i, since that is what is iterating over the new list.
+
+        # Checking to see that the addedIndices array is None is making sure that this new
+        # point hasn&#39;t already been assigned
+        # Check to make sure all of the possible points are within the max distance
+        possiblePoints = [ind[i][j] for j in range(len(ind[i])) if dist[i][j] &lt; maxDistance]
+        # We don&#39;t need to explicitly check if len(possiblePoints) = 0, since the behavior
+        # in that case should do nothing, as such points are dealt with at the end
+
+        # We&#39;ll likely break out of this loop on the first iteration most of the time,
+        # but we need to be able to handle if the first/second/etc. best options are already
+        # taken
+        for j in range(len(possiblePoints)):
+            # It is possible that the closest old point to this new one has already
+            # been assigned to another new point.
+            if addedIndices[possiblePoints[j]] is None:
+                # If it hasn&#39;t, of course that&#39;s no problem, and we can assign it
+                addedIndices[possiblePoints[j]] = i
+                indexChoicePositions[i] = j
+                break
+            else:
+                # Otherwise, we have to check to see which is actually closer
+                compareNewIndex = addedIndices[possiblePoints[j]]
+                if dist[i][j] &lt; dist[compareNewIndex][indexChoicePositions[compareNewIndex]]:
+                    # If the new point is closer, we reassign the entry in addedIndices
+                    # and change the previous best point to the next best (available) one
+                    addedIndices[possiblePoints[j]] = i
+                    indexChoicePositions[i] = j
+                    
+                    # And add the replaced index back into the list so
+                    # we can find it a new match
+                    indexChoicePositions[compareNewIndex] = None
+                    newIndicesToAssign.append(compareNewIndex)
+                    break
+                else:
+                    # If the new point is further, we just continue the j loop and try the
+                    # next closest old point
+                    continue
+
+        listIndex += 1
+
+    # Check which new indices haven&#39;t been assigned yet
+    # Again, the values of addedIndices are the new indices, and the indices of
+    # addedIndices are the old indices (yikes, am I right?)
+    unaddedIndices = [i for i in range(len(newValidIndices)) if not i in addedIndices]
+
+    if fillNanSpots:
+        oldNanIndices = np.unique(np.where(np.isnan(npOldValues) == True)[0])
+        for i in range(min(len(oldNanIndices), len(unaddedIndices))):
+            addedIndices[oldNanIndices[i]] = unaddedIndices[i]
+
+        unaddedIndices = unaddedIndices[len(oldNanIndices):] if len(oldNanIndices) &lt; len(unaddedIndices) else []
+
+    addedIndices += unaddedIndices
+    
+    if not padMissingValues:
+        addedIndices = [i for i in addedIndices if i is not None]
+
+    return addedIndices</code></pre>
+</details>
+</dd>
+<dt id="pepe.utils.Sort.preserveOrderSort"><code class="name flex">
+<span>def <span class="ident">preserveOrderSort</span></span>(<span>oldValues, newValues, padMissingValues=False, maxDistance=None, periodic=False, fillNanSpots=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Order a set of values as similarly to a previous set of values as possible.
+That is, arange <code>newValues</code> such that the first element is the one that is
+closest to the first element of <code>oldValues</code>, and so on.</p>
+<p>If <code>padMissingValues=True</code>, then when <code>newValues</code> contains fewer items than
+<code>oldValues</code>, elements of <code>None</code> will be inserted to preserve the order.</p>
+<p>If <code>newValues</code> contains more items than <code>oldValues</code>, the novel elements will
+be appended at the end of the array in an arbitrary order.</p>
+<p>If the values are coordinates of the form <code>newValues=[[x1, y1, z1, ...], [x2, y2, z2, ...], ...]</code>
+then the proximity will be calculated as simple euclidiean distance.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>oldValues</code></strong> :&ensp;<code>iterable</code></dt>
+<dd>A set of values whose order is to be preserved.</dd>
+<dt><strong><code>newValues</code></strong> :&ensp;<code>iterable</code></dt>
+<dd>The new values that will be ordered based on proximity to the elements
+of <code>oldValues</code>.</dd>
+<dt><strong><code>padMissingValues</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether or not to leave placeholder values (<code>None</code>) in the final result
+for values that do not correspond to any of the original points (True)
+or to only return values that have pairs (False).</dd>
+<dt><strong><code>maxDistance</code></strong> :&ensp;<code>float</code> or <code>None</code></dt>
+<dd>
+<p>The maximum distance a point can be from its old counterpart and still be
+considered the same point. If set to None, every point in the smaller of the
+two arrays (new or old) will always have a partner; if a max distance is set,
+this is no longer guaranteed.</p>
+<p>Not recommended to be used if <code>padMissingValues=False</code>, since it will result
+in an array that has an arbitrary sorting order.</p>
+<p>eg. <code>[1, 2, 3]</code> sorted according to <code>[1, 3, 5]</code> would become <code>[1, None, 3, 2]</code> but
+then the <code>None</code> will be removed, resulting in <code>[1, 3, 2]</code> which likely isn't
+useful.</p>
+</dd>
+<dt><strong><code>periodic</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether the values to be sorted are periodic such that pi and -pi are actually
+the same point (and should have a separation of 0, not 2pi.</dd>
+<dt><strong><code>fillNanSpots</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether to fill Nan spots in the old list with unmatched new values (True), or
+to preserve the position of the nan value and append unmatched new values to
+the end (False).</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>orderedValues</code></strong> :&ensp;<code>iterable</code></dt>
+<dd>The elements of <code>newValues</code> ordered according to proximity to the elements
+of <code>oldValues</code>.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def preserveOrderSort(oldValues, newValues, padMissingValues=False, maxDistance=None, periodic=False, fillNanSpots=True):
+    &#34;&#34;&#34;
+    Order a set of values as similarly to a previous set of values as possible.
+    That is, arange `newValues` such that the first element is the one that is
+    closest to the first element of `oldValues`, and so on.
+
+    If `padMissingValues=True`, then when `newValues` contains fewer items than
+    `oldValues`, elements of `None` will be inserted to preserve the order.
+
+    If `newValues` contains more items than `oldValues`, the novel elements will
+    be appended at the end of the array in an arbitrary order.
+
+    If the values are coordinates of the form `newValues=[[x1, y1, z1, ...], [x2, y2, z2, ...], ...]`
+    then the proximity will be calculated as simple euclidiean distance.
+
+    Parameters
+    ----------
+
+    oldValues : iterable
+        A set of values whose order is to be preserved.
+
+    newValues : iterable
+        The new values that will be ordered based on proximity to the elements
+        of `oldValues`.
+
+    padMissingValues : bool
+        Whether or not to leave placeholder values (`None`) in the final result
+        for values that do not correspond to any of the original points (True)
+        or to only return values that have pairs (False).
+
+    maxDistance : float or None
+        The maximum distance a point can be from its old counterpart and still be
+        considered the same point. If set to None, every point in the smaller of the
+        two arrays (new or old) will always have a partner; if a max distance is set,
+        this is no longer guaranteed.
+
+        Not recommended to be used if `padMissingValues=False`, since it will result
+        in an array that has an arbitrary sorting order.
+        
+        eg. `[1, 2, 3]` sorted according to `[1, 3, 5]` would become `[1, None, 3, 2]` but
+        then the `None` will be removed, resulting in `[1, 3, 2]` which likely isn&#39;t
+        useful.
+
+    periodic : bool
+        Whether the values to be sorted are periodic such that pi and -pi are actually
+        the same point (and should have a separation of 0, not 2pi.
+
+    fillNanSpots : bool
+        Whether to fill Nan spots in the old list with unmatched new values (True), or
+        to preserve the position of the nan value and append unmatched new values to
+        the end (False).
+
+    Returns
+    -------
+
+    orderedValues : iterable
+        The elements of `newValues` ordered according to proximity to the elements
+        of `oldValues`.
+    &#34;&#34;&#34;
+
+    # We already have preserveOrderArgsort written, so we can just wrap that
+    order = preserveOrderArgsort(oldValues, newValues, padMissingValues, maxDistance, periodic, fillNanSpots)
+
+    dim = len(newValues[0]) if hasattr(newValues[0], &#39;__iter__&#39;) else 1
+
+    # Slightly different behavior for d=1 vs. d&gt;1, since we don&#39;t want
+    # an extra dimension nested in there if our data is 1d
+    if dim == 1:
+        return np.array([newValues[i] if i is not None else np.nan for i in order])
+    else:
+        return np.array([newValues[i] if i is not None else np.repeat(np.nan, dim) for i in order])</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="pepe.utils" href="index.html">pepe.utils</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="pepe.utils.Sort.preserveOrderArgsort" href="#pepe.utils.Sort.preserveOrderArgsort">preserveOrderArgsort</a></code></li>
+<li><code><a title="pepe.utils.Sort.preserveOrderSort" href="#pepe.utils.Sort.preserveOrderSort">preserveOrderSort</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

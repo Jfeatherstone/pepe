@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>pepe.analysis.D2Min API documentation</title>
+<meta name="description" content="Method to solve D2min field between two different particle states,
+and calculate the von Mises strain …" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS_CHTML" integrity="sha256-kZafAc6mZvK3W3v1pHOcUix30OHQN6pU/NO2oFkqZVw=" crossorigin></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>pepe.analysis.D2Min</code></h1>
+</header>
+<section id="section-intro">
+<p>Method to solve D2min field between two different particle states,
+and calculate the von Mises strain.</p>
+<p>Copied directly from my standalone repo:
+<a href="https://github.com/Jfeatherstone/D2min">https://github.com/Jfeatherstone/D2min</a></p>
+<p>Originally forked from:
+<a href="https://github.com/Binxu-Stack/D2min">https://github.com/Binxu-Stack/D2min</a>
+created by Bin Xu.</p>
+<p>Modifications include more documentation, change of notation,
+and change from bond-focused calculation to center-focused
+calculation (see code for more details).</p>
+<p>Intended for use within other projects, so CLI access has been
+removed.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;
+Method to solve D2min field between two different particle states,
+and calculate the von Mises strain.
+
+Copied directly from my standalone repo:
+https://github.com/Jfeatherstone/D2min
+
+Originally forked from:
+https://github.com/Binxu-Stack/D2min
+created by Bin Xu.
+
+Modifications include more documentation, change of notation,
+and change from bond-focused calculation to center-focused
+calculation (see code for more details).
+
+Intended for use within other projects, so CLI access has been
+removed.
+&#34;&#34;&#34;
+
+import numpy as np
+from numpy.linalg import inv
+
+# For calculating which neighbors are within a certain distance
+from sklearn.neighbors import KDTree
+
+def calculateD2Min(initialCenters, finalCenters, refParticleIndex=0, interactionRadius=None, interactionNeighbors=None, normalize=True):
+    &#34;&#34;&#34;
+    Calculate the d2min between an initial and final state of particles;
+    a measure of how non-affine the transformation is, as originally described
+    in [1].
+
+    
+    Parameters
+    ----------
+
+    initialCenters : np.ndarray[N,d] or list
+        List of initial center points of N particles in d dimensions.
+
+    finalCenters :  np.ndarray[N,d] or list
+        List of final center points of N particles in d dimensions. Must be
+        in the same order as initialCenters.
+
+    refParticleIndex : int
+        The index of the particle to treat as the reference particle (r_0 in Falk &amp; Langer
+        1998 eq. 2.11). If set to None, will calculate the D2min N times using each particle
+        as the reference (and return types will have an extra first dimension N). Simiarly, can
+        be a list of indices for which to calculate as the refernce indices.
+
+    interactionRadius : float
+        The maximum distance between particles that can be considered neighbors. Recommended to
+        be set to around 1.1 - 1.5 times the mean particle radius of the system.
+
+        If set to None, all other particles in the system will be considered neighbors. See interactionNeighbors
+        for specifying a fixed number of neighbors. In the case that neither a radius or number of
+        neighbors are specified, calculation will default to using all other particles as neighbors.
+
+    interactionNeighbors : int
+        As opposed to using an interactionRadius to define neighbors, a fixed number of neighbors can
+        be specified here. This number of neighbors will be found using a kd-tree for the reference point(s).
+
+        In the case that neither a radius or number of neighbors are specified, calculation will default
+        to using all other particles as neighbors.
+
+    normalize : bool
+        Whether to divide the d2min by the number of neighbors used to calculate it (True) or not (False).
+        For heterogeneous systems where the number of neighbors can vary significantly, recommend to set True.
+        Will make little difference if a fixed number of neighbors (see interactionNeigbors) are used.
+
+    Returns
+    -------
+
+    d2min : float
+        The minimum value of D2 for the transition from the initial to final state. Units
+        are a squared distance dimensionally the same as the initial and final centers (likely
+        a pixel^2 value if tracked from images). Changing units to particle diameters afterwards
+        may be necessary.
+
+    epsilon : numpy.ndarray[d,d]
+        The uniform strain tensor that minimizes D2; equation 2.14 in [1].
+
+
+    In the case that `refParticleIndex=None`, the return will instead be a tuple of numpy arrays
+    containing the same information but for every particle:
+
+    d2minArr : np.ndarray[N]
+        The minimum value of D2 for the transition from the initial to final state for
+        every possible configuration.
+
+    epsilonArr : np.ndarray[N,d,d]
+        The uniform strain tensor that minimizes D2 for every possible configuration
+
+
+    Examples
+    --------
+
+    See `test` folder in [standalone repository](https://github.com/Jfeatherstone/D2min).
+
+ 
+    References
+    ----------    
+
+    [1] Falk, M. L., &amp; Langer, J. S. (1998). Dynamics of viscoplastic deformation in amorphous solids. Physical Review E, 57(6), 7192–7205.
+    [https://doi.org/10.1103/PhysRevE.57.7192](https://doi.org/10.1103/PhysRevE.57.7192)
+
+    &#34;&#34;&#34;
+
+    # The number of particles and spatial dimension
+    N, d = np.shape(initialCenters)
+
+    # In the case that a single reference particle is defined, we just calculate exactly as described in the paper
+    if not isinstance(refParticleIndex, list) and not isinstance(refParticleIndex, np.ndarray) and refParticleIndex != None:
+
+        # Determine which particles are neighbors using the parameters supplied on the function call
+        initialNeighbors = None
+        finalNeighbors = None
+
+        # If an interaction radius is supplied, we have to find the particles that are closest
+        # in the initial state using a kd-tree
+        if interactionRadius != None:
+            kdTree = KDTree(initialCenters)
+            ind = kdTree.query_radius([initialCenters[refParticleIndex]], interactionRadius)
+            
+            # We ignore the first element since it will always be the particle itself
+            # And we have to sort we don&#39;t mess up the order
+            ind = np.sort(ind[0][1:])
+
+            # Make sure we actually found some particles
+            if len(ind) == 0:
+                print(&#39;Warning: no neighbors found within supplied interaction radius! Defaulting to all other particles&#39;)
+            else:
+                initialNeighbors = initialCenters[ind]
+                finalNeighbors = finalCenters[ind]    
+
+        # If a fixed number of neighbors is provided instead, we find those particles again with
+        # a kd-tree
+        elif interactionNeighbors != None:
+            kdTree = KDTree(initialCenters)
+            # Make sure we don&#39;t look for more particles than are in our system
+            dist, ind = kdTree.query([initialCenters[refParticleIndex]], min(interactionNeighbors+1, N))
+            
+            # We ignore the first element since it will always be the particle itself
+            # And we have to sort we don&#39;t mess up the order
+            ind = np.sort(ind[0][1:])
+            
+            initialNeighbors = initialCenters[ind]
+            finalNeighbors = finalCenters[ind]    
+
+        # If no information is supplied, or we ran into issues, use every other particle
+        if not isinstance(initialNeighbors, list) and not isinstance(initialNeighbors, np.ndarray):
+            initialNeighbors = initialCenters[np.arange(N) != refParticleIndex]
+            finalNeighbors = finalCenters[np.arange(N) != refParticleIndex]
+
+        # Now onto the actual D2min calculation
+        # Bin&#39;s original code defined the differences between centers in
+        # Falk &amp; Langer eq. 2.11 - 2.13 as &#34;bonds&#34;
+
+        # We first calculate these bonds using our reference particle index
+        # Do this by subtracting the ref particle center from the center of every other particle
+        # Note that you could technically leave in the ref bond, since it will be 0 and not contribute,
+        # but it is cleaner to just remove it
+
+        initialBonds = initialNeighbors - initialCenters[refParticleIndex]
+        finalBonds = finalNeighbors - finalCenters[refParticleIndex]
+
+        # More succinct notation for doing the calculation, from Bin&#39;s original code
+        # Converting to numpy matrices makes matrix multiplication happen automatically
+        b0 = np.mat(initialBonds)
+        b = np.mat(finalBonds)
+
+        # Calculate the two functions used to minimize D2, X and Y (eq. 2.12 and 2.13 respectively)
+        X = b0.transpose() * b
+        Y = b0.transpose() * b0
+
+        # Calculate the uniform strain tensor that minimizes D2 (eq. 2.14)
+        # Note that we don&#39;t include the kronecker delta function since it will
+        # be cancelled out when plugged into the D2min equation (eq. 2.11).
+        # Also not that this is actually the transpose of the strain tensor as
+        # it is defined in the paper, since it makes the matrix multiplication easier
+        # in the next step
+        epsilon = inv(Y) * X
+
+        # Non-affine part, or the terms that are squared and summed over in eq. 2.11
+        non_affine = b - b0*epsilon
+
+        # The final value
+        d2min = np.sum(np.square(non_affine))
+
+        if normalize:
+            d2min /= len(initialNeighbors)
+
+        # Since we have been working with the transpose of the strain tensor,
+        # we have to transpose to get the proper one
+        return (d2min, np.array(epsilon.transpose()))
+
+    # If we don&#39;t have a reference particle, or we are given multiple, we calculate for each of those
+    if not isinstance(refParticleIndex, list) and not isinstance(refParticleIndex, np.ndarray):
+        refParticleIndex = np.arange(N)
+
+    # Now calculate for all of those possibilities
+    d2minArr = np.zeros(len(refParticleIndex))
+    epsilonArr = np.zeros([len(refParticleIndex), d, d])
+    
+    for i in range(len(refParticleIndex)):
+
+        d2min, epsilon = calculateD2Min(initialCenters, finalCenters, refParticleIndex[i],
+                                       interactionRadius, interactionNeighbors, normalize)
+        d2minArr[i] = d2min
+        epsilonArr[i] = epsilon
+
+    return (d2minArr, epsilonArr)
+
+        
+def vonMisesStrain(uniformStrainTensor):
+    &#34;&#34;&#34;
+    WIP.
+
+    &#34;&#34;&#34;
+    # The number of spatial dimensions
+    dimension = np.shape(uniformStrainTensor)[0]
+
+    # Lagrangian strain matrix
+    eta = 0.5 * (uniformStrainTensor * uniformStrainTensor.transpose() - np.eye(dimension))
+
+    # von-Mises strain
+    eta_m = 1.0/np.double(dimension) * np.trace(eta)
+    tmp = eta - eta_m * np.eye(dimension)
+    eta_s = np.sqrt(0.5*np.trace(tmp*tmp))
+
+    return eta_s</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="pepe.analysis.D2Min.calculateD2Min"><code class="name flex">
+<span>def <span class="ident">calculateD2Min</span></span>(<span>initialCenters, finalCenters, refParticleIndex=0, interactionRadius=None, interactionNeighbors=None, normalize=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Calculate the d2min between an initial and final state of particles;
+a measure of how non-affine the transformation is, as originally described
+in [1].</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>initialCenters</code></strong> :&ensp;<code>np.ndarray[N,d]</code> or <code>list</code></dt>
+<dd>List of initial center points of N particles in d dimensions.</dd>
+<dt><strong><code>finalCenters</code></strong> :&ensp;<code> np.ndarray[N,d]</code> or <code>list</code></dt>
+<dd>List of final center points of N particles in d dimensions. Must be
+in the same order as initialCenters.</dd>
+<dt><strong><code>refParticleIndex</code></strong> :&ensp;<code>int</code></dt>
+<dd>The index of the particle to treat as the reference particle (r_0 in Falk &amp; Langer
+1998 eq. 2.11). If set to None, will calculate the D2min N times using each particle
+as the reference (and return types will have an extra first dimension N). Simiarly, can
+be a list of indices for which to calculate as the refernce indices.</dd>
+<dt><strong><code>interactionRadius</code></strong> :&ensp;<code>float</code></dt>
+<dd>
+<p>The maximum distance between particles that can be considered neighbors. Recommended to
+be set to around 1.1 - 1.5 times the mean particle radius of the system.</p>
+<p>If set to None, all other particles in the system will be considered neighbors. See interactionNeighbors
+for specifying a fixed number of neighbors. In the case that neither a radius or number of
+neighbors are specified, calculation will default to using all other particles as neighbors.</p>
+</dd>
+<dt><strong><code>interactionNeighbors</code></strong> :&ensp;<code>int</code></dt>
+<dd>
+<p>As opposed to using an interactionRadius to define neighbors, a fixed number of neighbors can
+be specified here. This number of neighbors will be found using a kd-tree for the reference point(s).</p>
+<p>In the case that neither a radius or number of neighbors are specified, calculation will default
+to using all other particles as neighbors.</p>
+</dd>
+<dt><strong><code>normalize</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether to divide the d2min by the number of neighbors used to calculate it (True) or not (False).
+For heterogeneous systems where the number of neighbors can vary significantly, recommend to set True.
+Will make little difference if a fixed number of neighbors (see interactionNeigbors) are used.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>d2min</code></strong> :&ensp;<code>float</code></dt>
+<dd>The minimum value of D2 for the transition from the initial to final state. Units
+are a squared distance dimensionally the same as the initial and final centers (likely
+a pixel^2 value if tracked from images). Changing units to particle diameters afterwards
+may be necessary.</dd>
+<dt><strong><code>epsilon</code></strong> :&ensp;<code>numpy.ndarray[d,d]</code></dt>
+<dd>The uniform strain tensor that minimizes D2; equation 2.14 in [1].</dd>
+<dt>In the case that <code>refParticleIndex=None</code>, the return will instead be a tuple of numpy arrays</dt>
+<dt><code>containing the same information but for every particle:</code></dt>
+<dd>&nbsp;</dd>
+<dt><strong><code>d2minArr</code></strong> :&ensp;<code>np.ndarray[N]</code></dt>
+<dd>The minimum value of D2 for the transition from the initial to final state for
+every possible configuration.</dd>
+<dt><strong><code>epsilonArr</code></strong> :&ensp;<code>np.ndarray[N,d,d]</code></dt>
+<dd>The uniform strain tensor that minimizes D2 for every possible configuration</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<p>See <code>test</code> folder in <a href="https://github.com/Jfeatherstone/D2min">standalone repository</a>.</p>
+<h2 id="references">References</h2>
+<p>[1] Falk, M. L., &amp; Langer, J. S. (1998). Dynamics of viscoplastic deformation in amorphous solids. Physical Review E, 57(6), 7192–7205.
+<a href="https://doi.org/10.1103/PhysRevE.57.7192">https://doi.org/10.1103/PhysRevE.57.7192</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def calculateD2Min(initialCenters, finalCenters, refParticleIndex=0, interactionRadius=None, interactionNeighbors=None, normalize=True):
+    &#34;&#34;&#34;
+    Calculate the d2min between an initial and final state of particles;
+    a measure of how non-affine the transformation is, as originally described
+    in [1].
+
+    
+    Parameters
+    ----------
+
+    initialCenters : np.ndarray[N,d] or list
+        List of initial center points of N particles in d dimensions.
+
+    finalCenters :  np.ndarray[N,d] or list
+        List of final center points of N particles in d dimensions. Must be
+        in the same order as initialCenters.
+
+    refParticleIndex : int
+        The index of the particle to treat as the reference particle (r_0 in Falk &amp; Langer
+        1998 eq. 2.11). If set to None, will calculate the D2min N times using each particle
+        as the reference (and return types will have an extra first dimension N). Simiarly, can
+        be a list of indices for which to calculate as the refernce indices.
+
+    interactionRadius : float
+        The maximum distance between particles that can be considered neighbors. Recommended to
+        be set to around 1.1 - 1.5 times the mean particle radius of the system.
+
+        If set to None, all other particles in the system will be considered neighbors. See interactionNeighbors
+        for specifying a fixed number of neighbors. In the case that neither a radius or number of
+        neighbors are specified, calculation will default to using all other particles as neighbors.
+
+    interactionNeighbors : int
+        As opposed to using an interactionRadius to define neighbors, a fixed number of neighbors can
+        be specified here. This number of neighbors will be found using a kd-tree for the reference point(s).
+
+        In the case that neither a radius or number of neighbors are specified, calculation will default
+        to using all other particles as neighbors.
+
+    normalize : bool
+        Whether to divide the d2min by the number of neighbors used to calculate it (True) or not (False).
+        For heterogeneous systems where the number of neighbors can vary significantly, recommend to set True.
+        Will make little difference if a fixed number of neighbors (see interactionNeigbors) are used.
+
+    Returns
+    -------
+
+    d2min : float
+        The minimum value of D2 for the transition from the initial to final state. Units
+        are a squared distance dimensionally the same as the initial and final centers (likely
+        a pixel^2 value if tracked from images). Changing units to particle diameters afterwards
+        may be necessary.
+
+    epsilon : numpy.ndarray[d,d]
+        The uniform strain tensor that minimizes D2; equation 2.14 in [1].
+
+
+    In the case that `refParticleIndex=None`, the return will instead be a tuple of numpy arrays
+    containing the same information but for every particle:
+
+    d2minArr : np.ndarray[N]
+        The minimum value of D2 for the transition from the initial to final state for
+        every possible configuration.
+
+    epsilonArr : np.ndarray[N,d,d]
+        The uniform strain tensor that minimizes D2 for every possible configuration
+
+
+    Examples
+    --------
+
+    See `test` folder in [standalone repository](https://github.com/Jfeatherstone/D2min).
+
+ 
+    References
+    ----------    
+
+    [1] Falk, M. L., &amp; Langer, J. S. (1998). Dynamics of viscoplastic deformation in amorphous solids. Physical Review E, 57(6), 7192–7205.
+    [https://doi.org/10.1103/PhysRevE.57.7192](https://doi.org/10.1103/PhysRevE.57.7192)
+
+    &#34;&#34;&#34;
+
+    # The number of particles and spatial dimension
+    N, d = np.shape(initialCenters)
+
+    # In the case that a single reference particle is defined, we just calculate exactly as described in the paper
+    if not isinstance(refParticleIndex, list) and not isinstance(refParticleIndex, np.ndarray) and refParticleIndex != None:
+
+        # Determine which particles are neighbors using the parameters supplied on the function call
+        initialNeighbors = None
+        finalNeighbors = None
+
+        # If an interaction radius is supplied, we have to find the particles that are closest
+        # in the initial state using a kd-tree
+        if interactionRadius != None:
+            kdTree = KDTree(initialCenters)
+            ind = kdTree.query_radius([initialCenters[refParticleIndex]], interactionRadius)
+            
+            # We ignore the first element since it will always be the particle itself
+            # And we have to sort we don&#39;t mess up the order
+            ind = np.sort(ind[0][1:])
+
+            # Make sure we actually found some particles
+            if len(ind) == 0:
+                print(&#39;Warning: no neighbors found within supplied interaction radius! Defaulting to all other particles&#39;)
+            else:
+                initialNeighbors = initialCenters[ind]
+                finalNeighbors = finalCenters[ind]    
+
+        # If a fixed number of neighbors is provided instead, we find those particles again with
+        # a kd-tree
+        elif interactionNeighbors != None:
+            kdTree = KDTree(initialCenters)
+            # Make sure we don&#39;t look for more particles than are in our system
+            dist, ind = kdTree.query([initialCenters[refParticleIndex]], min(interactionNeighbors+1, N))
+            
+            # We ignore the first element since it will always be the particle itself
+            # And we have to sort we don&#39;t mess up the order
+            ind = np.sort(ind[0][1:])
+            
+            initialNeighbors = initialCenters[ind]
+            finalNeighbors = finalCenters[ind]    
+
+        # If no information is supplied, or we ran into issues, use every other particle
+        if not isinstance(initialNeighbors, list) and not isinstance(initialNeighbors, np.ndarray):
+            initialNeighbors = initialCenters[np.arange(N) != refParticleIndex]
+            finalNeighbors = finalCenters[np.arange(N) != refParticleIndex]
+
+        # Now onto the actual D2min calculation
+        # Bin&#39;s original code defined the differences between centers in
+        # Falk &amp; Langer eq. 2.11 - 2.13 as &#34;bonds&#34;
+
+        # We first calculate these bonds using our reference particle index
+        # Do this by subtracting the ref particle center from the center of every other particle
+        # Note that you could technically leave in the ref bond, since it will be 0 and not contribute,
+        # but it is cleaner to just remove it
+
+        initialBonds = initialNeighbors - initialCenters[refParticleIndex]
+        finalBonds = finalNeighbors - finalCenters[refParticleIndex]
+
+        # More succinct notation for doing the calculation, from Bin&#39;s original code
+        # Converting to numpy matrices makes matrix multiplication happen automatically
+        b0 = np.mat(initialBonds)
+        b = np.mat(finalBonds)
+
+        # Calculate the two functions used to minimize D2, X and Y (eq. 2.12 and 2.13 respectively)
+        X = b0.transpose() * b
+        Y = b0.transpose() * b0
+
+        # Calculate the uniform strain tensor that minimizes D2 (eq. 2.14)
+        # Note that we don&#39;t include the kronecker delta function since it will
+        # be cancelled out when plugged into the D2min equation (eq. 2.11).
+        # Also not that this is actually the transpose of the strain tensor as
+        # it is defined in the paper, since it makes the matrix multiplication easier
+        # in the next step
+        epsilon = inv(Y) * X
+
+        # Non-affine part, or the terms that are squared and summed over in eq. 2.11
+        non_affine = b - b0*epsilon
+
+        # The final value
+        d2min = np.sum(np.square(non_affine))
+
+        if normalize:
+            d2min /= len(initialNeighbors)
+
+        # Since we have been working with the transpose of the strain tensor,
+        # we have to transpose to get the proper one
+        return (d2min, np.array(epsilon.transpose()))
+
+    # If we don&#39;t have a reference particle, or we are given multiple, we calculate for each of those
+    if not isinstance(refParticleIndex, list) and not isinstance(refParticleIndex, np.ndarray):
+        refParticleIndex = np.arange(N)
+
+    # Now calculate for all of those possibilities
+    d2minArr = np.zeros(len(refParticleIndex))
+    epsilonArr = np.zeros([len(refParticleIndex), d, d])
+    
+    for i in range(len(refParticleIndex)):
+
+        d2min, epsilon = calculateD2Min(initialCenters, finalCenters, refParticleIndex[i],
+                                       interactionRadius, interactionNeighbors, normalize)
+        d2minArr[i] = d2min
+        epsilonArr[i] = epsilon
+
+    return (d2minArr, epsilonArr)</code></pre>
+</details>
+</dd>
+<dt id="pepe.analysis.D2Min.vonMisesStrain"><code class="name flex">
+<span>def <span class="ident">vonMisesStrain</span></span>(<span>uniformStrainTensor)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>WIP.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def vonMisesStrain(uniformStrainTensor):
+    &#34;&#34;&#34;
+    WIP.
+
+    &#34;&#34;&#34;
+    # The number of spatial dimensions
+    dimension = np.shape(uniformStrainTensor)[0]
+
+    # Lagrangian strain matrix
+    eta = 0.5 * (uniformStrainTensor * uniformStrainTensor.transpose() - np.eye(dimension))
+
+    # von-Mises strain
+    eta_m = 1.0/np.double(dimension) * np.trace(eta)
+    tmp = eta - eta_m * np.eye(dimension)
+    eta_s = np.sqrt(0.5*np.trace(tmp*tmp))
+
+    return eta_s</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="pepe.analysis" href="index.html">pepe.analysis</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="pepe.analysis.D2Min.calculateD2Min" href="#pepe.analysis.D2Min.calculateD2Min">calculateD2Min</a></code></li>
+<li><code><a title="pepe.analysis.D2Min.vonMisesStrain" href="#pepe.analysis.D2Min.vonMisesStrain">vonMisesStrain</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

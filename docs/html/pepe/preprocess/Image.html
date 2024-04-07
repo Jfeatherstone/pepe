@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>pepe.preprocess.Image API documentation</title>
+<meta name="description" content="Image loading and light gradient correction." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS_CHTML" integrity="sha256-kZafAc6mZvK3W3v1pHOcUix30OHQN6pU/NO2oFkqZVw=" crossorigin></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>pepe.preprocess.Image</code></h1>
+</header>
+<section id="section-intro">
+<p>Image loading and light gradient correction.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;
+Image loading and light gradient correction.
+&#34;&#34;&#34;
+import numpy as np
+
+from PIL import Image
+import cv2
+import rawpy
+from scipy.signal import savgol_filter
+
+import matplotlib.pyplot as plt
+
+IMAGE_TYPES = [&#39;jpg&#39;,
+               &#39;jpeg&#39;,
+               &#39;png&#39;,
+               &#39;bmp&#39;,
+               &#39;tiff&#39;,
+               &#39;nef&#39;]
+
+def imageType(file):
+    &#34;&#34;&#34;
+    Returns the image type of a file.
+
+    More or less just extracts the extension, but will return
+    `None` if the extension is not that of an image, so can be
+    used in the following way:
+
+        listOfFiles = [&#39;a.png&#39;, &#39;b.bmp&#39;, &#39;c.txt&#39;, ...]
+        imageFiles = [f for f in listOfFiles if imageType(f)]
+
+    Parameters
+    ----------
+
+    file : str or Path
+
+    Returns
+    -------
+
+    imageExt : str or None
+        Image extension if file is an image, else None.
+    &#34;&#34;&#34;
+    isImage = file.lower().endswith(tuple(IMAGE_TYPES))
+    return file.split(&#39;.&#39;)[-1].lower() if isImage else None
+
+# In reading raw nef files, rawpy will automatically
+# do some post processing. These kwargs seem to give
+# me the most natural recreation of the original image
+# (or at least in comparing to the unedited version in
+# darktable)
+DEFAULT_NEF_PROCESS_KWARGS = {&#34;no_auto_scale&#34;: True,
+                              &#34;bright&#34;: .1,
+                             }
+
+def checkImageType(frame, nef_kwargs=DEFAULT_NEF_PROCESS_KWARGS):
+    &#34;&#34;&#34;
+    Make sure that the image is a proper image, and not a path
+
+    Parameters
+    ----------
+
+    frame : str or numpy.ndarray
+        Either a path to an image, or an image array
+
+    nef_kwargs : dict
+        Dictionary of arguments of postprocessing of NEF
+        images by rawpy. Only relevant if `frame` is the path
+        to an NEF file.
+
+        For full list of possible parameters, see:
+        https://letmaik.github.io/rawpy/api/rawpy.Params.html#rawpy.Params
+
+    Returns
+    -------
+
+    numpy.ndarray : The image array
+
+    &#34;&#34;&#34;
+    if isinstance(frame, str):
+        # I don&#39;t want to overwrite the image itself, so create a new var for that
+        # Also, we need to open nef images in a special way, since they are a special
+        # format (uses rawpy)
+        if imageType(frame) == &#39;nef&#39;:
+            raw = rawpy.imread(frame)
+            newFrame = raw.postprocess(**nef_kwargs)
+        # Otherwise, we can just read the image normally using Pillow
+        else:
+            newFrame = np.array(Image.open(frame), dtype=np.uint8)
+    else:
+        newFrame = frame
+
+    return newFrame
+
+
+def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None, smoothCorrection=True, debug=False, smoothingKernel=31, channel=0, rectify=False):
+    &#34;&#34;&#34;
+    
+    &#34;&#34;&#34;
+
+    calImg = checkImageType(calibrationImage)
+
+    # Slightly different behavior depending on whether we are passed a multichannel
+    # image vs a grayscale one. For multichannel, we calculate a correction for each
+    # channel separately.
+    if calImg.ndim == 3:
+        imgSize = calImg.shape[:2]
+        numChannels = calImg.shape[-1]
+    else:
+        imgSize = calImg.shape
+        numChannels = 1
+        # Add a third dim, so we can treat multi/single channel images
+        # exactly the same way
+        calImg = calImg[:,:,None]
+
+    if verticalMask is None:
+        verticalMask = np.ones(imgSize)
+
+    if horizontalMask is None:
+        horizontalMask = np.ones(imgSize)
+
+    fullLightCorrection = np.zeros((*imgSize, numChannels))
+
+    for i in range(numChannels):
+
+        verticallyMasked = calImg[:,:,i] * verticalMask
+        horizontallyMasked = calImg[:,:,i] * horizontalMask
+
+        # If there are no non-zero pixels, we just move on to the next channel
+        # (and leave this correction as an array of zeros)
+        if len(np.where(verticallyMasked != 0)[0]) == 0:
+            continue
+
+        # This excludes all values of zero, so that we get an actual pixel value we can directly add
+        brightnessByRow = np.nanmean(np.where(verticallyMasked != 0, verticallyMasked, np.nan), axis=1)
+        brightnessByColumn = np.nanmean(np.where(horizontallyMasked != 0, horizontallyMasked, np.nan), axis=0)
+
+        # Now smooth the two curves
+        # Can&#39;t say I know much about this filter, but it seems to work pretty well
+        if smoothCorrection:
+            smoothedBrightnessByColumn = savgol_filter(brightnessByColumn, smoothingKernel, 1)
+            smoothedBrightnessByRow = savgol_filter(brightnessByRow, smoothingKernel, 1)
+        else:
+            smoothedBrightnessByColumn = brightnessByColumn
+            smoothedBrightnessByRow = brightnessByRow
+
+        # Now calculate the correction
+        horizontalCorrection = np.mean(smoothedBrightnessByColumn) - smoothedBrightnessByColumn
+        verticalCorrection = np.mean(smoothedBrightnessByRow) - smoothedBrightnessByRow
+
+        # This object will have the same size as the image, and can just added to
+        # any similar image to correct detected light gradients
+        fullLightCorrection[:,:,i] = np.add.outer(verticalCorrection, horizontalCorrection)
+
+        if rectify:
+            fullLightCorrection[:,:,i] -= np.min(fullLightCorrection[:,:,i])
+
+    # If we have a single channel image originally, we want to keep the same shape
+    # for our return value -- so that the return can immediately be multipled by the
+    # original image -- so we remove the last channel dimension
+    if numChannels == 1:
+        fullLightCorrection = fullLightCorrection[:,:,0]
+
+    if debug:
+        if numChannels &gt; 1:
+            fig, ax = plt.subplots(2, 3, figsize=(12, 8))
+
+            channelNames = [&#39;Red&#39;, &#39;Green&#39;, &#39;Blue&#39;]
+            
+            for i in range(3):
+                ax[0,i].imshow(calImg[:,:,i])
+                ax[0,i].set_title(f&#39;Original {channelNames[i]} Channel&#39;)
+                ax[1,i].imshow(calImg[:,:,i] + fullLightCorrection[:,:,i])
+                ax[1,i].set_title(f&#39;Corrected {channelNames[i]} Channel&#39;)
+
+        else:
+            fig, ax = plt.subplots(1, 2, figsize=(8,4))
+
+            ax[0].imshow(calImg[:,:,0])
+            ax[0].set_title(&#39;Original Image&#39;)
+            ax[1].imshow(calImg[:,:,0] + fullLightCorrection)
+            ax[1].set_title(&#39;Corrected Image&#39;)
+
+        fig.tight_layout()
+        plt.show()
+
+    return fullLightCorrection.astype(calibrationImage.dtype)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="pepe.preprocess.Image.checkImageType"><code class="name flex">
+<span>def <span class="ident">checkImageType</span></span>(<span>frame, nef_kwargs={'no_auto_scale': True, 'bright': 0.1})</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Make sure that the image is a proper image, and not a path</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>frame</code></strong> :&ensp;<code>str</code> or <code>numpy.ndarray</code></dt>
+<dd>Either a path to an image, or an image array</dd>
+<dt><strong><code>nef_kwargs</code></strong> :&ensp;<code>dict</code></dt>
+<dd>
+<p>Dictionary of arguments of postprocessing of NEF
+images by rawpy. Only relevant if <code>frame</code> is the path
+to an NEF file.</p>
+<p>For full list of possible parameters, see:
+<a href="https://letmaik.github.io/rawpy/api/rawpy.Params.html#rawpy.Params">https://letmaik.github.io/rawpy/api/rawpy.Params.html#rawpy.Params</a></p>
+</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>numpy.ndarray : The image array</code></dt>
+<dd>&nbsp;</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def checkImageType(frame, nef_kwargs=DEFAULT_NEF_PROCESS_KWARGS):
+    &#34;&#34;&#34;
+    Make sure that the image is a proper image, and not a path
+
+    Parameters
+    ----------
+
+    frame : str or numpy.ndarray
+        Either a path to an image, or an image array
+
+    nef_kwargs : dict
+        Dictionary of arguments of postprocessing of NEF
+        images by rawpy. Only relevant if `frame` is the path
+        to an NEF file.
+
+        For full list of possible parameters, see:
+        https://letmaik.github.io/rawpy/api/rawpy.Params.html#rawpy.Params
+
+    Returns
+    -------
+
+    numpy.ndarray : The image array
+
+    &#34;&#34;&#34;
+    if isinstance(frame, str):
+        # I don&#39;t want to overwrite the image itself, so create a new var for that
+        # Also, we need to open nef images in a special way, since they are a special
+        # format (uses rawpy)
+        if imageType(frame) == &#39;nef&#39;:
+            raw = rawpy.imread(frame)
+            newFrame = raw.postprocess(**nef_kwargs)
+        # Otherwise, we can just read the image normally using Pillow
+        else:
+            newFrame = np.array(Image.open(frame), dtype=np.uint8)
+    else:
+        newFrame = frame
+
+    return newFrame</code></pre>
+</details>
+</dd>
+<dt id="pepe.preprocess.Image.imageType"><code class="name flex">
+<span>def <span class="ident">imageType</span></span>(<span>file)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the image type of a file.</p>
+<p>More or less just extracts the extension, but will return
+<code>None</code> if the extension is not that of an image, so can be
+used in the following way:</p>
+<pre><code>listOfFiles = ['a.png', 'b.bmp', 'c.txt', ...]
+imageFiles = [f for f in listOfFiles if imageType(f)]
+</code></pre>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>file</code></strong> :&ensp;<code>str</code> or <code>Path</code></dt>
+<dd>&nbsp;</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>imageExt</code></strong> :&ensp;<code>str</code> or <code>None</code></dt>
+<dd>Image extension if file is an image, else None.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def imageType(file):
+    &#34;&#34;&#34;
+    Returns the image type of a file.
+
+    More or less just extracts the extension, but will return
+    `None` if the extension is not that of an image, so can be
+    used in the following way:
+
+        listOfFiles = [&#39;a.png&#39;, &#39;b.bmp&#39;, &#39;c.txt&#39;, ...]
+        imageFiles = [f for f in listOfFiles if imageType(f)]
+
+    Parameters
+    ----------
+
+    file : str or Path
+
+    Returns
+    -------
+
+    imageExt : str or None
+        Image extension if file is an image, else None.
+    &#34;&#34;&#34;
+    isImage = file.lower().endswith(tuple(IMAGE_TYPES))
+    return file.split(&#39;.&#39;)[-1].lower() if isImage else None</code></pre>
+</details>
+</dd>
+<dt id="pepe.preprocess.Image.lightCorrectionDiff"><code class="name flex">
+<span>def <span class="ident">lightCorrectionDiff</span></span>(<span>calibrationImage, verticalMask=None, horizontalMask=None, smoothCorrection=True, debug=False, smoothingKernel=31, channel=0, rectify=False)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None, smoothCorrection=True, debug=False, smoothingKernel=31, channel=0, rectify=False):
+    &#34;&#34;&#34;
+    
+    &#34;&#34;&#34;
+
+    calImg = checkImageType(calibrationImage)
+
+    # Slightly different behavior depending on whether we are passed a multichannel
+    # image vs a grayscale one. For multichannel, we calculate a correction for each
+    # channel separately.
+    if calImg.ndim == 3:
+        imgSize = calImg.shape[:2]
+        numChannels = calImg.shape[-1]
+    else:
+        imgSize = calImg.shape
+        numChannels = 1
+        # Add a third dim, so we can treat multi/single channel images
+        # exactly the same way
+        calImg = calImg[:,:,None]
+
+    if verticalMask is None:
+        verticalMask = np.ones(imgSize)
+
+    if horizontalMask is None:
+        horizontalMask = np.ones(imgSize)
+
+    fullLightCorrection = np.zeros((*imgSize, numChannels))
+
+    for i in range(numChannels):
+
+        verticallyMasked = calImg[:,:,i] * verticalMask
+        horizontallyMasked = calImg[:,:,i] * horizontalMask
+
+        # If there are no non-zero pixels, we just move on to the next channel
+        # (and leave this correction as an array of zeros)
+        if len(np.where(verticallyMasked != 0)[0]) == 0:
+            continue
+
+        # This excludes all values of zero, so that we get an actual pixel value we can directly add
+        brightnessByRow = np.nanmean(np.where(verticallyMasked != 0, verticallyMasked, np.nan), axis=1)
+        brightnessByColumn = np.nanmean(np.where(horizontallyMasked != 0, horizontallyMasked, np.nan), axis=0)
+
+        # Now smooth the two curves
+        # Can&#39;t say I know much about this filter, but it seems to work pretty well
+        if smoothCorrection:
+            smoothedBrightnessByColumn = savgol_filter(brightnessByColumn, smoothingKernel, 1)
+            smoothedBrightnessByRow = savgol_filter(brightnessByRow, smoothingKernel, 1)
+        else:
+            smoothedBrightnessByColumn = brightnessByColumn
+            smoothedBrightnessByRow = brightnessByRow
+
+        # Now calculate the correction
+        horizontalCorrection = np.mean(smoothedBrightnessByColumn) - smoothedBrightnessByColumn
+        verticalCorrection = np.mean(smoothedBrightnessByRow) - smoothedBrightnessByRow
+
+        # This object will have the same size as the image, and can just added to
+        # any similar image to correct detected light gradients
+        fullLightCorrection[:,:,i] = np.add.outer(verticalCorrection, horizontalCorrection)
+
+        if rectify:
+            fullLightCorrection[:,:,i] -= np.min(fullLightCorrection[:,:,i])
+
+    # If we have a single channel image originally, we want to keep the same shape
+    # for our return value -- so that the return can immediately be multipled by the
+    # original image -- so we remove the last channel dimension
+    if numChannels == 1:
+        fullLightCorrection = fullLightCorrection[:,:,0]
+
+    if debug:
+        if numChannels &gt; 1:
+            fig, ax = plt.subplots(2, 3, figsize=(12, 8))
+
+            channelNames = [&#39;Red&#39;, &#39;Green&#39;, &#39;Blue&#39;]
+            
+            for i in range(3):
+                ax[0,i].imshow(calImg[:,:,i])
+                ax[0,i].set_title(f&#39;Original {channelNames[i]} Channel&#39;)
+                ax[1,i].imshow(calImg[:,:,i] + fullLightCorrection[:,:,i])
+                ax[1,i].set_title(f&#39;Corrected {channelNames[i]} Channel&#39;)
+
+        else:
+            fig, ax = plt.subplots(1, 2, figsize=(8,4))
+
+            ax[0].imshow(calImg[:,:,0])
+            ax[0].set_title(&#39;Original Image&#39;)
+            ax[1].imshow(calImg[:,:,0] + fullLightCorrection)
+            ax[1].set_title(&#39;Corrected Image&#39;)
+
+        fig.tight_layout()
+        plt.show()
+
+    return fullLightCorrection.astype(calibrationImage.dtype)</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="pepe.preprocess" href="index.html">pepe.preprocess</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="pepe.preprocess.Image.checkImageType" href="#pepe.preprocess.Image.checkImageType">checkImageType</a></code></li>
+<li><code><a title="pepe.preprocess.Image.imageType" href="#pepe.preprocess.Image.imageType">imageType</a></code></li>
+<li><code><a title="pepe.preprocess.Image.lightCorrectionDiff" href="#pepe.preprocess.Image.lightCorrectionDiff">lightCorrectionDiff</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>
