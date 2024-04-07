@@ -35,6 +35,7 @@ import numpy as np
 
 from PIL import Image
 import cv2
+import rawpy
 from scipy.signal import savgol_filter
 
 import matplotlib.pyplot as plt
@@ -69,9 +70,18 @@ def imageType(file):
         Image extension if file is an image, else None.
     &#34;&#34;&#34;
     isImage = file.lower().endswith(tuple(IMAGE_TYPES))
-    return file.split(&#39;.&#39;)[-1] if isImage else None
+    return file.split(&#39;.&#39;)[-1].lower() if isImage else None
 
-def checkImageType(frame):
+# In reading raw nef files, rawpy will automatically
+# do some post processing. These kwargs seem to give
+# me the most natural recreation of the original image
+# (or at least in comparing to the unedited version in
+# darktable)
+DEFAULT_NEF_PROCESS_KWARGS = {&#34;no_auto_scale&#34;: True,
+                              &#34;bright&#34;: .1,
+                             }
+
+def checkImageType(frame, nef_kwargs=DEFAULT_NEF_PROCESS_KWARGS):
     &#34;&#34;&#34;
     Make sure that the image is a proper image, and not a path
 
@@ -81,6 +91,14 @@ def checkImageType(frame):
     frame : str or numpy.ndarray
         Either a path to an image, or an image array
 
+    nef_kwargs : dict
+        Dictionary of arguments of postprocessing of NEF
+        images by rawpy. Only relevant if `frame` is the path
+        to an NEF file.
+
+        For full list of possible parameters, see:
+        https://letmaik.github.io/rawpy/api/rawpy.Params.html#rawpy.Params
+
     Returns
     -------
 
@@ -89,7 +107,14 @@ def checkImageType(frame):
     &#34;&#34;&#34;
     if isinstance(frame, str):
         # I don&#39;t want to overwrite the image itself, so create a new var for that
-        newFrame = np.array(Image.open(frame), dtype=np.uint8)
+        # Also, we need to open nef images in a special way, since they are a special
+        # format (uses rawpy)
+        if imageType(frame) == &#39;nef&#39;:
+            raw = rawpy.imread(frame)
+            newFrame = raw.postprocess(**nef_kwargs)
+        # Otherwise, we can just read the image normally using Pillow
+        else:
+            newFrame = np.array(Image.open(frame), dtype=np.uint8)
     else:
         newFrame = frame
 
@@ -198,7 +223,7 @@ def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="pepe.preprocess.Image.checkImageType"><code class="name flex">
-<span>def <span class="ident">checkImageType</span></span>(<span>frame)</span>
+<span>def <span class="ident">checkImageType</span></span>(<span>frame, nef_kwargs={'no_auto_scale': True, 'bright': 0.1})</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Make sure that the image is a proper image, and not a path</p>
@@ -206,6 +231,14 @@ def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None
 <dl>
 <dt><strong><code>frame</code></strong> :&ensp;<code>str</code> or <code>numpy.ndarray</code></dt>
 <dd>Either a path to an image, or an image array</dd>
+<dt><strong><code>nef_kwargs</code></strong> :&ensp;<code>dict</code></dt>
+<dd>
+<p>Dictionary of arguments of postprocessing of NEF
+images by rawpy. Only relevant if <code>frame</code> is the path
+to an NEF file.</p>
+<p>For full list of possible parameters, see:
+<a href="https://letmaik.github.io/rawpy/api/rawpy.Params.html#rawpy.Params">https://letmaik.github.io/rawpy/api/rawpy.Params.html#rawpy.Params</a></p>
+</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -216,7 +249,7 @@ def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def checkImageType(frame):
+<pre><code class="python">def checkImageType(frame, nef_kwargs=DEFAULT_NEF_PROCESS_KWARGS):
     &#34;&#34;&#34;
     Make sure that the image is a proper image, and not a path
 
@@ -226,6 +259,14 @@ def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None
     frame : str or numpy.ndarray
         Either a path to an image, or an image array
 
+    nef_kwargs : dict
+        Dictionary of arguments of postprocessing of NEF
+        images by rawpy. Only relevant if `frame` is the path
+        to an NEF file.
+
+        For full list of possible parameters, see:
+        https://letmaik.github.io/rawpy/api/rawpy.Params.html#rawpy.Params
+
     Returns
     -------
 
@@ -234,7 +275,14 @@ def lightCorrectionDiff(calibrationImage, verticalMask=None, horizontalMask=None
     &#34;&#34;&#34;
     if isinstance(frame, str):
         # I don&#39;t want to overwrite the image itself, so create a new var for that
-        newFrame = np.array(Image.open(frame), dtype=np.uint8)
+        # Also, we need to open nef images in a special way, since they are a special
+        # format (uses rawpy)
+        if imageType(frame) == &#39;nef&#39;:
+            raw = rawpy.imread(frame)
+            newFrame = raw.postprocess(**nef_kwargs)
+        # Otherwise, we can just read the image normally using Pillow
+        else:
+            newFrame = np.array(Image.open(frame), dtype=np.uint8)
     else:
         newFrame = frame
 
@@ -289,7 +337,7 @@ imageFiles = [f for f in listOfFiles if imageType(f)]
         Image extension if file is an image, else None.
     &#34;&#34;&#34;
     isImage = file.lower().endswith(tuple(IMAGE_TYPES))
-    return file.split(&#39;.&#39;)[-1] if isImage else None</code></pre>
+    return file.split(&#39;.&#39;)[-1].lower() if isImage else None</code></pre>
 </details>
 </dd>
 <dt id="pepe.preprocess.Image.lightCorrectionDiff"><code class="name flex">

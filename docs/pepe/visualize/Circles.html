@@ -36,40 +36,89 @@ import matplotlib.pyplot as plt
 
 from pepe.visualize import genColors
 
-def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColors=False, setBounds=False, linewidth=1):
+def visCircles(centers, radii, ax=None, color=None, sameColors=False, annotations=None, setBounds=False, linewidth=1):
     &#34;&#34;&#34;
     Draw circles on an axis.
 
     Parameters
     ----------
 
-    centers : np.ndarray[N,2] or list[N,2]
+    centers : iterable[N,2] of float
         List of particle centers [y,x] (in pixels).
 
-    radii : np.ndarray[N] or list[N]
+    radii : float or iterable[N] of float
         List of particle radii (in pixels).
+
+    ax : matplotlib axis or None
+        Axis to draw the circles on. If `None`, a new
+        axis will be created.
+
+    color : iterable of color type (str, hex, etc.) or single color type
+        Color of the perimeter of the circles. Can be 
+        an iterable of colors allowing for different colors
+        for each circle. Can also be a list of values, which will
+        be used to create a color map.
+
+    sameColors : bool
+        If `color=None`, then colors will be chosen automatically;
+        these can either be all the same color (`sameColors=True`)
+        or all distinct colors (`sameColors=False`).
+
+        Only relevant if `color=None`.
+
+    annotations : iterable
+        Annotations/labels for each point to be drawn next
+        to the corresponding circle. Can be any type that
+        can be converted to a string use `str(*)`.
+
+    setBounds : bool
+        Whether to set the boundaries of the axes based on the
+        positions of the circles (`setBounds=True`) or to leave
+        them as default (`setBounds=False`).
+
+        For example, if drawing circles on top of an image,
+        you should use `setBounds=False`, since the image will
+        take care of making sure everything is shown, but if you
+        are just drawing circles on an empty canvas (for example,
+        if `ax=none` and you aren&#39;t drawing anything afterwards)
+        then you should use `setBounds=True`.
+
+    lineWidth : float
+        The width of the perimeter of the circles.
+
+    Returns
+    -------
+    ax : matplotlib axis
+        
     &#34;&#34;&#34;
     # Cut out nan values
-    goodIndices = np.array([0 if np.isnan(r) else 1 for r in radii])
-    npRadii = np.array([r for r in radii if not np.isnan(r)])
+    # It is assumed that both of the center and the radius will be nan
+    if hasattr(radii, &#39;__iter__&#39;):
+        goodIndices = np.array([0 if np.isnan(r) else 1 for r in radii])
+        npRadii = np.array([r for r in radii if not np.isnan(r)])
+    else:
+        goodIndices = np.ones(len(centers), dtype=np.uint8)
+        npRadii = np.repeat(radii, len(centers))
+    
     npCenters = np.array([c for c in centers if not np.isnan(c[0])])
 
     if ax is None:
         fig, ax = plt.subplots()
 
-    if colors is None:
+    if color is None:
         if sameColors:
             singleColor = genColors(1)[0]
             circleColorsList = [singleColor for _ in range(len(npCenters))]
         else:
             circleColorsList = genColors(len(npCenters))
-
-    elif not type(colors) is list:
+    # We can&#39;t just check if color has the attribute &#39;__iter__&#39;
+    # since a string will have that, and a string could just be
+    # a single color
+    elif not type(color) in [list, np.ndarray]:
         # If a single color is given, we want to repeat that
-        circleColorsList = [colors for _ in range(len(npCenters))]
-
+        circleColorsList = [color for _ in range(len(npCenters))]
     else:
-        circleColorsList = colors
+        circleColorsList = color
 
     for i in range(len(npCenters)):
         c = plt.Circle(npCenters[i,::-1], npRadii[i], color=circleColorsList[i], fill=False, linewidth=linewidth)
@@ -101,55 +150,142 @@ def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColor
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="pepe.visualize.Circles.visCircles"><code class="name flex">
-<span>def <span class="ident">visCircles</span></span>(<span>centers, radii, ax=None, colors=None, annotations=None, sameColors=False, setBounds=False, linewidth=1)</span>
+<span>def <span class="ident">visCircles</span></span>(<span>centers, radii, ax=None, color=None, sameColors=False, annotations=None, setBounds=False, linewidth=1)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Draw circles on an axis.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
-<dt><strong><code>centers</code></strong> :&ensp;<code>np.ndarray[N,2]</code> or <code>list[N,2]</code></dt>
+<dt><strong><code>centers</code></strong> :&ensp;<code>iterable[N,2]</code> of <code>float</code></dt>
 <dd>List of particle centers [y,x] (in pixels).</dd>
-<dt><strong><code>radii</code></strong> :&ensp;<code>np.ndarray[N]</code> or <code>list[N]</code></dt>
+<dt><strong><code>radii</code></strong> :&ensp;<code>float</code> or <code>iterable[N]</code> of <code>float</code></dt>
 <dd>List of particle radii (in pixels).</dd>
+<dt><strong><code>ax</code></strong> :&ensp;<code>matplotlib axis</code> or <code>None</code></dt>
+<dd>Axis to draw the circles on. If <code>None</code>, a new
+axis will be created.</dd>
+<dt><strong><code>color</code></strong> :&ensp;<code>iterable</code> of <code>color type (str, hex, etc.)</code> or <code>single color type</code></dt>
+<dd>Color of the perimeter of the circles. Can be
+an iterable of colors allowing for different colors
+for each circle. Can also be a list of values, which will
+be used to create a color map.</dd>
+<dt><strong><code>sameColors</code></strong> :&ensp;<code>bool</code></dt>
+<dd>
+<p>If <code>color=None</code>, then colors will be chosen automatically;
+these can either be all the same color (<code>sameColors=True</code>)
+or all distinct colors (<code>sameColors=False</code>).</p>
+<p>Only relevant if <code>color=None</code>.</p>
+</dd>
+<dt><strong><code>annotations</code></strong> :&ensp;<code>iterable</code></dt>
+<dd>Annotations/labels for each point to be drawn next
+to the corresponding circle. Can be any type that
+can be converted to a string use <code>str(*)</code>.</dd>
+<dt><strong><code>setBounds</code></strong> :&ensp;<code>bool</code></dt>
+<dd>
+<p>Whether to set the boundaries of the axes based on the
+positions of the circles (<code>setBounds=True</code>) or to leave
+them as default (<code>setBounds=False</code>).</p>
+<p>For example, if drawing circles on top of an image,
+you should use <code>setBounds=False</code>, since the image will
+take care of making sure everything is shown, but if you
+are just drawing circles on an empty canvas (for example,
+if <code>ax=none</code> and you aren't drawing anything afterwards)
+then you should use <code>setBounds=True</code>.</p>
+</dd>
+<dt><strong><code>lineWidth</code></strong> :&ensp;<code>float</code></dt>
+<dd>The width of the perimeter of the circles.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>ax</code></strong> :&ensp;<code>matplotlib axis</code></dt>
+<dd>&nbsp;</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def visCircles(centers, radii, ax=None, colors=None, annotations=None, sameColors=False, setBounds=False, linewidth=1):
+<pre><code class="python">def visCircles(centers, radii, ax=None, color=None, sameColors=False, annotations=None, setBounds=False, linewidth=1):
     &#34;&#34;&#34;
     Draw circles on an axis.
 
     Parameters
     ----------
 
-    centers : np.ndarray[N,2] or list[N,2]
+    centers : iterable[N,2] of float
         List of particle centers [y,x] (in pixels).
 
-    radii : np.ndarray[N] or list[N]
+    radii : float or iterable[N] of float
         List of particle radii (in pixels).
+
+    ax : matplotlib axis or None
+        Axis to draw the circles on. If `None`, a new
+        axis will be created.
+
+    color : iterable of color type (str, hex, etc.) or single color type
+        Color of the perimeter of the circles. Can be 
+        an iterable of colors allowing for different colors
+        for each circle. Can also be a list of values, which will
+        be used to create a color map.
+
+    sameColors : bool
+        If `color=None`, then colors will be chosen automatically;
+        these can either be all the same color (`sameColors=True`)
+        or all distinct colors (`sameColors=False`).
+
+        Only relevant if `color=None`.
+
+    annotations : iterable
+        Annotations/labels for each point to be drawn next
+        to the corresponding circle. Can be any type that
+        can be converted to a string use `str(*)`.
+
+    setBounds : bool
+        Whether to set the boundaries of the axes based on the
+        positions of the circles (`setBounds=True`) or to leave
+        them as default (`setBounds=False`).
+
+        For example, if drawing circles on top of an image,
+        you should use `setBounds=False`, since the image will
+        take care of making sure everything is shown, but if you
+        are just drawing circles on an empty canvas (for example,
+        if `ax=none` and you aren&#39;t drawing anything afterwards)
+        then you should use `setBounds=True`.
+
+    lineWidth : float
+        The width of the perimeter of the circles.
+
+    Returns
+    -------
+    ax : matplotlib axis
+        
     &#34;&#34;&#34;
     # Cut out nan values
-    goodIndices = np.array([0 if np.isnan(r) else 1 for r in radii])
-    npRadii = np.array([r for r in radii if not np.isnan(r)])
+    # It is assumed that both of the center and the radius will be nan
+    if hasattr(radii, &#39;__iter__&#39;):
+        goodIndices = np.array([0 if np.isnan(r) else 1 for r in radii])
+        npRadii = np.array([r for r in radii if not np.isnan(r)])
+    else:
+        goodIndices = np.ones(len(centers), dtype=np.uint8)
+        npRadii = np.repeat(radii, len(centers))
+    
     npCenters = np.array([c for c in centers if not np.isnan(c[0])])
 
     if ax is None:
         fig, ax = plt.subplots()
 
-    if colors is None:
+    if color is None:
         if sameColors:
             singleColor = genColors(1)[0]
             circleColorsList = [singleColor for _ in range(len(npCenters))]
         else:
             circleColorsList = genColors(len(npCenters))
-
-    elif not type(colors) is list:
+    # We can&#39;t just check if color has the attribute &#39;__iter__&#39;
+    # since a string will have that, and a string could just be
+    # a single color
+    elif not type(color) in [list, np.ndarray]:
         # If a single color is given, we want to repeat that
-        circleColorsList = [colors for _ in range(len(npCenters))]
-
+        circleColorsList = [color for _ in range(len(npCenters))]
     else:
-        circleColorsList = colors
+        circleColorsList = color
 
     for i in range(len(npCenters)):
         c = plt.Circle(npCenters[i,::-1], npRadii[i], color=circleColorsList[i], fill=False, linewidth=linewidth)
