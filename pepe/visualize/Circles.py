@@ -4,7 +4,7 @@ Methods to visualize the positions of particles.
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pepe.visualize import genColors
+from pepe.visualize import genColors, checkColorType
 
 def visCircles(centers, radii, ax=None, color=None, sameColors=False, annotations=None, setBounds=False, linewidth=1):
     """
@@ -91,7 +91,7 @@ def visCircles(centers, radii, ax=None, color=None, sameColors=False, annotation
         circleColorsList = color
 
     for i in range(len(npCenters)):
-        c = plt.Circle(npCenters[i,::-1], npRadii[i], color=circleColorsList[i], fill=False, linewidth=linewidth)
+        c = plt.Circle(npCenters[i,::-1], npRadii[i], color=checkColorType(circleColorsList[i]), fill=False, linewidth=linewidth)
         ax.add_artist(c)
 
     if annotations is not None:

@@ -6,7 +6,7 @@ still the most apt place to put this code.
 import numpy as np
 from scipy.spatial import KDTree
 
-def spatialClusterLabels(points, l=.001):
+def spatialClusterLabels(points, l=.001, randomize=False):
     """
     Partition a set of points in clusters, and return the
     cluster label for each point.
@@ -18,6 +18,31 @@ def spatialClusterLabels(points, l=.001):
     larger than this distance threshold (eg. think of a
     chain of points).
 
+    Usage
+    -----
+    The partitioning process is done by iterating through all
+    of the provided points, and identifying their neighbors. As
+    such, this process can vary based on the order the points are
+    provided in. There are two different ways to deal with this
+    while still maintaining reproducible results.
+
+    First, you can order the points in some meaningful way, with
+    the more important (whatever that means for your case) points
+    coming first. This should be done before calling this partitioning
+    method. Second, you can use the `randomize=True` kwarg, and rely
+    on the fact that this should lead to a statistically sound
+    calculation.
+
+    As an example, consider identifying clusters of points above some
+    threshold (whether in brightness, \(G^2\), or whatever else) in
+    an image. For the first approach, you might order the points by the
+    magnitude of the parameter you are thresholding with respect to, since
+    eg. it could be assumed that very bright points are more important
+    than points that are just barely above the threshold. For the second
+    approach, you might perform the clustering process M times to get
+    a statistical ensemble, and then resolve the individual partitionings
+    into a single combined one.
+
     Parameters
     ----------
     points : numpy.ndarray[N,d]
@@ -26,6 +51,12 @@ def spatialClusterLabels(points, l=.001):
     l : float
         Distance threshold to consider two points as being in the
         same cluster. Given as fraction of the total system size.
+
+    randomize : bool
+        The clustering processes is dependent on the order of
+        the points; if `randomize=True`, the provided array will
+        be indexed in a random order, otherwise it will be accessed
+        exactly as provided.
         
     Returns
     -------
@@ -42,8 +73,11 @@ def spatialClusterLabels(points, l=.001):
     kdTree = KDTree(points)
 
     pointsList = points.tolist()
+
     randomOrder = np.arange(len(pointsList))
-    np.random.shuffle(randomOrder)
+
+    if randomize:
+        np.random.shuffle(randomOrder)
     
     labels = np.zeros(len(pointsList)) - 1
     labelsToMerge = []
@@ -143,12 +177,13 @@ def spatialClusterLabels(points, l=.001):
 
     return mergedLabels
 
-def spatialClusterCenters(points, l=.001, return_weights=False):
+def spatialClusterCenters(points, l=.001, randomize=False, return_weights=False):
     """
     Partition a set of points in clusters, and compute the
     center of each cluster.
 
-    Generates clusters using `pepe.topology.spatialClusterLabels()`.
+    Generates clusters using `pepe.topology.spatialClusterLabels()`; see
+    this method for more information.
 
     Parameters
     ----------
@@ -158,6 +193,14 @@ def spatialClusterCenters(points, l=.001, return_weights=False):
     l : float
         Distance threshold to consider two points as being in the
         same cluster. Given as fraction of the total system size.
+
+    randomize : bool
+        The clustering processes is dependent on the order of
+        the points; if `randomOrder=True`, the provided array will
+        be indexed in a random order, otherwise it will be accessed
+        exactly as provided. 
+        
+        See documentation for `pepe.topology.spatialClusterLabels()`.
 
     return_weights : bool
         Whether to return the weight -- defined as the fraction of
@@ -175,7 +218,7 @@ def spatialClusterCenters(points, l=.001, return_weights=False):
         `return_weights=True`.
 
     """
-    labels = spatialClusterLabels(points, l=l)
+    labels = spatialClusterLabels(points, l=l, randomize=randomize)
     numLabels = int(np.max(labels))+1
     
     # Compute the center of each cluster

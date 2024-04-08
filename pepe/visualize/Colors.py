@@ -3,6 +3,7 @@ Methods to generate good color schemes for visualization.
 """
 import numpy as np
 import matplotlib.colors as mcolors
+import colour
 
 from sklearn.neighbors import KDTree
 
@@ -24,6 +25,35 @@ MANUAL_COLORS = ['#7E1E9C', # Purple
                 '#6E750E', # Olive
                 '#00FFFF', # Cyan
                 ]
+
+
+def checkColorType(c):
+    """
+    Will check whether `c` is a valid
+    color to be used for plotting, visualization, etc.
+    (eg. valid hex codes, colors defined by matplotlib, etc.)
+    
+    If the color is valid, it will be returned; if it is not
+    valid, a color will be generated using colour.Color(pick_for=c)
+    such that this method called with the same argument will return
+    the same color.
+
+    Parameters
+    ----------
+
+    c : color type (str, hex, etc.) or object
+        Either a valid color, or an object for
+        which a color should be chosen for.
+
+    Returns
+    -------
+
+    color : valid color
+    """
+    if mcolors.is_color_like(c):
+        return c
+
+    return str(colour.Color(pick_for=c))
 
 
 def rgbToHex(rgbC):
