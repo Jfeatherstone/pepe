@@ -121,6 +121,9 @@ def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizeP
         See `pepe.topology.findPeaks1D()` or `pepe.topology.findPeaks2D()` for
         more information.
 
+        Can only be used when `neighborInclusion=1`. WIP to remove this
+        constraint.
+
     Returns
     -------
 
@@ -155,11 +158,15 @@ def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizeP
     d = np.array(data).ndim
     
     # Call the optimized versions of the peak finding if allowed.
-    if allowOptimize:
+    if allowOptimize and neighborInclusion == 1:
         if d == 1:
-            return findPeaks1D(data, neighborInclusion, minPeakPrevalence, normalizePrevalence)
+            peaks, prev = findPeaks1D(data, minPeakPrevalence, normalizePrevalence)
+            # Have to convert to numpy arrays to be consistent with the
+            # unoptimized call return
+            return (np.array(peaks), np.array(prev))
         elif d == 2:
-            return findPeaks2D(data, neighborInclusion, minPeakPrevalence, normalizePrevalence)
+            peaks, prev = findPeaks2D(data, minPeakPrevalence, normalizePrevalence)
+            return (np.array(peaks), np.array(prev))
         
     # This array contains the indices of the peak that each point
     # belongs to (assuming it does belong to a peak)
@@ -406,7 +413,7 @@ def _findPeaks2DIter(data, sortedIndices):
     return peakMembership, peakBirthIndices
 
 
-@numba.njit(cache=True)
+#@numba.njit(cache=True)
 def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
     """
     Find peaks in one dimensional data using persistent homology.
@@ -577,7 +584,14 @@ def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
     # height of the death point
     # We could do this using the arrays we've stored along the way, but it's easier just to take the
     # max/min heights directly from the data
-    peakPrevalences = np.array([data[peakPositions[i]] - np.min(data[peakMembership == i]) for i in range(len(peakBoundsIndices))])
+
+    # By this definition, you can't possibly have a peak that consists of only a
+    # single point, but we might have gotten some of these from process above.
+    # Honestly not really sure why they show up, but we have to check just in case.
+    goodPeaks = [(peakBoundsIndices[i][1] - peakBoundsIndices[i][0]) > 0 for i in range(len(peakBoundsIndices))]
+    
+    peakPrevalences = np.array([data[peakPositions[i]] - np.min(data[peakMembership == i]) for i in range(len(peakPositions)) if goodPeaks[i]])
+    peakPositions = peakPositions[goodPeaks]
 
     # Also note that I have made the decision here to normalize these prevalences by the total range
     # of the data, such that a prevalence of .6 means that the peak spans 60% of the range of the data.
