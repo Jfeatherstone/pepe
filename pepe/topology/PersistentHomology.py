@@ -53,7 +53,7 @@ def _iterNeighbors(p, tShape, neighborInclusion=1):
             yield tuple(n)
 
 
-def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizePrevalence=True):
+def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizePrevalence=True, allowOptimize=True):
     """
     Identify peaks in multi-dimensional data using persistent topology.
 
@@ -77,9 +77,12 @@ def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizeP
     peaks in 1D or 2D data, it is recommended to instead use either `pepe.topology.findPeaks1D()`
     or `pepe.topology.findPeaks2D()`, as these *are* optimized.
 
+    The kwarg `allowOptimize` (Default: True) will instead call either
+    `pepe.topology.findPeaks1D()` or `pepe.topology.findPeaks2D()` for 1- or 2-dimensional cases
+    instead of the generalized method. This usually results in a 10x-100x speedup.
+
     Parameters
     ----------
-
     data : np.ndarray[d]
         An array of data points within which to identify peaks in d-dimensional space.
 
@@ -109,6 +112,14 @@ def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizeP
         kwarg to clip smaller peaks, and thus the minimum value should be
         specified as a percent (eg. .3 for 30%) is the normalizePrevalence
         kwarg is True.
+
+    allowOptimize : bool
+        Whether to allow the function to call the numba-optimized methods
+        specific to 1- or 2-dimensional data when possible instead of
+        the generalized method.
+
+        See `pepe.topology.findPeaks1D()` or `pepe.topology.findPeaks2D()` for
+        more information.
 
     Returns
     -------
@@ -141,7 +152,15 @@ def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizeP
     Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8218-4925-5
 
     """ 
+    d = np.array(data).ndim
     
+    # Call the optimized versions of the peak finding if allowed.
+    if allowOptimize:
+        if d == 1:
+            return findPeaks1D(data, neighborInclusion, minPeakPrevalence, normalizePrevalence)
+        elif d == 2:
+            return findPeaks2D(data, neighborInclusion, minPeakPrevalence, normalizePrevalence)
+        
     # This array contains the indices of the peak that each point
     # belongs to (assuming it does belong to a peak)
     # We start it at -1 such that we can check if a point belongs to

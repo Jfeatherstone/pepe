@@ -6,7 +6,9 @@ still the most apt place to put this code.
 import numpy as np
 from scipy.spatial import KDTree
 
-def spatialClusterLabels(points, l=.001, randomize=False):
+import matplotlib.pyplot as plt
+
+def spatialClusterLabels(points, l=.001, randomize=False, wrapPoints=None):
     """
     Partition a set of points in clusters, and return the
     cluster label for each point.
@@ -57,6 +59,16 @@ def spatialClusterLabels(points, l=.001, randomize=False):
         the points; if `randomize=True`, the provided array will
         be indexed in a random order, otherwise it will be accessed
         exactly as provided.
+
+    wrapPoints : numpy.ndarray[d] or float or None
+        If the space is periodic, the size of each dimension. If
+        a single value is given, this will be used for all dimensions.
+
+        If None, no periodicity is assumed.
+
+        Can have a mix of periodic and non-periodic dimensions,
+        eg. spherical coordinates should have:
+            `wrapPoints=[None, 2*np.pi, np.pi]`
         
     Returns
     -------
@@ -68,9 +80,22 @@ def spatialClusterLabels(points, l=.001, randomize=False):
     
     systemLengthScale = np.sqrt(np.sum([(np.max(points[:,i]) - np.min(points[:,i]))**2 for i in range(d)]))
     threshold = l*systemLengthScale
-    
+   
     # Generate a kd-tree
-    kdTree = KDTree(points)
+    # If we have a periodic space, we need to clean and pass that
+    # information to the kd tree
+    if hasattr(wrapPoints, '__iter__'):
+        assert len(wrapPoints) == d, f'Wrap dimensions ({len(wrapPoints)}) do not match the dimension of the data ({d})!'
+
+        boxSize = np.array([wrapPoints[i] if wrapPoints[i] is not None else np.max(points[:,i])*10 for i in range(d)])
+        kdTree = KDTree(points, boxsize=boxSize)
+
+    elif wrapPoints is not None:
+        boxSize = np.repeat(wrapPoints, d)
+        kdTree = KDTree(points, boxsize=boxSize)
+    
+    else:
+        kdTree = KDTree(points)
 
     pointsList = points.tolist()
 
@@ -177,7 +202,7 @@ def spatialClusterLabels(points, l=.001, randomize=False):
 
     return mergedLabels
 
-def spatialClusterCenters(points, l=.001, randomize=False, return_weights=False):
+def spatialClusterCenters(points, l=.001, randomize=False, wrapPoints=None, pointWeights=None, return_weights=False):
     """
     Partition a set of points in clusters, and compute the
     center of each cluster.
@@ -202,9 +227,27 @@ def spatialClusterCenters(points, l=.001, randomize=False, return_weights=False)
         
         See documentation for `pepe.topology.spatialClusterLabels()`.
 
+    wrapPoints : numpy.ndarray[d] or float or None
+        If the space is periodic, the size of each dimension. If
+        a single value is given, this will be used for all dimensions.
+
+        If None, no periodicity is assumed.
+
+        Can have a mix of periodic and non-periodic dimensions,
+        eg. spherical coordinates should have:
+            `wrapPoints=[None, 2*np.pi, np.pi]`
+
+    pointWeights : numpy.ndarray[N] or None
+        An array of weights to be used in finding the center of
+        mass of each cluster. If `None`, every point will be
+        weighted the same.
+
     return_weights : bool
         Whether to return the weight -- defined as the fraction of
         points included in that cluster -- alongside the centers.
+
+        If a weight is given for each point using `pointWeights`, this
+        will be used in calculating the weight of a cluster.
         
     Returns
     -------
@@ -218,17 +261,66 @@ def spatialClusterCenters(points, l=.001, randomize=False, return_weights=False)
         `return_weights=True`.
 
     """
-    labels = spatialClusterLabels(points, l=l, randomize=randomize)
+    labels = spatialClusterLabels(points, l=l, randomize=randomize, wrapPoints=wrapPoints)
     numLabels = int(np.max(labels))+1
-    
+
+    if hasattr(pointWeights, '__iter__'):
+        individualWeights = pointWeights
+    else:
+        individualWeights = np.ones_like(labels)
+
     # Compute the center of each cluster
     weights = np.zeros(numLabels)
     centers = np.zeros((numLabels, np.shape(points)[-1]))
-    
-    for i in range(numLabels):
-        indices = np.where(labels == i)
-        centers[i] = np.mean(np.array(points)[indices], axis=0)
-        weights[i] = len(indices[0])/len(labels)
+     
+    # If our data is periodic, we can't just take the average of
+    # the positions, we have to account for the possibility
+    # that a cluster wraps around a boundary.
+    if hasattr(wrapPoints, '__init__') or wrapPoints is not None:
+        for i in range(numLabels):
+            indices = np.where(labels == i)[0]
+            # We can check if we have a discontinuous jump by looking at the
+            # sort changes in each dimension. If there is a jump that is larger
+            # than half of the dimension size, this means that boundary needs to
+            # be factored in.
+            boundaryCrosses = [False]*np.shape(points)[-1]
+            divideCenters = [np.nan]*np.shape(points)[-1]
+            for j in range(np.shape(points)[-1]):
+                oneDimPoints = np.sort(points[indices,j])
+                diffArr = oneDimPoints[1:] - oneDimPoints[:-1]
+                maxIndex = np.argmax(np.abs(diffArr))
+                boundaryCrosses[j] = np.abs(diffArr[maxIndex]) > wrapPoints[j]/2
+                # Record where the center of the gap between the two sides is
+                divideCenters[j] = (oneDimPoints[maxIndex] + oneDimPoints[maxIndex+1])/2
+
+            # Now we adjust the axes that were identified
+            # Not the best naming but this array contains points that
+            # are wrapped whereas wrapPoints contains the actual points
+            # at which the space wraps around itself...
+            wrappedPoints = np.array(points)[indices]
+            for j in np.where(boundaryCrosses)[0]:
+                # We have to find all of the points on one side of the wrap
+                preWrapIndices = np.where(wrappedPoints[:,j] < divideCenters[j])
+                # Move them to the other side of the wrap
+                wrappedPoints[preWrapIndices,j] += wrapPoints[j]
+
+            # Take the weighted average
+            centers[i] = np.average(wrappedPoints, weights=individualWeights[indices], axis=0)
+            weights[i] = np.sum(individualWeights[indices]) / np.sum(individualWeights)
+
+            # Adjust in case we ended up outside on the wrong side
+            # of the boundary
+            # TODO
+            axisNeedsAdjusting = (centers[i] / wrapPoints) > 1
+            for j in np.where(axisNeedsAdjusting)[0]:
+                centers[i][j] -= wrapPoints[j]
+
+    else:
+        for i in range(numLabels):
+            indices = np.where(labels == i)
+            # Weighted average
+            centers[i] = np.average(np.array(points)[indices], weights=individualWeights[indices], axis=0)
+            weights[i] = np.sum(individualWeights[indices]) / np.sum(individualWeights)
 
     order = np.argsort(weights)[::-1]
     centers = centers[order]
