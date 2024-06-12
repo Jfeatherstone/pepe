@@ -276,7 +276,7 @@ def spatialClusterCenters(points, l=.001, randomize=False, wrapPoints=None, poin
     # If our data is periodic, we can't just take the average of
     # the positions, we have to account for the possibility
     # that a cluster wraps around a boundary.
-    if hasattr(wrapPoints, '__init__') or wrapPoints is not None:
+    if hasattr(wrapPoints, '__iter__') or wrapPoints is not None:
         for i in range(numLabels):
             indices = np.where(labels == i)[0]
             # We can check if we have a discontinuous jump by looking at the

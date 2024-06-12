@@ -572,14 +572,17 @@ def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True, periodic
         if leftAssigned and not rightAssigned:
             # Expand the peak bounds to include this new point
             # (1 index because the peak is expanding to the right)
-            peakBoundsIndices[peakMembership[leftIndex]][1] += 1
+            # We may have to wrap it around; we don't actually need to
+            # check for the periodic condition, since it will only reach
+            # the point of needing to be wrapped if this condition is true
+            peakBoundsIndices[peakMembership[leftIndex]][1] = (peakBoundsIndices[peakMembership[leftIndex]][1] + 1) % len(data)
             peakMembership[i] = peakMembership[leftIndex]
 
 
         if rightAssigned and not leftAssigned:
             # Expand the peak bounds to include this new point
             # (0 index because the peak is expanding to the left)
-            peakBoundsIndices[peakMembership[rightIndex]][0] -= 1
+            peakBoundsIndices[peakMembership[rightIndex]][0] = (peakBoundsIndices[peakMembership[rightIndex]][0] - 1) % len(data)
             peakMembership[i] = peakMembership[rightIndex]
 
         # If both left and right belong to peaks, that means one of them will
