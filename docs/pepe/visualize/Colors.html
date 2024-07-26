@@ -33,6 +33,7 @@ Methods to generate good color schemes for visualization.
 &#34;&#34;&#34;
 import numpy as np
 import matplotlib.colors as mcolors
+import colour
 
 from sklearn.neighbors import KDTree
 
@@ -54,6 +55,35 @@ MANUAL_COLORS = [&#39;#7E1E9C&#39;, # Purple
                 &#39;#6E750E&#39;, # Olive
                 &#39;#00FFFF&#39;, # Cyan
                 ]
+
+
+def checkColorType(c):
+    &#34;&#34;&#34;
+    Will check whether `c` is a valid
+    color to be used for plotting, visualization, etc.
+    (eg. valid hex codes, colors defined by matplotlib, etc.)
+    
+    If the color is valid, it will be returned; if it is not
+    valid, a color will be generated using colour.Color(pick_for=c)
+    such that this method called with the same argument will return
+    the same color.
+
+    Parameters
+    ----------
+
+    c : color type (str, hex, etc.) or object
+        Either a valid color, or an object for
+        which a color should be chosen for.
+
+    Returns
+    -------
+
+    color : valid color
+    &#34;&#34;&#34;
+    if mcolors.is_color_like(c):
+        return c
+
+    return str(colour.Color(pick_for=c))
 
 
 def rgbToHex(rgbC):
@@ -242,6 +272,61 @@ def rgbToLab(inputColor):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="pepe.visualize.Colors.checkColorType"><code class="name flex">
+<span>def <span class="ident">checkColorType</span></span>(<span>c)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Will check whether <code>c</code> is a valid
+color to be used for plotting, visualization, etc.
+(eg. valid hex codes, colors defined by matplotlib, etc.)</p>
+<p>If the color is valid, it will be returned; if it is not
+valid, a color will be generated using colour.Color(pick_for=c)
+such that this method called with the same argument will return
+the same color.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>c</code></strong> :&ensp;<code>color type (str, hex, etc.)</code> or <code>object</code></dt>
+<dd>Either a valid color, or an object for
+which a color should be chosen for.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>color</code></strong> :&ensp;<code>valid color</code></dt>
+<dd>&nbsp;</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def checkColorType(c):
+    &#34;&#34;&#34;
+    Will check whether `c` is a valid
+    color to be used for plotting, visualization, etc.
+    (eg. valid hex codes, colors defined by matplotlib, etc.)
+    
+    If the color is valid, it will be returned; if it is not
+    valid, a color will be generated using colour.Color(pick_for=c)
+    such that this method called with the same argument will return
+    the same color.
+
+    Parameters
+    ----------
+
+    c : color type (str, hex, etc.) or object
+        Either a valid color, or an object for
+        which a color should be chosen for.
+
+    Returns
+    -------
+
+    color : valid color
+    &#34;&#34;&#34;
+    if mcolors.is_color_like(c):
+        return c
+
+    return str(colour.Color(pick_for=c))</code></pre>
+</details>
+</dd>
 <dt id="pepe.visualize.Colors.genColors"><code class="name flex">
 <span>def <span class="ident">genColors</span></span>(<span>size, seed=21)</span>
 </code></dt>
@@ -539,6 +624,7 @@ colors is maximized.</p>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="pepe.visualize.Colors.checkColorType" href="#pepe.visualize.Colors.checkColorType">checkColorType</a></code></li>
 <li><code><a title="pepe.visualize.Colors.genColors" href="#pepe.visualize.Colors.genColors">genColors</a></code></li>
 <li><code><a title="pepe.visualize.Colors.genRandomColors" href="#pepe.visualize.Colors.genRandomColors">genRandomColors</a></code></li>
 <li><code><a title="pepe.visualize.Colors.genRandomDistancedColors" href="#pepe.visualize.Colors.genRandomDistancedColors">genRandomDistancedColors</a></code></li>

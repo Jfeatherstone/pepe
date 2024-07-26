@@ -37,7 +37,7 @@ import numba
 import matplotlib.pyplot as plt
 
 
-def _iterNeighbors(p, tShape, neighborInclusion=1):
+def _iterNeighbors(p, tShape, neighborInclusion=1, periodic=False):
     &#34;&#34;&#34;
     Find the indices of all neighbors of an `d`-dimensional point.
 
@@ -45,13 +45,24 @@ def _iterNeighbors(p, tShape, neighborInclusion=1):
 
     Parameters
     ----------
-
     p : tuple[d]
         A tuple of indices representing a point in $Z^d$.
 
     tShape : tuple[d]
         The size of the grid/tensor in each dimension, such that
         points outside of the domain can be removed.
+
+    neighborInclusion : int
+        The number of points on each side of the point in each dimension
+        to include as neighbors.
+
+    periodic : bool
+        Whether points should be wrapped around to the opposite side
+        at the boundaries.
+
+    Returns
+    -------
+    generator[tuple]
     &#34;&#34;&#34;
     d = len(p)
     # Convert to numpy array to do math (which can&#39;t be done on tuples)
@@ -77,13 +88,14 @@ def _iterNeighbors(p, tShape, neighborInclusion=1):
     # center (even after permuting for arbitrary dimensions).
     del neighbors[len(neighbors)//2]
    
-    # Now make sure all of the points are within the domain of the data.
+    # Now make sure all of the points are within the domain of the data
+    # (or that we allow points to wrap around with `periodic`).
     for n in neighbors:
-        if not True in ((np.array(tShape) - n - 1) &lt; 0) and not True in (n &lt; 0):
-            yield tuple(n)
+        if (not True in ((np.array(tShape) - n - 1) &lt; 0) and not True in (n &lt; 0)) or periodic:
+            yield tuple(n % np.array(tShape))
 
 
-def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizePrevalence=True):
+def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizePrevalence=True, periodic=False, allowOptimize=True):
     &#34;&#34;&#34;
     Identify peaks in multi-dimensional data using persistent topology.
 
@@ -107,10 +119,13 @@ def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizeP
     peaks in 1D or 2D data, it is recommended to instead use either `pepe.topology.findPeaks1D()`
     or `pepe.topology.findPeaks2D()`, as these *are* optimized.
 
+    The kwarg `allowOptimize` (Default: True) will instead call either
+    `pepe.topology.findPeaks1D()` or `pepe.topology.findPeaks2D()` for 1- or 2-dimensional cases
+    instead of the generalized method. This usually results in a 10x-100x speedup.
+
     Parameters
     ----------
-
-    data : np.ndarray[d]
+    data : numpy.ndarray[d]
         An array of data points within which to identify peaks in d-dimensional space.
 
     neighborInclusion : int
@@ -140,14 +155,28 @@ def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizeP
         specified as a percent (eg. .3 for 30%) is the normalizePrevalence
         kwarg is True.
 
+    periodic : bool
+        Whether the discrete field should be wrapped around to itself at the
+        boundaries.
+
+    allowOptimize : bool
+        Whether to allow the function to call the numba-optimized methods
+        specific to 1- or 2-dimensional data when possible instead of
+        the generalized method.
+
+        See `pepe.topology.findPeaks1D()` or `pepe.topology.findPeaks2D()` for
+        more information.
+
+        Can only be used when `neighborInclusion=1`. WIP to remove this
+        constraint.
+
     Returns
     -------
-
-    peakPositions : np.ndarray[N,d]
+    peakPositions : numpy.ndarray[N,d]
         The indices of peaks in the provided data, sorted from most
         to least prevalent (persistent).
 
-    peakPrevalences : np.ndarray[N]
+    peakPrevalences : numpy.ndarray[N]
         The prevalence of each peak in the provided data, or the persistence
         of the topological feature. If `normalizePrevalence` is True, this will
         be normalized to the domain `[0, 1]`; otherwise, these values are
@@ -171,7 +200,19 @@ def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizeP
     Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8218-4925-5
 
     &#34;&#34;&#34; 
+    d = np.array(data).ndim
     
+    # Call the optimized versions of the peak finding if allowed.
+    if allowOptimize and neighborInclusion == 1:
+        if d == 1:
+            peaks, prev = findPeaks1D(data, minPeakPrevalence, normalizePrevalence, periodic)
+            # Have to convert to numpy arrays to be consistent with the
+            # unoptimized call return
+            return (np.array(peaks), np.array(prev))
+        elif d == 2:
+            peaks, prev = findPeaks2D(data, minPeakPrevalence, normalizePrevalence, periodic)
+            return (np.array(peaks), np.array(prev))
+        
     # This array contains the indices of the peak that each point
     # belongs to (assuming it does belong to a peak)
     # We start it at -1 such that we can check if a point belongs to
@@ -197,7 +238,7 @@ def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizeP
     # not just a single number
     for si in sortedIndices:
         # See if any neighbors have been assigned to a peak
-        assignedNeighbors = [n for n in _iterNeighbors(si, data.shape, neighborInclusion) if peakMembership[n] &gt;= 0]
+        assignedNeighbors = [n for n in _iterNeighbors(si, data.shape, neighborInclusion, periodic) if peakMembership[n] &gt;= 0]
 
         # If there aren&#39;t any assigned neighbors yet, then we create a new
         # peak
@@ -247,7 +288,7 @@ def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizeP
     return (peakPositions, peakPrevalences)
 
 
-def findPeaks2D(data, minPeakPrevalence=None, normalizePrevalence=True):
+def findPeaks2D(data, minPeakPrevalence=None, normalizePrevalence=True, periodic=False):
     &#34;&#34;&#34;
     Identify peaks in 2-dimensional data using persistent topology.
 
@@ -270,9 +311,8 @@ def findPeaks2D(data, minPeakPrevalence=None, normalizePrevalence=True):
 
     Parameters
     ----------
-
-    data : np.ndarray[d]
-        An array of data points within which to identify peaks in d-dimensional space.
+    data : np.ndarray[H,W]
+        A discretized 2-dimensional scalar field within which to identify peaks.
 
     minPeakPrevalence : float or None
         The minimum prevalence of a peak (maximum - minimum) that will be
@@ -290,6 +330,10 @@ def findPeaks2D(data, minPeakPrevalence=None, normalizePrevalence=True):
         kwarg to clip smaller peaks, and thus the minimum value should be
         specified as a percent (eg. .3 for 30%) is the normalizePrevalence
         kwarg is True.
+
+    periodic : bool
+        Whether the discrete field should be wrapped around to itself at the
+        boundaries.
 
     Returns
     -------
@@ -340,7 +384,7 @@ def findPeaks2D(data, minPeakPrevalence=None, normalizePrevalence=True):
     # into a numba (typed) list
     typedSortedIndices = numba.typed.List(sortedIndices)
 
-    peakMembership, peakBirthIndices = _findPeaks2DIter(data, typedSortedIndices)
+    peakMembership, peakBirthIndices = _findPeaks2DIter(data, typedSortedIndices, periodic)
 
     # Calculate the prevalence of each peak as the height of the birth points minus the
     # height of the death point
@@ -356,7 +400,7 @@ def findPeaks2D(data, minPeakPrevalence=None, normalizePrevalence=True):
 
     # Cut off small peaks, if necessary
     if minPeakPrevalence is not None:
-        peakBirthIndices = [peakBirthIndices[i] for i in range(len(peakBirthIndices)) if peakPrevalences[i] &gt; minPeakPrevalence]
+        peakBirthIndices = np.array([peakBirthIndices[i] for i in range(len(peakBirthIndices)) if peakPrevalences[i] &gt; minPeakPrevalence])
         peakPrevalences = np.array([peakPrevalences[i] for i in range(len(peakPrevalences)) if peakPrevalences[i] &gt; minPeakPrevalence])
 
     # Sort the peaks by their prevalence
@@ -368,7 +412,7 @@ def findPeaks2D(data, minPeakPrevalence=None, normalizePrevalence=True):
 
 
 @numba.njit(cache=True)
-def _findPeaks2DIter(data, sortedIndices):
+def _findPeaks2DIter(data, sortedIndices, periodic=False):
     &#34;&#34;&#34;
     Iterative part of 2D peak finding, optimized using `numba`.
 
@@ -392,8 +436,17 @@ def _findPeaks2DIter(data, sortedIndices):
         # No options for expanding which points are considered neighbors here
         # since the 8 surrounding points should be fine.
         assignedNeighbors = [(si[0]+i, si[1]+j) for i in [0, 1, -1] for j in [0, 1, -1]][1:]
-        # Cut off points outside the domain, or that haven&#39;t been assigned yet
-        assignedNeighbors = [n for n in assignedNeighbors if n[0] &gt;= 0 and n[1] &gt;= 0 and n[0] &lt; data.shape[0] and n[1] &lt; data.shape[1] and peakMembership[n] &gt;= 0]
+
+        # Remove points outside the domain or wrap them, depending on periodicity option
+        if periodic:
+            # Wrap points around
+            assignedNeighbors = [(n[0] % data.shape[0], n[1] % data.shape[1]) for n in assignedNeighbors]
+        else:
+            # Check if in bounds
+            assignedNeighbors = [n for n in assignedNeighbors if n[0] &gt;= 0 and n[1] &gt;= 0 and n[0] &lt; data.shape[0] and n[1] &lt; data.shape[1]]
+
+        # Remove points that haven&#39;t been assigned yet
+        assignedNeighbors = [n for n in assignedNeighbors if peakMembership[n] &gt;= 0]
 
         # If there aren&#39;t any assigned neighbors yet, then we create a new
         # peak
@@ -417,8 +470,8 @@ def _findPeaks2DIter(data, sortedIndices):
     return peakMembership, peakBirthIndices
 
 
-@numba.njit(cache=True)
-def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
+#@numba.njit(cache=True)
+def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True, periodic=False):
     &#34;&#34;&#34;
     Find peaks in one dimensional data using persistent homology.
 
@@ -458,6 +511,10 @@ def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
         kwarg to clip smaller peaks, and thus the minimum value should be
         specified as a percent (eg. .3 for 30%) is the normalizePrevalence
         kwarg is True.
+
+    periodic : bool
+        Whether the array should be wrapped around to itself at the
+        boundary.
 
     Returns
     -------
@@ -520,8 +577,14 @@ def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
         # These bools represent whether the points to the left and right
         # (in the original data, not the height-sorted data) have been
         # assigned to a peak yet.
-        leftAssigned = (i &gt; 0 and peakMembership[i-1] &gt;= 0)
-        rightAssigned = (i &lt; len(data)-1 and peakMembership[i+1] &gt;= 0)
+        leftIndex = i - 1
+        rightIndex = i + 1
+        if periodic:
+            leftIndex = leftIndex % len(data)
+            rightIndex = rightIndex % len(data)
+
+        leftAssigned = (leftIndex &gt;= 0 and peakMembership[leftIndex] &gt;= 0)
+        rightAssigned = (rightIndex &lt; len(data) and peakMembership[rightIndex] &gt;= 0)
 
         # If neither left or right have been processed, this point begins
         # a new peak (which may later be merged into another one)
@@ -539,47 +602,50 @@ def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
         if leftAssigned and not rightAssigned:
             # Expand the peak bounds to include this new point
             # (1 index because the peak is expanding to the right)
-            peakBoundsIndices[peakMembership[i-1]][1] += 1
-            peakMembership[i] = peakMembership[i-1]
+            # We may have to wrap it around; we don&#39;t actually need to
+            # check for the periodic condition, since it will only reach
+            # the point of needing to be wrapped if this condition is true
+            peakBoundsIndices[peakMembership[leftIndex]][1] = (peakBoundsIndices[peakMembership[leftIndex]][1] + 1) % len(data)
+            peakMembership[i] = peakMembership[leftIndex]
 
 
         if rightAssigned and not leftAssigned:
             # Expand the peak bounds to include this new point
             # (0 index because the peak is expanding to the left)
-            peakBoundsIndices[peakMembership[i+1]][0] -= 1
-            peakMembership[i] = peakMembership[i+1]
+            peakBoundsIndices[peakMembership[rightIndex]][0] = (peakBoundsIndices[peakMembership[rightIndex]][0] - 1) % len(data)
+            peakMembership[i] = peakMembership[rightIndex]
 
         # If both left and right belong to peaks, that means one of them will
         # have to die, and the new point + the one who&#39;s group died get added
         # to the surviving group
         if rightAssigned and leftAssigned:
             # Determine which is taller
-            if data[peakBirthIndices[peakMembership[i-1]]] &gt; data[peakBirthIndices[peakMembership[i+1]]]:
+            if data[peakBirthIndices[peakMembership[leftIndex]]] &gt; data[peakBirthIndices[peakMembership[rightIndex]]]:
                 # If the left peak is higher, the right one dies
                 # See note above about death
-                #peakDeathIndices[peakMembership[i+1]] = i
+                #peakDeathIndices[peakMembership[rightIndex]] = i
                 # Expand the bounds of the left peak to cover the right one
                 # (1 index because the peak is expanding to the right)
-                peakBoundsIndices[peakMembership[i-1]][1] = peakBoundsIndices[peakMembership[i+1]][1]
+                peakBoundsIndices[peakMembership[leftIndex]][1] = peakBoundsIndices[peakMembership[rightIndex]][1]
                 # Save membership for current peak
-                peakMembership[i] = peakMembership[i-1]
+                peakMembership[i] = peakMembership[leftIndex]
                 # Save membership for right-most peak (that was just recently absorbed into this one).
                 # You don&#39;t need to change every point in between, because those will never be
                 # referenced again.
-                peakMembership[peakBoundsIndices[peakMembership[i-1]][1]] = peakMembership[i-1]
+                peakMembership[peakBoundsIndices[peakMembership[leftIndex]][1]] = peakMembership[leftIndex]
             else:
                 # If the right peak is higher, the left one dies
                 # See note above about death
                 #peakDeathIndices[peakMembership[i-1]] = i
                 # Expand the bounds of the right peak to cover the left one
                 # (0 index because the peak is expanding to the left)
-                peakBoundsIndices[peakMembership[i+1]][0] = peakBoundsIndices[peakMembership[i-1]][0]
+                peakBoundsIndices[peakMembership[rightIndex]][0] = peakBoundsIndices[peakMembership[leftIndex]][0]
                 # Save membership for current point
-                peakMembership[i] = peakMembership[i+1]
+                peakMembership[i] = peakMembership[rightIndex]
                 # Save membership for left-most point (that was just recently absorbed into this one).
                 # You don&#39;t need to change every point in between, because those will never be
                 # referenced again.
-                peakMembership[peakBoundsIndices[peakMembership[i+1]][0]] = peakMembership[i+1]
+                peakMembership[peakBoundsIndices[peakMembership[rightIndex]][0]] = peakMembership[rightIndex]
 
     # This is the position of the proper crest for each peak
     peakPositions = np.array(peakBirthIndices)
@@ -588,7 +654,14 @@ def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
     # height of the death point
     # We could do this using the arrays we&#39;ve stored along the way, but it&#39;s easier just to take the
     # max/min heights directly from the data
-    peakPrevalences = np.array([data[peakPositions[i]] - np.min(data[peakMembership == i]) for i in range(len(peakBoundsIndices))])
+
+    # By this definition, you can&#39;t possibly have a peak that consists of only a
+    # single point, but we might have gotten some of these from process above.
+    # Honestly not really sure why they show up, but we have to check just in case.
+    goodPeaks = [peakBoundsIndices[i][1] != peakBoundsIndices[i][0] for i in range(len(peakBoundsIndices))]
+    
+    peakPrevalences = np.array([data[peakPositions[i]] - np.min(data[peakMembership == i]) for i in range(len(peakPositions)) if goodPeaks[i]])
+    peakPositions = peakPositions[goodPeaks]
 
     # Also note that I have made the decision here to normalize these prevalences by the total range
     # of the data, such that a prevalence of .6 means that the peak spans 60% of the range of the data.
@@ -618,7 +691,7 @@ def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="pepe.topology.PersistentHomology.findPeaks1D"><code class="name flex">
-<span>def <span class="ident">findPeaks1D</span></span>(<span>data, minPeakPrevalence=None, normalizePrevalence=True)</span>
+<span>def <span class="ident">findPeaks1D</span></span>(<span>data, minPeakPrevalence=None, normalizePrevalence=True, periodic=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Find peaks in one dimensional data using persistent homology.</p>
@@ -653,6 +726,9 @@ kwarg to clip smaller peaks, and thus the minimum value should be
 specified as a percent (eg. .3 for 30%) is the normalizePrevalence
 kwarg is True.</p>
 </dd>
+<dt><strong><code>periodic</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether the array should be wrapped around to itself at the
+boundary.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -679,8 +755,7 @@ Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">@numba.njit(cache=True)
-def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
+<pre><code class="python">def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True, periodic=False):
     &#34;&#34;&#34;
     Find peaks in one dimensional data using persistent homology.
 
@@ -720,6 +795,10 @@ def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
         kwarg to clip smaller peaks, and thus the minimum value should be
         specified as a percent (eg. .3 for 30%) is the normalizePrevalence
         kwarg is True.
+
+    periodic : bool
+        Whether the array should be wrapped around to itself at the
+        boundary.
 
     Returns
     -------
@@ -782,8 +861,14 @@ def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
         # These bools represent whether the points to the left and right
         # (in the original data, not the height-sorted data) have been
         # assigned to a peak yet.
-        leftAssigned = (i &gt; 0 and peakMembership[i-1] &gt;= 0)
-        rightAssigned = (i &lt; len(data)-1 and peakMembership[i+1] &gt;= 0)
+        leftIndex = i - 1
+        rightIndex = i + 1
+        if periodic:
+            leftIndex = leftIndex % len(data)
+            rightIndex = rightIndex % len(data)
+
+        leftAssigned = (leftIndex &gt;= 0 and peakMembership[leftIndex] &gt;= 0)
+        rightAssigned = (rightIndex &lt; len(data) and peakMembership[rightIndex] &gt;= 0)
 
         # If neither left or right have been processed, this point begins
         # a new peak (which may later be merged into another one)
@@ -801,47 +886,50 @@ def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
         if leftAssigned and not rightAssigned:
             # Expand the peak bounds to include this new point
             # (1 index because the peak is expanding to the right)
-            peakBoundsIndices[peakMembership[i-1]][1] += 1
-            peakMembership[i] = peakMembership[i-1]
+            # We may have to wrap it around; we don&#39;t actually need to
+            # check for the periodic condition, since it will only reach
+            # the point of needing to be wrapped if this condition is true
+            peakBoundsIndices[peakMembership[leftIndex]][1] = (peakBoundsIndices[peakMembership[leftIndex]][1] + 1) % len(data)
+            peakMembership[i] = peakMembership[leftIndex]
 
 
         if rightAssigned and not leftAssigned:
             # Expand the peak bounds to include this new point
             # (0 index because the peak is expanding to the left)
-            peakBoundsIndices[peakMembership[i+1]][0] -= 1
-            peakMembership[i] = peakMembership[i+1]
+            peakBoundsIndices[peakMembership[rightIndex]][0] = (peakBoundsIndices[peakMembership[rightIndex]][0] - 1) % len(data)
+            peakMembership[i] = peakMembership[rightIndex]
 
         # If both left and right belong to peaks, that means one of them will
         # have to die, and the new point + the one who&#39;s group died get added
         # to the surviving group
         if rightAssigned and leftAssigned:
             # Determine which is taller
-            if data[peakBirthIndices[peakMembership[i-1]]] &gt; data[peakBirthIndices[peakMembership[i+1]]]:
+            if data[peakBirthIndices[peakMembership[leftIndex]]] &gt; data[peakBirthIndices[peakMembership[rightIndex]]]:
                 # If the left peak is higher, the right one dies
                 # See note above about death
-                #peakDeathIndices[peakMembership[i+1]] = i
+                #peakDeathIndices[peakMembership[rightIndex]] = i
                 # Expand the bounds of the left peak to cover the right one
                 # (1 index because the peak is expanding to the right)
-                peakBoundsIndices[peakMembership[i-1]][1] = peakBoundsIndices[peakMembership[i+1]][1]
+                peakBoundsIndices[peakMembership[leftIndex]][1] = peakBoundsIndices[peakMembership[rightIndex]][1]
                 # Save membership for current peak
-                peakMembership[i] = peakMembership[i-1]
+                peakMembership[i] = peakMembership[leftIndex]
                 # Save membership for right-most peak (that was just recently absorbed into this one).
                 # You don&#39;t need to change every point in between, because those will never be
                 # referenced again.
-                peakMembership[peakBoundsIndices[peakMembership[i-1]][1]] = peakMembership[i-1]
+                peakMembership[peakBoundsIndices[peakMembership[leftIndex]][1]] = peakMembership[leftIndex]
             else:
                 # If the right peak is higher, the left one dies
                 # See note above about death
                 #peakDeathIndices[peakMembership[i-1]] = i
                 # Expand the bounds of the right peak to cover the left one
                 # (0 index because the peak is expanding to the left)
-                peakBoundsIndices[peakMembership[i+1]][0] = peakBoundsIndices[peakMembership[i-1]][0]
+                peakBoundsIndices[peakMembership[rightIndex]][0] = peakBoundsIndices[peakMembership[leftIndex]][0]
                 # Save membership for current point
-                peakMembership[i] = peakMembership[i+1]
+                peakMembership[i] = peakMembership[rightIndex]
                 # Save membership for left-most point (that was just recently absorbed into this one).
                 # You don&#39;t need to change every point in between, because those will never be
                 # referenced again.
-                peakMembership[peakBoundsIndices[peakMembership[i+1]][0]] = peakMembership[i+1]
+                peakMembership[peakBoundsIndices[peakMembership[rightIndex]][0]] = peakMembership[rightIndex]
 
     # This is the position of the proper crest for each peak
     peakPositions = np.array(peakBirthIndices)
@@ -850,7 +938,14 @@ def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
     # height of the death point
     # We could do this using the arrays we&#39;ve stored along the way, but it&#39;s easier just to take the
     # max/min heights directly from the data
-    peakPrevalences = np.array([data[peakPositions[i]] - np.min(data[peakMembership == i]) for i in range(len(peakBoundsIndices))])
+
+    # By this definition, you can&#39;t possibly have a peak that consists of only a
+    # single point, but we might have gotten some of these from process above.
+    # Honestly not really sure why they show up, but we have to check just in case.
+    goodPeaks = [peakBoundsIndices[i][1] != peakBoundsIndices[i][0] for i in range(len(peakBoundsIndices))]
+    
+    peakPrevalences = np.array([data[peakPositions[i]] - np.min(data[peakMembership == i]) for i in range(len(peakPositions)) if goodPeaks[i]])
+    peakPositions = peakPositions[goodPeaks]
 
     # Also note that I have made the decision here to normalize these prevalences by the total range
     # of the data, such that a prevalence of .6 means that the peak spans 60% of the range of the data.
@@ -873,7 +968,7 @@ def findPeaks1D(data, minPeakPrevalence=None, normalizePrevalence=True):
 </details>
 </dd>
 <dt id="pepe.topology.PersistentHomology.findPeaks2D"><code class="name flex">
-<span>def <span class="ident">findPeaks2D</span></span>(<span>data, minPeakPrevalence=None, normalizePrevalence=True)</span>
+<span>def <span class="ident">findPeaks2D</span></span>(<span>data, minPeakPrevalence=None, normalizePrevalence=True, periodic=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Identify peaks in 2-dimensional data using persistent topology.</p>
@@ -892,8 +987,8 @@ it is passed to this method.</p>
 <p>Method is optimized using <code>numba</code>.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
-<dt><strong><code>data</code></strong> :&ensp;<code>np.ndarray[d]</code></dt>
-<dd>An array of data points within which to identify peaks in d-dimensional space.</dd>
+<dt><strong><code>data</code></strong> :&ensp;<code>np.ndarray[H,W]</code></dt>
+<dd>A discretized 2-dimensional scalar field within which to identify peaks.</dd>
 <dt><strong><code>minPeakPrevalence</code></strong> :&ensp;<code>float</code> or <code>None</code></dt>
 <dd>The minimum prevalence of a peak (maximum - minimum) that will be
 returned to the user. If <code>normalizePrevalence</code> is True, this should
@@ -910,6 +1005,9 @@ kwarg to clip smaller peaks, and thus the minimum value should be
 specified as a percent (eg. .3 for 30%) is the normalizePrevalence
 kwarg is True.</p>
 </dd>
+<dt><strong><code>periodic</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether the discrete field should be wrapped around to itself at the
+boundaries.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -937,7 +1035,7 @@ Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def findPeaks2D(data, minPeakPrevalence=None, normalizePrevalence=True):
+<pre><code class="python">def findPeaks2D(data, minPeakPrevalence=None, normalizePrevalence=True, periodic=False):
     &#34;&#34;&#34;
     Identify peaks in 2-dimensional data using persistent topology.
 
@@ -960,9 +1058,8 @@ Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8
 
     Parameters
     ----------
-
-    data : np.ndarray[d]
-        An array of data points within which to identify peaks in d-dimensional space.
+    data : np.ndarray[H,W]
+        A discretized 2-dimensional scalar field within which to identify peaks.
 
     minPeakPrevalence : float or None
         The minimum prevalence of a peak (maximum - minimum) that will be
@@ -980,6 +1077,10 @@ Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8
         kwarg to clip smaller peaks, and thus the minimum value should be
         specified as a percent (eg. .3 for 30%) is the normalizePrevalence
         kwarg is True.
+
+    periodic : bool
+        Whether the discrete field should be wrapped around to itself at the
+        boundaries.
 
     Returns
     -------
@@ -1030,7 +1131,7 @@ Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8
     # into a numba (typed) list
     typedSortedIndices = numba.typed.List(sortedIndices)
 
-    peakMembership, peakBirthIndices = _findPeaks2DIter(data, typedSortedIndices)
+    peakMembership, peakBirthIndices = _findPeaks2DIter(data, typedSortedIndices, periodic)
 
     # Calculate the prevalence of each peak as the height of the birth points minus the
     # height of the death point
@@ -1046,7 +1147,7 @@ Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8
 
     # Cut off small peaks, if necessary
     if minPeakPrevalence is not None:
-        peakBirthIndices = [peakBirthIndices[i] for i in range(len(peakBirthIndices)) if peakPrevalences[i] &gt; minPeakPrevalence]
+        peakBirthIndices = np.array([peakBirthIndices[i] for i in range(len(peakBirthIndices)) if peakPrevalences[i] &gt; minPeakPrevalence])
         peakPrevalences = np.array([peakPrevalences[i] for i in range(len(peakPrevalences)) if peakPrevalences[i] &gt; minPeakPrevalence])
 
     # Sort the peaks by their prevalence
@@ -1058,7 +1159,7 @@ Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8
 </details>
 </dd>
 <dt id="pepe.topology.PersistentHomology.findPeaksMulti"><code class="name flex">
-<span>def <span class="ident">findPeaksMulti</span></span>(<span>data, neighborInclusion=1, minPeakPrevalence=None, normalizePrevalence=True)</span>
+<span>def <span class="ident">findPeaksMulti</span></span>(<span>data, neighborInclusion=1, minPeakPrevalence=None, normalizePrevalence=True, periodic=False, allowOptimize=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Identify peaks in multi-dimensional data using persistent topology.</p>
@@ -1078,9 +1179,12 @@ it is passed to this method. A higher <code>neighborInclusion</code> can partial
 which <code>numba</code> can't type as easily as a list or array. While this method can identify
 peaks in 1D or 2D data, it is recommended to instead use either <code>pepe.topology.findPeaks1D()</code>
 or <code>pepe.topology.findPeaks2D()</code>, as these <em>are</em> optimized.</p>
+<p>The kwarg <code>allowOptimize</code> (Default: True) will instead call either
+<code>pepe.topology.findPeaks1D()</code> or <code>pepe.topology.findPeaks2D()</code> for 1- or 2-dimensional cases
+instead of the generalized method. This usually results in a 10x-100x speedup.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
-<dt><strong><code>data</code></strong> :&ensp;<code>np.ndarray[d]</code></dt>
+<dt><strong><code>data</code></strong> :&ensp;<code>numpy.ndarray[d]</code></dt>
 <dd>An array of data points within which to identify peaks in d-dimensional space.</dd>
 <dt><strong><code>neighborInclusion</code></strong> :&ensp;<code>int</code></dt>
 <dd>
@@ -1107,13 +1211,26 @@ kwarg to clip smaller peaks, and thus the minimum value should be
 specified as a percent (eg. .3 for 30%) is the normalizePrevalence
 kwarg is True.</p>
 </dd>
+<dt><strong><code>periodic</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Whether the discrete field should be wrapped around to itself at the
+boundaries.</dd>
+<dt><strong><code>allowOptimize</code></strong> :&ensp;<code>bool</code></dt>
+<dd>
+<p>Whether to allow the function to call the numba-optimized methods
+specific to 1- or 2-dimensional data when possible instead of
+the generalized method.</p>
+<p>See <code>pepe.topology.findPeaks1D()</code> or <code>pepe.topology.findPeaks2D()</code> for
+more information.</p>
+<p>Can only be used when <code>neighborInclusion=1</code>. WIP to remove this
+constraint.</p>
+</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><strong><code>peakPositions</code></strong> :&ensp;<code>np.ndarray[N,d]</code></dt>
+<dt><strong><code>peakPositions</code></strong> :&ensp;<code>numpy.ndarray[N,d]</code></dt>
 <dd>The indices of peaks in the provided data, sorted from most
 to least prevalent (persistent).</dd>
-<dt><strong><code>peakPrevalences</code></strong> :&ensp;<code>np.ndarray[N]</code></dt>
+<dt><strong><code>peakPrevalences</code></strong> :&ensp;<code>numpy.ndarray[N]</code></dt>
 <dd>The prevalence of each peak in the provided data, or the persistence
 of the topological feature. If <code>normalizePrevalence</code> is True, this will
 be normalized to the domain <code>[0, 1]</code>; otherwise, these values are
@@ -1134,7 +1251,7 @@ Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizePrevalence=True):
+<pre><code class="python">def findPeaksMulti(data, neighborInclusion=1, minPeakPrevalence=None, normalizePrevalence=True, periodic=False, allowOptimize=True):
     &#34;&#34;&#34;
     Identify peaks in multi-dimensional data using persistent topology.
 
@@ -1158,10 +1275,13 @@ Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8
     peaks in 1D or 2D data, it is recommended to instead use either `pepe.topology.findPeaks1D()`
     or `pepe.topology.findPeaks2D()`, as these *are* optimized.
 
+    The kwarg `allowOptimize` (Default: True) will instead call either
+    `pepe.topology.findPeaks1D()` or `pepe.topology.findPeaks2D()` for 1- or 2-dimensional cases
+    instead of the generalized method. This usually results in a 10x-100x speedup.
+
     Parameters
     ----------
-
-    data : np.ndarray[d]
+    data : numpy.ndarray[d]
         An array of data points within which to identify peaks in d-dimensional space.
 
     neighborInclusion : int
@@ -1191,14 +1311,28 @@ Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8
         specified as a percent (eg. .3 for 30%) is the normalizePrevalence
         kwarg is True.
 
+    periodic : bool
+        Whether the discrete field should be wrapped around to itself at the
+        boundaries.
+
+    allowOptimize : bool
+        Whether to allow the function to call the numba-optimized methods
+        specific to 1- or 2-dimensional data when possible instead of
+        the generalized method.
+
+        See `pepe.topology.findPeaks1D()` or `pepe.topology.findPeaks2D()` for
+        more information.
+
+        Can only be used when `neighborInclusion=1`. WIP to remove this
+        constraint.
+
     Returns
     -------
-
-    peakPositions : np.ndarray[N,d]
+    peakPositions : numpy.ndarray[N,d]
         The indices of peaks in the provided data, sorted from most
         to least prevalent (persistent).
 
-    peakPrevalences : np.ndarray[N]
+    peakPrevalences : numpy.ndarray[N]
         The prevalence of each peak in the provided data, or the persistence
         of the topological feature. If `normalizePrevalence` is True, this will
         be normalized to the domain `[0, 1]`; otherwise, these values are
@@ -1222,7 +1356,19 @@ Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8
     Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8218-4925-5
 
     &#34;&#34;&#34; 
+    d = np.array(data).ndim
     
+    # Call the optimized versions of the peak finding if allowed.
+    if allowOptimize and neighborInclusion == 1:
+        if d == 1:
+            peaks, prev = findPeaks1D(data, minPeakPrevalence, normalizePrevalence, periodic)
+            # Have to convert to numpy arrays to be consistent with the
+            # unoptimized call return
+            return (np.array(peaks), np.array(prev))
+        elif d == 2:
+            peaks, prev = findPeaks2D(data, minPeakPrevalence, normalizePrevalence, periodic)
+            return (np.array(peaks), np.array(prev))
+        
     # This array contains the indices of the peak that each point
     # belongs to (assuming it does belong to a peak)
     # We start it at -1 such that we can check if a point belongs to
@@ -1248,7 +1394,7 @@ Chapter 7: Persistence. p. 149-156. American Mathematical Society. ISBN: 978-0-8
     # not just a single number
     for si in sortedIndices:
         # See if any neighbors have been assigned to a peak
-        assignedNeighbors = [n for n in _iterNeighbors(si, data.shape, neighborInclusion) if peakMembership[n] &gt;= 0]
+        assignedNeighbors = [n for n in _iterNeighbors(si, data.shape, neighborInclusion, periodic) if peakMembership[n] &gt;= 0]
 
         # If there aren&#39;t any assigned neighbors yet, then we create a new
         # peak
