@@ -42,7 +42,7 @@ def loadVideo(path, start=None, end=None):
     i = start if start is not None else 0
 
     while(True):
-        if end is not None and i > end:
+        if end is not None and i >= end:
             break
 
         # Ret will be false if we've come to the end of the video
