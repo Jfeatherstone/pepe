@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import convolve
 
 
-def courseGrainField(points, values=None, defaultValue=0, latticeSpacing=None, fixedBounds=None, kernel='gaussian', kernelSize=5, subsample=None, returnSpacing=False, returnCorner=False):
+def courseGrainField(points, values=None, defaultValue=0, latticeSpacing=None, defaultLatticeSize=100, fixedBounds=None, kernel='gaussian', kernelSize=5, subsample=None, returnSpacing=False, returnCorner=False):
     """
     Course grains a collection of values at arbitrary points,
     into a discrete field.
@@ -36,8 +36,12 @@ def courseGrainField(points, values=None, defaultValue=0, latticeSpacing=None, f
     latticeSpacing : float or None
         The spacing of lattice points for the course-grained field.
 
-        If `None`, will be chosen such that the largest-spanning axis
-        has 100 lattice points, with other axes using the same spacing.
+        If `None`, will be chosen such that each axis has
+        `defaultLatticeSize` points.
+
+    defaultLatticeSize : int
+        The number of lattice points for the course grained field, assuming
+        no explicit value for the lattice spacing is given (see `latticeSpacing`).
 
     fixedBounds : numpy.ndarray[d] or None
         The bounds of the field to define the discretized
@@ -78,31 +82,21 @@ def courseGrainField(points, values=None, defaultValue=0, latticeSpacing=None, f
         if hasattr(fixedBounds, '__iter__'):
             occupiedVolumeBounds[:,1] -= spacing
     else:
-        # Choose such that the largest spanning axis has 100 points
-        spacing = (occupiedVolumeBounds[:,1] - occupiedVolumeBounds[:,0]) / 100
+        # Choose such that each axis has 100 lattice points (-1 because we will add one later)
+        spacing = (occupiedVolumeBounds[:,1] - occupiedVolumeBounds[:,0]) / (defaultLatticeSize-1)
 
     # In the exceptional case that the data is given as a d dimensional array
     # but the data is actually d-1 dimensional (or d-2, etc.), we will have a value
     # of spacing for that dimension as 0, which will cause a divide by zero error
     # above. If this is the case, we only need a single entry in that dimension.
+    if hasattr(spacing, '__iter__'):
+        spacing[spacing == 0] = 1
+    else:
+        spacing = spacing if spacing != 0 else 1
+    
+    fieldDims = (np.ceil(1 + (occupiedVolumeBounds[:,1] - occupiedVolumeBounds[:,0])/(spacing))).astype(np.int64)
 
-    fieldDims = np.zeros(dim, dtype=np.int64)
-
-    for i in range(dim):
-        axisSpacing = spacing[i] if hasattr(spacing, '__iter__') else spacing
-
-        if axisSpacing != 0:
-            fieldDims[i] = np.ceil(1 + (occupiedVolumeBounds[i,1] - occupiedVolumeBounds[i,0])/(axisSpacing))
-        else:
-            fieldDims[i] = 1
-
-    # Calculate which lattice cell each scatter point falls into
-    # We have to add some small epsilon to the spacing here for the exceptional
-    # case described abov: if we have d-1 dimensional data embedded in a d dimensional
-    # space. When casting to np.int64, we use the floor operation, so as long as we
-    # *add* the epsilon, there shouldn't be any real issues.
-    eps = 1e-8
-    latticePositions = np.floor((points - occupiedVolumeBounds[:,0])/(spacing + eps)).astype(np.int64)
+    latticePositions = np.floor((points - occupiedVolumeBounds[:,0])/(spacing)).astype(np.int64)
 
     # Check if an array of values was passed for each point
     # Otherwise we just have a scalar field (and we'll collapse

@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
 <meta name="generator" content="pdoc3 0.11.1">
-<title>pepe.visualize.Colors API documentation</title>
-<meta name="description" content="Methods to generate good color schemes for visualization.">
+<title>pepe.utils.CourseGrain API documentation</title>
+<meta name="description" content="">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/sanitize.min.css" integrity="sha512-y1dtMcuvtTMJc1yPgEqF0ZjQbhnc/bFhyvIyVNb9Zk5mIGtqVaAB1Ttl28su8AvFMOY0EwRbAe+HCLqj6W7/KA==" crossorigin>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/typography.min.css" integrity="sha512-Y1DYSb995BAfxobCkKepB1BqJJTPrOp3zPL74AWFugHHmmdcvO+C48WLrUOlhGMc0QG7AE3f7gmvvcrmX2fDoA==" crossorigin>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" crossorigin>
@@ -24,10 +24,9 @@ hljs.highlightAll();
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>pepe.visualize.Colors</code></h1>
+<h1 class="title">Module <code>pepe.utils.CourseGrain</code></h1>
 </header>
 <section id="section-intro">
-<p>Methods to generate good color schemes for visualization.</p>
 </section>
 <section>
 </section>
@@ -36,107 +35,60 @@ hljs.highlightAll();
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="pepe.visualize.Colors.checkColorType"><code class="name flex">
-<span>def <span class="ident">checkColorType</span></span>(<span>c)</span>
+<dt id="pepe.utils.CourseGrain.courseGrainField"><code class="name flex">
+<span>def <span class="ident">courseGrainField</span></span>(<span>points, values=None, defaultValue=0, latticeSpacing=None, defaultLatticeSize=100, fixedBounds=None, kernel='gaussian', kernelSize=5, subsample=None, returnSpacing=False, returnCorner=False)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Will check whether <code>c</code> is a valid
-color to be used for plotting, visualization, etc.
-(eg. valid hex codes, colors defined by matplotlib, etc.)</p>
-<p>If the color is valid, it will be returned; if it is not
-valid, a color will be generated using colour.Color(pick_for=c)
-such that this method called with the same argument will return
-the same color.</p>
+<div class="desc"><p>Course grains a collection of values at arbitrary points,
+into a discrete field.</p>
+<p>If <code>values=None</code>, course-grained field is the point density.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
-<dt><strong><code>c</code></strong> :&ensp;<code>color type (str, hex, etc.)</code> or <code>object</code></dt>
-<dd>Either a valid color, or an object for
-which a color should be chosen for.</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<dl>
-<dt><strong><code>color</code></strong> :&ensp;<code>valid color</code></dt>
+<dt><strong><code>points</code></strong> :&ensp;<code>numpy.ndarray[N,d]</code></dt>
+<dd>Spatial positions of N points in d-dimensional space.</dd>
+<dt><strong><code>values</code></strong> :&ensp;<code>numpy.ndarray[N,[k]]</code> or <code>func(points)-&gt;numpy.ndarray[N,[k]]</code> or <code>None</code></dt>
+<dd>
+<p>Field values at each point. Can be k-dimensional vector,
+resulting in k course-grained fields.</p>
+<p>Can also be a (vectorized) function that returns a value given
+a collection of points. eg. neighbor counting function. This
+functionality is provided such that if the function is computationally
+expensive, eg. neighbor counting, the points can be subdivided into
+batches and the course grained fields can be summed at the end. This
+is a way to approximate the course grained field for a huge (&gt;1e6)
+number of points, while still remaining computationally feasible.
+See <code>subsample</code>.</p>
+<p>If <code>None</code>, returned field will be the point density.</p>
+</dd>
+<dt><strong><code>defaultValue</code></strong> :&ensp;<code>float</code> or <code>numpy.ndarray[k]</code></dt>
+<dd>The default value of the course-grained field;
+probably <code>0</code> for most applications.</dd>
+<dt><strong><code>latticeSpacing</code></strong> :&ensp;<code>float</code> or <code>None</code></dt>
+<dd>
+<p>The spacing of lattice points for the course-grained field.</p>
+<p>If <code>None</code>, will be chosen such that each axis has
+<code>defaultLatticeSize</code> points.</p>
+</dd>
+<dt><strong><code>defaultLatticeSize</code></strong> :&ensp;<code>int</code></dt>
+<dd>The number of lattice points for the course grained field, assuming
+no explicit value for the lattice spacing is given (see <code>latticeSpacing</code>).</dd>
+<dt><strong><code>fixedBounds</code></strong> :&ensp;<code>numpy.ndarray[d]</code> or <code>None</code></dt>
+<dd>The bounds of the field to define the discretized
+grid over. If None, will be calculated based on the
+extrema of the provided points.</dd>
+<dt><strong><code>kernel</code></strong> :&ensp;<code>str</code> or <code>numpy.ndarray[A,A]</code></dt>
+<dd>The kernel to course-grain the field with. 'gaussian'
+option is implemented as default, but a custom matrix
+can be provided. If using default gaussian option,
+kernel size can be set with <code>kernelSize</code>.</dd>
+<dt><strong><code>kernelSize</code></strong> :&ensp;<code>int</code></dt>
+<dd>The kernel size to use if <code>kernel='gaussian'</code>.
+If a custom kernel is provided, this has no effect.</dd>
+<dt><strong><code>returnSpacing</code></strong> :&ensp;<code>bool</code></dt>
+<dd>&nbsp;</dd>
+<dt><strong><code>returnCorner</code></strong> :&ensp;<code>bool</code></dt>
 <dd>&nbsp;</dd>
 </dl></div>
-</dd>
-<dt id="pepe.visualize.Colors.genColors"><code class="name flex">
-<span>def <span class="ident">genColors</span></span>(<span>size, seed=21)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Generate a set of colors for visualization by a hierarchy of methods:</p>
-<ol>
-<li>First, select from MANUAL_COLORS defined above.</li>
-<li>Use genRandomDistancedColors()</li>
-<li>Use genRandomColors()</li>
-</ol></div>
-</dd>
-<dt id="pepe.visualize.Colors.genRandomColors"><code class="name flex">
-<span>def <span class="ident">genRandomColors</span></span>(<span>size, seed=21)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Generate colors by randomly selecting rgb values.</p>
-<h2 id="parameters">Parameters</h2>
-<dl>
-<dt><strong><code>size</code></strong> :&ensp;<code>int</code></dt>
-<dd>The number of colors to generate.</dd>
-<dt><strong><code>seed</code></strong> :&ensp;<code>int</code></dt>
-<dd>The seed to use for random generation.</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<dl>
-<dt><strong><code>colors</code></strong> :&ensp;<code>list[size]</code></dt>
-<dd>A list of hex codes for colors.</dd>
-</dl></div>
-</dd>
-<dt id="pepe.visualize.Colors.genRandomDistancedColors"><code class="name flex">
-<span>def <span class="ident">genRandomDistancedColors</span></span>(<span>size, seed=21)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Generate colors by sampling from the list of CSS named colors,
-where the first color will be randomly selected, and each subsequent
-one will be chosen to maximize it's distance from previously selected
-colors in LAB color space (using a kd-tree).</p>
-<p>If the number of requested colors is greater than the number of named
-colors, the remaining ones will be randomly generated.</p>
-<p>Maybe a bit overkill&hellip;</p>
-<h2 id="parameters">Parameters</h2>
-<dl>
-<dt><strong><code>size</code></strong> :&ensp;<code>int</code></dt>
-<dd>The number of colors to generate.</dd>
-<dt><strong><code>seed</code></strong> :&ensp;<code>int</code></dt>
-<dd>The seed to use for random generation.</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<dl>
-<dt><strong><code>colors</code></strong> :&ensp;<code>list[size]</code></dt>
-<dd>A list of hex codes for colors.</dd>
-</dl></div>
-</dd>
-<dt id="pepe.visualize.Colors.hexToRgb"><code class="name flex">
-<span>def <span class="ident">hexToRgb</span></span>(<span>hexC)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="pepe.visualize.Colors.maxDifferenceOrderColors"><code class="name flex">
-<span>def <span class="ident">maxDifferenceOrderColors</span></span>(<span>colors)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Sort a set of colors such that the difference between consecutive
-colors is maximized.</p>
-<p>A fun little application of the (inverse of the) travelling salesman problem :)</p></div>
-</dd>
-<dt id="pepe.visualize.Colors.rgbToHex"><code class="name flex">
-<span>def <span class="ident">rgbToHex</span></span>(<span>rgbC)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="pepe.visualize.Colors.rgbToLab"><code class="name flex">
-<span>def <span class="ident">rgbToLab</span></span>(<span>inputColor)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
 </dd>
 </dl>
 </section>
@@ -150,19 +102,12 @@ colors is maximized.</p>
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="pepe.visualize" href="index.html">pepe.visualize</a></code></li>
+<li><code><a title="pepe.utils" href="index.html">pepe.utils</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="pepe.visualize.Colors.checkColorType" href="#pepe.visualize.Colors.checkColorType">checkColorType</a></code></li>
-<li><code><a title="pepe.visualize.Colors.genColors" href="#pepe.visualize.Colors.genColors">genColors</a></code></li>
-<li><code><a title="pepe.visualize.Colors.genRandomColors" href="#pepe.visualize.Colors.genRandomColors">genRandomColors</a></code></li>
-<li><code><a title="pepe.visualize.Colors.genRandomDistancedColors" href="#pepe.visualize.Colors.genRandomDistancedColors">genRandomDistancedColors</a></code></li>
-<li><code><a title="pepe.visualize.Colors.hexToRgb" href="#pepe.visualize.Colors.hexToRgb">hexToRgb</a></code></li>
-<li><code><a title="pepe.visualize.Colors.maxDifferenceOrderColors" href="#pepe.visualize.Colors.maxDifferenceOrderColors">maxDifferenceOrderColors</a></code></li>
-<li><code><a title="pepe.visualize.Colors.rgbToHex" href="#pepe.visualize.Colors.rgbToHex">rgbToHex</a></code></li>
-<li><code><a title="pepe.visualize.Colors.rgbToLab" href="#pepe.visualize.Colors.rgbToLab">rgbToLab</a></code></li>
+<li><code><a title="pepe.utils.CourseGrain.courseGrainField" href="#pepe.utils.CourseGrain.courseGrainField">courseGrainField</a></code></li>
 </ul>
 </li>
 </ul>
