@@ -77,6 +77,39 @@ See the `pepe.examples` submodule for some common uses of the toolbox. Many pseu
 [3] Photoelastic methods wiki. https://git-xen.lmgc.univ-montp2.fr/PhotoElasticity/Main/-/wikis/home
 """
 
-__version__ = '1.2.7'
+__version__ = '1.2.8'
 __author__ = 'Jack Featherstone'
 __credits__ = 'North Carolina State University; Okinawa Institute of Science and Technology' 
+
+# The below code was mostly copied from scipy
+
+import importlib as _importlib
+
+submodules = [
+    'analysis',
+    'auto',
+    'preprocess',
+    'simulate',
+    'topology',
+    'tracking',
+    'utils',
+    'visualize',
+]
+
+__all__ = submodules
+
+
+def __dir__():
+    return __all__
+
+
+def __getattr__(name):
+    if name in submodules:
+        return _importlib.import_module(f'pepe.{name}')
+    else:
+        try:
+            return globals()[name]
+        except KeyError:
+            raise AttributeError(
+                f"Module 'pepe' has no attribute '{name}'"
+            )
